@@ -1,32 +1,35 @@
 import { LayoutGrid, ShieldCheck, FileDown, CalendarDays, Ticket, FileText } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface SidebarProps {
   currentRole: string;
 }
 
 const Sidebar = ({ currentRole }: SidebarProps) => {
+  const { t } = useTranslation();
+  
   const navItems = {
     Owner: [
-      { key: "dashboard", label: "Dashboard", icon: LayoutGrid, path: "/dashboard" },
-      { key: "financials", label: "Finanzas", icon: FileText, path: "/finanzas" },
-      { key: "documents", label: "Documentos", icon: FileDown, path: "/documentos" },
-      { key: "bookings", label: "Reservas", icon: CalendarDays, path: "/reservas" },
-      { key: "incidents", label: "Incidencias", icon: Ticket, path: "/incidencias" },
+      { key: "dashboard", label: t('nav.dashboard'), icon: LayoutGrid, path: "/dashboard" },
+      { key: "financials", label: t('nav.finances'), icon: FileText, path: "/finanzas" },
+      { key: "documents", label: t('nav.documents'), icon: FileDown, path: "/documentos" },
+      { key: "bookings", label: t('nav.reservations'), icon: CalendarDays, path: "/reservas" },
+      { key: "incidents", label: t('nav.incidents'), icon: Ticket, path: "/incidencias" },
     ],
     Tenant: [
-      { key: "dashboard", label: "Dashboard", icon: LayoutGrid, path: "/dashboard" },
-      { key: "documents", label: "Documentos", icon: FileDown, path: "/documentos" },
-      { key: "bookings", label: "Reservas", icon: CalendarDays, path: "/reservas" },
-      { key: "incidents", label: "Incidencias", icon: Ticket, path: "/incidencias" },
+      { key: "dashboard", label: t('nav.dashboard'), icon: LayoutGrid, path: "/dashboard" },
+      { key: "documents", label: t('nav.documents'), icon: FileDown, path: "/documentos" },
+      { key: "bookings", label: t('nav.reservations'), icon: CalendarDays, path: "/reservas" },
+      { key: "incidents", label: t('nav.incidents'), icon: Ticket, path: "/incidencias" },
     ],
     "Super Admin": [
-      { key: "dashboard", label: "Dashboard", icon: LayoutGrid, path: "/dashboard" },
-      { key: "approvals", label: "Aprobaciones", icon: ShieldCheck, path: "/aprobaciones" },
-      { key: "documents", label: "Documentos", icon: FileDown, path: "/documentos" },
-      { key: "bookings", label: "Reservas", icon: CalendarDays, path: "/reservas" },
-      { key: "incidents", label: "Incidencias", icon: Ticket, path: "/incidencias" },
+      { key: "dashboard", label: t('nav.dashboard'), icon: LayoutGrid, path: "/dashboard" },
+      { key: "approvals", label: t('nav.approvals'), icon: ShieldCheck, path: "/aprobaciones" },
+      { key: "documents", label: t('nav.documents'), icon: FileDown, path: "/documentos" },
+      { key: "bookings", label: t('nav.reservations'), icon: CalendarDays, path: "/reservas" },
+      { key: "incidents", label: t('nav.incidents'), icon: Ticket, path: "/incidencias" },
     ],
   };
 

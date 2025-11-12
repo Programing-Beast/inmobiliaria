@@ -1,0 +1,129 @@
+{
+  "header": {
+    "title": "Portal de Residentes",
+    "contactAgent": "Contactar agente",
+    "login": "Ingresar"
+  },
+  "roles": {
+    "owner": "Owner",
+    "tenant": "Tenant",
+    "superAdmin": "Super Admin"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "finances": "Finanzas",
+    "documents": "Documentos",
+    "reservations": "Reservas",
+    "incidents": "Incidencias",
+    "approvals": "Aprobaciones"
+  },
+  "login": {
+    "title": "Bienvenido",
+    "subtitle": "Ingresa tus credenciales para acceder",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "rememberMe": "Recordarme",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "loginButton": "Iniciar sesión",
+    "noAccount": "¿No tienes cuenta?",
+    "signUp": "Regístrate"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "expenses": {
+      "title": "Gastos comunes",
+      "amount": "$450.000",
+      "dueDate": "Vence: 15 Nov 2024",
+      "button": "Ver estado de cuenta"
+    },
+    "reservations": {
+      "title": "Próximas reservas",
+      "location": "Quincho principal",
+      "date": "20 Nov 2024",
+      "time": "19:00 - 23:00",
+      "button": "Ver mis reservas"
+    },
+    "incidents": {
+      "title": "Incidencias abiertas",
+      "count": "2 casos activos",
+      "status": "1 en progreso, 1 pendiente",
+      "button": "Ver incidencias"
+    }
+  },
+  "finances": {
+    "title": "Estados Financieros",
+    "period": "Período",
+    "amount": "Monto",
+    "status": "Estado",
+    "actions": "Acciones",
+    "download": "Descargar",
+    "paid": "Pagado",
+    "pending": "Pendiente",
+    "overdue": "Vencido"
+  },
+  "documents": {
+    "title": "Documentos",
+    "ownerDocs": "Documentos de Owner",
+    "tenantDocs": "Documentos de Tenant",
+    "adminDocs": "Documentos de Administración",
+    "reglamento": "Reglamento interno",
+    "contrato": "Contrato de arriendo",
+    "escritura": "Escritura de propiedad",
+    "actas": "Actas de reuniones",
+    "balances": "Balances financieros",
+    "download": "Descargar",
+    "view": "Ver"
+  },
+  "reservations": {
+    "title": "Reservas de amenidades",
+    "selectAmenity": "Seleccionar amenidad",
+    "rules": "Normas de uso",
+    "rule1": "• Reserva con 48 horas de anticipación",
+    "rule2": "• Máximo 4 horas de uso",
+    "rule3": "• Dejar el espacio limpio y ordenado",
+    "rule4": "• Respetar horarios de silencio",
+    "quincho": "Quincho principal",
+    "salon": "Salón de eventos",
+    "gym": "Gimnasio",
+    "pool": "Piscina",
+    "viewCalendar": "Ver disponibilidad",
+    "makeReservation": "Hacer reserva"
+  },
+  "incidents": {
+    "title": "Incidencias y sugerencias",
+    "search": "Buscar incidencia...",
+    "new": "Nueva incidencia",
+    "date": "Fecha",
+    "type": "Tipo",
+    "description": "Descripción",
+    "status": "Estado",
+    "actions": "Acciones",
+    "maintenance": "Mantenimiento",
+    "complaint": "Reclamo",
+    "suggestion": "Sugerencia",
+    "inProgress": "En progreso",
+    "pending": "Pendiente",
+    "resolved": "Resuelto",
+    "view": "Ver"
+  },
+  "approvals": {
+    "title": "Aprobaciones pendientes",
+    "users": "Usuarios",
+    "reservations": "Reservas",
+    "name": "Nombre",
+    "email": "Email",
+    "role": "Rol",
+    "date": "Fecha",
+    "actions": "Acciones",
+    "amenity": "Amenidad",
+    "time": "Hora",
+    "approve": "Aprobar",
+    "reject": "Rechazar"
+  },
+  "footer": {
+    "rights": "Todos los derechos reservados",
+    "terms": "Términos y condiciones",
+    "privacy": "Política de privacidad",
+    "support": "Soporte"
+  }
+}

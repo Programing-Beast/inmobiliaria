@@ -1,0 +1,129 @@
+{
+  "header": {
+    "title": "Residents Portal",
+    "contactAgent": "Contact agent",
+    "login": "Sign in"
+  },
+  "roles": {
+    "owner": "Owner",
+    "tenant": "Tenant",
+    "superAdmin": "Super Admin"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "finances": "Finances",
+    "documents": "Documents",
+    "reservations": "Reservations",
+    "incidents": "Incidents",
+    "approvals": "Approvals"
+  },
+  "login": {
+    "title": "Welcome",
+    "subtitle": "Enter your credentials to access",
+    "email": "Email",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot your password?",
+    "loginButton": "Sign in",
+    "noAccount": "Don't have an account?",
+    "signUp": "Sign up"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "expenses": {
+      "title": "Common expenses",
+      "amount": "$450,000",
+      "dueDate": "Due: Nov 15, 2024",
+      "button": "View statement"
+    },
+    "reservations": {
+      "title": "Upcoming reservations",
+      "location": "Main barbecue area",
+      "date": "Nov 20, 2024",
+      "time": "7:00 PM - 11:00 PM",
+      "button": "View my reservations"
+    },
+    "incidents": {
+      "title": "Open incidents",
+      "count": "2 active cases",
+      "status": "1 in progress, 1 pending",
+      "button": "View incidents"
+    }
+  },
+  "finances": {
+    "title": "Financial Statements",
+    "period": "Period",
+    "amount": "Amount",
+    "status": "Status",
+    "actions": "Actions",
+    "download": "Download",
+    "paid": "Paid",
+    "pending": "Pending",
+    "overdue": "Overdue"
+  },
+  "documents": {
+    "title": "Documents",
+    "ownerDocs": "Owner Documents",
+    "tenantDocs": "Tenant Documents",
+    "adminDocs": "Administration Documents",
+    "reglamento": "Internal regulations",
+    "contrato": "Lease contract",
+    "escritura": "Property deed",
+    "actas": "Meeting minutes",
+    "balances": "Financial statements",
+    "download": "Download",
+    "view": "View"
+  },
+  "reservations": {
+    "title": "Amenity Reservations",
+    "selectAmenity": "Select amenity",
+    "rules": "Usage rules",
+    "rule1": "• Reserve 48 hours in advance",
+    "rule2": "• Maximum 4 hours of use",
+    "rule3": "• Leave the space clean and tidy",
+    "rule4": "• Respect quiet hours",
+    "quincho": "Main barbecue area",
+    "salon": "Event hall",
+    "gym": "Gym",
+    "pool": "Pool",
+    "viewCalendar": "View availability",
+    "makeReservation": "Make reservation"
+  },
+  "incidents": {
+    "title": "Incidents and suggestions",
+    "search": "Search incident...",
+    "new": "New incident",
+    "date": "Date",
+    "type": "Type",
+    "description": "Description",
+    "status": "Status",
+    "actions": "Actions",
+    "maintenance": "Maintenance",
+    "complaint": "Complaint",
+    "suggestion": "Suggestion",
+    "inProgress": "In progress",
+    "pending": "Pending",
+    "resolved": "Resolved",
+    "view": "View"
+  },
+  "approvals": {
+    "title": "Pending approvals",
+    "users": "Users",
+    "reservations": "Reservations",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "date": "Date",
+    "actions": "Actions",
+    "amenity": "Amenity",
+    "time": "Time",
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+  "footer": {
+    "rights": "All rights reserved",
+    "terms": "Terms and conditions",
+    "privacy": "Privacy policy",
+    "support": "Support"
+  }
+}
