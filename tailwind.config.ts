@@ -13,7 +13,16 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
       colors: {
+        'view-orange': 'hsl(var(--view-orange))',
+        'view-cyan': 'hsl(var(--view-cyan))',
+        'view-dark': 'hsl(var(--view-dark))',
+        'view-light': 'hsl(var(--view-light))',
+        'view-gray': 'hsl(var(--view-gray))',
+        'view-medium-gray': 'hsl(var(--view-medium-gray))',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
