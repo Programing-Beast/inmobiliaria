@@ -175,7 +175,7 @@ The build output will be in the `dist/` directory, ready to be deployed to any s
 ## 🚀 Deployment
 
 This project can be deployed to:
-- **Lovable**: Click "Publish" in the Lovable editor
+
 - **Vercel**: Connect your GitHub repository
 - **Netlify**: Deploy from GitHub or drag-and-drop the `dist` folder
 - **GitHub Pages**: Configure in repository settings
@@ -212,4 +212,3 @@ Future enhancements may include:
 
 ---
 
-Built with ❤️ using [Lovable](https://lovable.dev) | Powered by React + Vite

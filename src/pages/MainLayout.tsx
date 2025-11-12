@@ -24,10 +24,10 @@ const MainLayout = () => {
 
       <footer className="border-t border-border bg-white mt-6">
         <div className="max-w-7xl mx-auto px-4 py-3 text-sm text-muted-foreground flex items-center justify-between">
-          <span>Mockup UI v1 · Sin conexión real</span>
+          <span>UI v1 · Sin conexión real</span>
           <span className="inline-flex items-center gap-2 cursor-pointer hover:text-foreground">
             <LogOut className="w-4 h-4" />
-            Salir (mock)
+            Salir
           </span>
         </div>
       </footer>
