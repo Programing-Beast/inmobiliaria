@@ -6,18 +6,24 @@ import { LogOut } from "lucide-react";
 
 const MainLayout = () => {
   const [currentRole, setCurrentRole] = useState("Owner");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Header
         currentRole={currentRole}
         onRoleChange={setCurrentRole}
+        onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       />
 
-      <div className="max-w-7xl mx-auto grid grid-cols-12 gap-0">
-        <Sidebar currentRole={currentRole} />
+      <div className="flex-1 max-w-7xl mx-auto w-full grid grid-cols-12 gap-0">
+        <Sidebar 
+          currentRole={currentRole} 
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
 
-        <main className="col-span-12 md:col-span-9 p-4 md:p-6">
+        <main className="col-span-12 md:col-span-9 p-4 md:p-6 overflow-x-hidden">
           <Outlet context={{ role: currentRole }} />
         </main>
       </div>
