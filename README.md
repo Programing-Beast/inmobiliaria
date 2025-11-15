@@ -172,43 +172,5 @@ npm run build
 
 The build output will be in the `dist/` directory, ready to be deployed to any static hosting service.
 
-## 🚀 Deployment
-
-This project can be deployed to:
-
-- **Vercel**: Connect your GitHub repository
-- **Netlify**: Deploy from GitHub or drag-and-drop the `dist` folder
-- **GitHub Pages**: Configure in repository settings
-- Any static hosting service
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is proprietary software for VIEW. All rights reserved.
-
-## 📞 Support
-
-For support or questions:
-- Visit the support page in the application footer
-- Contact your building administrator
-- Email: support@view.com (example)
-
-## 🎯 Roadmap
-
-Future enhancements may include:
-- Real-time notifications
-- Payment gateway integration
-- Mobile app version
-- Advanced analytics for administrators
-- Integration with building IoT systems
-- Community forum
-
 ---
 
