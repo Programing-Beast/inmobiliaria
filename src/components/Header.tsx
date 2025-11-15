@@ -19,43 +19,43 @@ const Header = ({ currentRole, onRoleChange, onMenuClick }: HeaderProps) => {
 
   return (
     <header className="sticky top-0 z-20 bg-white border-b border-border">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden"
+          className="md:hidden shrink-0"
           onClick={onMenuClick}
         >
           <Menu className="w-5 h-5" />
         </Button>
         
-        <div className="flex items-center gap-3">
-          <img src={logoOriginal} alt="VIEW" className="h-8 w-auto" />
-          <span className="font-semibold hidden sm:inline">{t('header.title')}</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <img src={logoOriginal} alt="VIEW" className="h-8 w-auto shrink-0" />
+          <span className="font-semibold hidden sm:inline truncate">{t('header.title')}</span>
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2 shrink-0">
           <Button
             variant="outline"
             size="sm"
-            className="hidden md:inline-flex gap-2 bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20"
+            className="hidden lg:inline-flex gap-2 bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20"
           >
             <Users2 className="w-4 h-4" />
             {t('header.contactAgent')}
           </Button>
           
           <Select value={i18n.language} onValueChange={changeLanguage}>
-            <SelectTrigger className="w-[100px] h-9 text-sm">
+            <SelectTrigger className="w-[90px] h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="es">Español</SelectItem>
-              <SelectItem value="en">English</SelectItem>
+              <SelectItem value="es">ES</SelectItem>
+              <SelectItem value="en">EN</SelectItem>
             </SelectContent>
           </Select>
           
           <Select value={currentRole} onValueChange={onRoleChange}>
-            <SelectTrigger className="w-[140px] h-9 text-sm">
+            <SelectTrigger className="w-[120px] h-9 text-sm hidden sm:flex">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -67,10 +67,10 @@ const Header = ({ currentRole, onRoleChange, onMenuClick }: HeaderProps) => {
 
           <Button 
             size="sm" 
-            className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
+            className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2 h-9"
           >
             <LogIn className="w-4 h-4" />
-            {t('header.login')}
+            <span className="hidden sm:inline">{t('header.login')}</span>
           </Button>
         </div>
       </div>
