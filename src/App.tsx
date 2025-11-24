@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useOutletContext } from "react-router-dom";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
 import MainLayout from "./pages/MainLayout";
 import Dashboard from "./pages/Dashboard";
 import Finanzas from "./pages/Finanzas";
@@ -36,6 +38,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<DashboardWrapper />} />
             <Route path="/finanzas" element={<Finanzas />} />

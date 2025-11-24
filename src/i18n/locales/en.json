@@ -28,6 +28,29 @@
     "noAccount": "Don't have an account?",
     "signUp": "Sign up"
   },
+  "register": {
+    "title": "Create account",
+    "subtitle": "Register to access the portal",
+    "fullName": "Full name",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "unit": "Unit number",
+    "role": "User type",
+    "owner": "Owner",
+    "tenant": "Tenant",
+    "registerButton": "Sign up",
+    "haveAccount": "Already have an account?",
+    "signIn": "Sign in"
+  },
+  "forgotPassword": {
+    "title": "Recover password",
+    "subtitle": "Enter your email to receive instructions",
+    "email": "Email",
+    "sendButton": "Send instructions",
+    "backToLogin": "Back to sign in",
+    "successMessage": "If the email exists, you will receive instructions to reset your password"
+  },
   "dashboard": {
     "title": "Dashboard",
     "expenses": {

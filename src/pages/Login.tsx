@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,9 +75,9 @@ const Login = () => {
                 <input type="checkbox" className="rounded border-border" />
                 <span className="text-muted-foreground">{t('login.rememberMe')}</span>
               </label>
-              <a href="#" className="text-primary hover:underline">
+              <Link to="/forgot-password" className="text-primary hover:underline">
                 {t('login.forgotPassword')}
-              </a>
+              </Link>
             </div>
 
             <Button 
@@ -91,9 +91,9 @@ const Login = () => {
           {/* Footer */}
           <div className="mt-6 pt-6 border-t border-border text-center text-sm text-muted-foreground">
             <p>{t('login.noAccount')}</p>
-            <a href="#" className="text-primary hover:underline font-medium">
+            <Link to="/register" className="text-primary hover:underline font-medium">
               {t('login.signUp')}
-            </a>
+            </Link>
           </div>
         </div>
 

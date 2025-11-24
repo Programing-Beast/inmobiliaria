@@ -28,6 +28,29 @@
     "noAccount": "¿No tienes cuenta?",
     "signUp": "Regístrate"
   },
+  "register": {
+    "title": "Crear cuenta",
+    "subtitle": "Regístrate para acceder al portal",
+    "fullName": "Nombre completo",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "unit": "Número de unidad",
+    "role": "Tipo de usuario",
+    "owner": "Propietario",
+    "tenant": "Inquilino",
+    "registerButton": "Registrarse",
+    "haveAccount": "¿Ya tienes cuenta?",
+    "signIn": "Iniciar sesión"
+  },
+  "forgotPassword": {
+    "title": "Recuperar contraseña",
+    "subtitle": "Ingresa tu correo para recibir instrucciones",
+    "email": "Correo electrónico",
+    "sendButton": "Enviar instrucciones",
+    "backToLogin": "Volver al inicio de sesión",
+    "successMessage": "Si el correo existe, recibirás instrucciones para restablecer tu contraseña"
+  },
   "dashboard": {
     "title": "Dashboard",
     "expenses": {
