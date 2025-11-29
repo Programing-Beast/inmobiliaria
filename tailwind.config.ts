@@ -14,15 +14,24 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['Poppins', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
+      fontSize: {
+        base: '0.875rem', // 14px - W3CRM default
       },
       colors: {
-        'view-orange': 'hsl(var(--view-orange))',
-        'view-cyan': 'hsl(var(--view-cyan))',
-        'view-dark': 'hsl(var(--view-dark))',
-        'view-light': 'hsl(var(--view-light))',
-        'view-gray': 'hsl(var(--view-gray))',
-        'view-medium-gray': 'hsl(var(--view-medium-gray))',
+        // W3CRM semantic colors
+        'success': 'hsl(var(--success))',
+        'warning': 'hsl(var(--warning))',
+        'danger': 'hsl(var(--danger))',
+        'info': 'hsl(var(--info))',
+        // W3CRM additional colors
+        'w3crm-blue': 'hsl(var(--w3crm-blue))',
+        'w3crm-purple': 'hsl(var(--w3crm-purple))',
+        'w3crm-red': 'hsl(var(--w3crm-red))',
+        'w3crm-yellow': 'hsl(var(--w3crm-yellow))',
+        'w3crm-green': 'hsl(var(--w3crm-green))',
+        'w3crm-cyan': 'hsl(var(--w3crm-cyan))',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

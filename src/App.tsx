@@ -9,6 +9,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import MainLayout from "./pages/MainLayout";
 import Dashboard from "./pages/Dashboard";
+import DashboardW3CRM from "./pages/DashboardW3CRM";
 import Finanzas from "./pages/Finanzas";
 import Documentos from "./pages/Documentos";
 import Reservas from "./pages/Reservas";
@@ -42,6 +43,7 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<DashboardWrapper />} />
+            <Route path="/dashboard-w3crm" element={<DashboardW3CRM />} />
             <Route path="/finanzas" element={<Finanzas />} />
             <Route path="/documentos" element={<DocumentosWrapper />} />
             <Route path="/reservas" element={<Reservas />} />
