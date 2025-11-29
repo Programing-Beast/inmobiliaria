@@ -3,4 +3,10 @@ import App from "./App.tsx";
 import "./index.css";
 import "./i18n/config";
 
+// Import Poppins font (W3CRM design system)
+import '@fontsource/poppins/400.css';
+import '@fontsource/poppins/500.css';
+import '@fontsource/poppins/600.css';
+import '@fontsource/poppins/700.css';
+
 createRoot(document.getElementById("root")!).render(<App />);
