@@ -47,16 +47,20 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left Side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-info/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+
+        <div className="w-full max-w-md relative z-10">
           {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <img src={logoOriginal} alt="Logo" className="h-14 w-auto" />
+          <div className="flex justify-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+            <img src={logoOriginal} alt="Logo" className="h-16 w-auto" />
           </div>
 
           {/* Title */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-semibold text-secondary mb-2">
+          <div className="text-center mb-8 animate-in fade-in slide-in-from-top-6 duration-700 delay-100">
+            <h1 className="text-3xl font-bold text-secondary mb-2">
               {t('login.title')}
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -65,38 +69,38 @@ const Login = () => {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-secondary">
+              <Label htmlFor="email" className="text-secondary font-medium">
                 {t('login.email')}
               </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="relative group">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="hello@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-11 pl-10"
+                  className="h-12 pl-10 transition-all focus:shadow-md"
                   disabled={isLoading}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-secondary">
+              <Label htmlFor="password" className="text-secondary font-medium">
                 {t('login.password')}
               </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="relative group">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 pl-10 pr-10"
+                  className="h-12 pl-10 pr-10 transition-all focus:shadow-md"
                   disabled={isLoading}
                 />
                 <button
@@ -123,14 +127,14 @@ const Login = () => {
                 />
                 <label
                   htmlFor="remember"
-                  className="text-sm text-muted-foreground cursor-pointer select-none"
+                  className="text-sm text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
                 >
                   {t('login.rememberMe')}
                 </label>
               </div>
               <Link
                 to="/forgot-password"
-                className="text-sm text-primary hover:underline"
+                className="text-sm text-primary hover:underline font-medium transition-colors"
               >
                 {t('login.forgotPassword')}
               </Link>
@@ -138,31 +142,38 @@ const Login = () => {
 
             <Button
               type="submit"
-              className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]"
               disabled={isLoading}
             >
-              {isLoading ? "Signing in..." : t('login.loginButton')}
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Signing in...
+                </span>
+              ) : (
+                t('login.loginButton')
+              )}
             </Button>
           </form>
 
           {/* Social Login Divider */}
-          <div className="relative my-6">
+          <div className="relative my-8 animate-in fade-in duration-700 delay-300">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
+              <span className="bg-background px-3 text-muted-foreground font-medium">
                 Or continue with
               </span>
             </div>
           </div>
 
           {/* Social Login Buttons */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-700 delay-400">
             <Button
               type="button"
               variant="outline"
-              className="h-11"
+              className="h-12 hover:bg-muted/50 hover:border-primary/20 transition-all hover:scale-[1.02]"
               disabled={isLoading}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -188,7 +199,7 @@ const Login = () => {
             <Button
               type="button"
               variant="outline"
-              className="h-11"
+              className="h-12 hover:bg-muted/50 hover:border-primary/20 transition-all hover:scale-[1.02]"
               disabled={isLoading}
             >
               <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
@@ -199,9 +210,9 @@ const Login = () => {
           </div>
 
           {/* Footer */}
-          <div className="mt-6 text-center text-sm">
+          <div className="mt-8 text-center text-sm animate-in fade-in duration-700 delay-500">
             <span className="text-muted-foreground">{t('login.noAccount')} </span>
-            <Link to="/register" className="text-primary hover:underline font-medium">
+            <Link to="/register" className="text-primary hover:underline font-semibold transition-colors">
               {t('login.signUp')}
             </Link>
           </div>
@@ -210,39 +221,43 @@ const Login = () => {
 
       {/* Right Side - Image/Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary to-primary/80 items-center justify-center p-12 relative overflow-hidden">
-        {/* Decorative circles */}
-        <div className="absolute top-20 right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-20 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+        {/* Animated decorative circles */}
+        <div className="absolute top-20 right-20 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse-subtle" />
+        <div className="absolute bottom-20 left-20 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '1s' }} />
 
-        <div className="relative z-10 text-center text-white max-w-md">
-          <h2 className="text-4xl font-bold mb-4">Welcome Back!</h2>
-          <p className="text-lg text-white/90 mb-8">
+        {/* Floating geometric shapes */}
+        <div className="absolute top-1/4 left-1/4 w-16 h-16 border-2 border-white/20 rounded-lg rotate-12 animate-pulse" />
+        <div className="absolute bottom-1/3 right-1/4 w-12 h-12 border-2 border-white/20 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+
+        <div className="relative z-10 text-center text-white max-w-md animate-in fade-in slide-in-from-right-6 duration-1000">
+          <h2 className="text-5xl font-bold mb-6 leading-tight">Welcome Back!</h2>
+          <p className="text-lg text-white/95 mb-12 leading-relaxed">
             Access your dashboard and manage everything in one place.
           </p>
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 group">
+              <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
+                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <p className="text-left">Track your metrics in real-time</p>
+              <p className="text-left text-lg font-medium">Track your metrics in real-time</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            <div className="flex items-center gap-4 group">
+              <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
+                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <p className="text-left">Secure and encrypted data</p>
+              <p className="text-left text-lg font-medium">Secure and encrypted data</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            <div className="flex items-center gap-4 group">
+              <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
+                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <p className="text-left">Lightning fast performance</p>
+              <p className="text-left text-lg font-medium">Lightning fast performance</p>
             </div>
           </div>
         </div>
