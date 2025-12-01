@@ -35,7 +35,7 @@ const MainLayout = () => {
         {/* Footer */}
         <footer className="border-t border-border bg-white py-4 px-6">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>© 2025 W3CRM. All rights reserved.</span>
+            <span>©2025 All rights reserved</span>
             <span>UI v1</span>
           </div>
         </footer>

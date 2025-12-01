@@ -27,10 +27,10 @@ const Aprobaciones = () => {
                   <TableCell className="whitespace-nowrap">A-302</TableCell>
                   <TableCell>
                     <div className="flex gap-2 whitespace-nowrap">
-                      <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8">
+                      <Button size="sm" className="bg-primary hover:bg-primary/90 text-white h-8">
                         Aprobar
                       </Button>
-                      <Button size="sm" variant="destructive" className="h-8">
+                      <Button size="sm" className="bg-warning hover:bg-warning/90 text-white h-8">
                         Rechazar
                       </Button>
                     </div>
@@ -66,10 +66,10 @@ const Aprobaciones = () => {
                   <TableCell className="whitespace-nowrap">Depto B-201 (Tenant)</TableCell>
                   <TableCell>
                     <div className="flex gap-2 whitespace-nowrap">
-                      <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8">
+                      <Button size="sm" className="bg-primary hover:bg-primary/90 text-white h-8">
                         Aprobar
                       </Button>
-                      <Button size="sm" variant="destructive" className="h-8">
+                      <Button size="sm" className="bg-warning hover:bg-warning/90 text-white h-8">
                         Rechazar
                       </Button>
                     </div>
