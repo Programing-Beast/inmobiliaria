@@ -38,6 +38,10 @@ const Login = () => {
 
     // Mock login - in real app, this would call an API
     setTimeout(() => {
+      // Mock: Save user role to localStorage (in real app, this would come from API)
+      const mockRole = "Owner"; // or "Tenant" based on API response
+      localStorage.setItem("userRole", mockRole);
+
       toast.success("Login successful!");
       navigate("/dashboard-w3crm");
       setIsLoading(false);

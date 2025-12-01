@@ -74,6 +74,9 @@ const Register = () => {
 
     // Mock registration - in real app, this would call an API
     setTimeout(() => {
+      // Save the selected role for future login (mock behavior)
+      localStorage.setItem("userRole", formData.role);
+
       toast.success("Registration successful! Please wait for admin approval");
       navigate("/login");
       setIsLoading(false);
