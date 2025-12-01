@@ -43,7 +43,7 @@ const Login = () => {
       localStorage.setItem("userRole", mockRole);
 
       toast.success("Login successful!");
-      navigate("/dashboard-w3crm");
+      navigate("/dashboard");
       setIsLoading(false);
     }, 1000);
   };

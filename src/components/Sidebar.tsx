@@ -34,7 +34,7 @@ const Sidebar = ({ isOpen = false, onClose, role = "Owner" }: SidebarProps) => {
       key: "dashboard",
       label: t('nav.dashboard'),
       icon: LayoutGrid,
-      path: "/dashboard-w3crm",
+      path: "/dashboard",
       roles: ["Owner", "Tenant"] // Available to both
     },
     {
