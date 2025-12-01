@@ -42,8 +42,7 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route element={<MainLayout />}>
-            <Route path="/dashboard" element={<DashboardWrapper />} />
-            <Route path="/dashboard-w3crm" element={<DashboardW3CRM />} />
+            <Route path="/dashboard" element={<DashboardW3CRM />} />
             <Route path="/finanzas" element={<Finanzas />} />
             <Route path="/documentos" element={<DocumentosWrapper />} />
             <Route path="/reservas" element={<Reservas />} />
