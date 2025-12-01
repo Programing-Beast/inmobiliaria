@@ -1,42 +1,45 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
-import { LogOut } from "lucide-react";
 
 const MainLayout = () => {
-  const [currentRole, setCurrentRole] = useState("Owner");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [role, setRole] = useState<string>("Owner");
+
+  // Mock: Get role from localStorage or auth context
+  useEffect(() => {
+    const storedRole = localStorage.getItem("userRole") || "Owner";
+    setRole(storedRole);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <Header
-        currentRole={currentRole}
-        onRoleChange={setCurrentRole}
-        onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        role={role}
       />
 
-      <div className="flex-1 max-w-7xl mx-auto w-full grid grid-cols-12 gap-0">
-        <Sidebar 
-          currentRole={currentRole} 
-          isOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-        />
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <Header onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
 
-        <main className="col-span-12 md:col-span-9 p-4 md:p-6 overflow-x-hidden">
-          <Outlet context={{ role: currentRole }} />
+        {/* Page Content */}
+        <main className="flex-1 p-4 lg:p-6 overflow-x-hidden">
+          <Outlet context={{ role }} />
         </main>
-      </div>
 
-      <footer className="border-t border-border bg-white mt-6">
-        <div className="max-w-7xl mx-auto px-4 py-3 text-sm text-muted-foreground flex items-center justify-between">
-          <span>UI v1 · Sin conexión real</span>
-          <span className="inline-flex items-center gap-2 cursor-pointer hover:text-foreground">
-            <LogOut className="w-4 h-4" />
-            Salir
-          </span>
-        </div>
-      </footer>
+        {/* Footer */}
+        <footer className="border-t border-border bg-white py-4 px-6">
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>© 2025 W3CRM. All rights reserved.</span>
+            <span>UI v1</span>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 };
