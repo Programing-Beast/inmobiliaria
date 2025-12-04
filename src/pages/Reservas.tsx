@@ -5,17 +5,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, DollarSign, Upload, Download, ChevronLeft, ChevronRight, Plus, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 const Reservas = () => {
+  const { t } = useTranslation();
   const [selectedAmenity, setSelectedAmenity] = useState("quincho");
   const [currentMonth] = useState(new Date());
 
   const amenities = [
-    { value: "quincho", label: "Quincho/BBQ", icon: "🍖", color: "bg-orange-500" },
-    { value: "piscina", label: "Piscina", icon: "🏊", color: "bg-blue-500" },
-    { value: "gym", label: "Gimnasio", icon: "💪", color: "bg-purple-500" },
-    { value: "sum", label: "Salón SUM", icon: "🎉", color: "bg-pink-500" },
-    { value: "cancha", label: "Cancha Deportes", icon: "⚽", color: "bg-green-500" },
+    { value: "quincho", label: t('reservations.quincho'), icon: "🍖", color: "bg-orange-500" },
+    { value: "piscina", label: t('reservations.pool'), icon: "🏊", color: "bg-blue-500" },
+    { value: "gym", label: t('reservations.gym'), icon: "💪", color: "bg-purple-500" },
+    { value: "sum", label: t('reservations.sum'), icon: "🎉", color: "bg-pink-500" },
+    { value: "cancha", label: t('reservations.sports'), icon: "⚽", color: "bg-green-500" },
   ];
 
   const amenityDetails = {
@@ -43,12 +45,12 @@ const Reservas = () => {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Reservas de Amenities</h1>
-          <p className="text-muted-foreground mt-1">Gestiona y reserva los espacios comunes del edificio</p>
+          <h1 className="text-3xl font-bold text-foreground">{t('reservations.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('reservations.subtitle')}</p>
         </div>
         <Button className="bg-primary hover:bg-primary/90 shadow-lg gap-2">
           <Plus className="h-5 w-5" />
-          Nueva Reserva
+          {t('reservations.newReservation')}
         </Button>
       </div>
 
@@ -87,7 +89,7 @@ const Reservas = () => {
                 <Clock className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Horarios Permitidos</p>
+                <p className="text-xs text-muted-foreground">{t('reservations.hours')}</p>
                 <p className="text-sm font-semibold">L-V: 08:00-22:00</p>
                 <p className="text-xs text-muted-foreground">S-D: 10:00-22:00</p>
               </div>
@@ -102,7 +104,7 @@ const Reservas = () => {
                 <DollarSign className="h-6 w-6 text-success" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Costo por Reserva</p>
+                <p className="text-xs text-muted-foreground">{t('reservations.price')}</p>
                 <p className="text-lg font-bold text-success">{details.price}</p>
                 <p className="text-xs text-muted-foreground">{details.duration}</p>
               </div>
@@ -117,7 +119,7 @@ const Reservas = () => {
                 <DollarSign className="h-6 w-6 text-warning" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Depósito Reembolsable</p>
+                <p className="text-xs text-muted-foreground">{t('reservations.deposit')}</p>
                 <p className="text-lg font-bold text-warning">{details.deposit}</p>
                 <p className="text-xs text-muted-foreground">Devuelto en 48h</p>
               </div>
@@ -132,8 +134,8 @@ const Reservas = () => {
                 <Info className="h-6 w-6 text-info" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Confirmación</p>
-                <p className="text-sm font-semibold">24 horas</p>
+                <p className="text-xs text-muted-foreground">{t('reservations.confirmation')}</p>
+                <p className="text-sm font-semibold">{t('reservations.hoursValue')}</p>
                 <p className="text-xs text-muted-foreground">Tras subir comprobante</p>
               </div>
             </div>
@@ -204,12 +206,12 @@ const Reservas = () => {
                       </div>
                       {booking.status === "confirmed" && (
                         <Badge className="text-[9px] w-full justify-center bg-success text-white">
-                          ✓ Confirmado
+                          ✓ {t('reservations.confirmed')}
                         </Badge>
                       )}
                       {booking.status === "pending" && (
                         <Badge variant="outline" className="text-[9px] w-full justify-center bg-warning/10 border-warning text-warning">
-                          ⏱ Pendiente
+                          ⏱ {t('reservations.pending')}
                         </Badge>
                       )}
                     </div>
@@ -230,11 +232,11 @@ const Reservas = () => {
                 <Upload className="h-7 w-7 text-primary" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">Adjuntar Comprobante</h3>
-                <p className="text-sm text-muted-foreground">Sube tu comprobante de pago</p>
+                <h3 className="font-semibold text-lg">{t('reservations.uploadReceipt')}</h3>
+                <p className="text-sm text-muted-foreground">{t('reservations.uploadDescription')}</p>
               </div>
               <Button className="bg-primary hover:bg-primary/90">
-                Subir
+                {t('reservations.upload')}
               </Button>
             </div>
           </CardContent>
@@ -247,11 +249,11 @@ const Reservas = () => {
                 <Download className="h-7 w-7 text-success" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">Descargar Recibo</h3>
-                <p className="text-sm text-muted-foreground">Obtén tu recibo de reserva</p>
+                <h3 className="font-semibold text-lg">{t('reservations.downloadReceipt')}</h3>
+                <p className="text-sm text-muted-foreground">{t('reservations.downloadDescription')}</p>
               </div>
               <Button variant="outline" className="border-success text-success hover:bg-success/10">
-                Descargar
+                {t('reservations.download')}
               </Button>
             </div>
           </CardContent>
@@ -263,7 +265,7 @@ const Reservas = () => {
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
-            Mis Reservas Activas
+            {t('reservations.myReservations')}
           </h3>
           <div className="space-y-3">
             {bookings.map((booking, index) => (
@@ -284,13 +286,13 @@ const Reservas = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   {booking.status === "confirmed" ? (
-                    <Badge className="bg-success text-white">✓ Confirmado</Badge>
+                    <Badge className="bg-success text-white">✓ {t('reservations.confirmed')}</Badge>
                   ) : (
                     <Badge variant="outline" className="bg-warning/10 border-warning text-warning">
-                      ⏱ Pendiente
+                      ⏱ {t('reservations.pending')}
                     </Badge>
                   )}
-                  <Button variant="outline" size="sm">Ver Detalles</Button>
+                  <Button variant="outline" size="sm">{t('reservations.viewDetails')}</Button>
                 </div>
               </div>
             ))}

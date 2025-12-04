@@ -3,13 +3,16 @@ import { DataCard } from "@/components/w3crm/DataCard";
 import { Badge } from "@/components/w3crm/Badge";
 import { Button } from "@/components/ui/button";
 import {
-  Users,
-  ShoppingCart,
+  Home,
+  Calendar,
   DollarSign,
-  TrendingUp,
+  AlertCircle,
   Eye,
   Download,
   MoreVertical,
+  Bell,
+  Users,
+  FileText,
 } from "lucide-react";
 import {
   Table,
@@ -19,59 +22,71 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTranslation } from "react-i18next";
 
 const DashboardW3CRM = () => {
-  const recentOrders = [
+  const { t } = useTranslation();
+
+  const recentPayments = [
     {
-      id: "#12345",
-      customer: "John Doe",
-      product: "iPhone 14 Pro",
-      amount: "$999",
-      status: "completed",
+      id: "PAY-001",
+      unit: "Depto A-302",
+      concept: "Expensas Noviembre",
+      amount: "$1.250.000",
+      status: "paid",
       date: "2025-11-28",
     },
     {
-      id: "#12346",
-      customer: "Jane Smith",
-      product: "MacBook Air",
-      amount: "$1,299",
+      id: "PAY-002",
+      unit: "Depto B-105",
+      concept: "Expensas Noviembre",
+      amount: "$980.000",
       status: "pending",
-      date: "2025-11-28",
+      date: "2025-11-25",
     },
     {
-      id: "#12347",
-      customer: "Bob Johnson",
-      product: "AirPods Pro",
-      amount: "$249",
-      status: "processing",
+      id: "PAY-003",
+      unit: "Depto C-201",
+      concept: "Reserva Quincho",
+      amount: "$150.000",
+      status: "paid",
       date: "2025-11-27",
     },
     {
-      id: "#12348",
-      customer: "Alice Brown",
-      product: "iPad Pro",
-      amount: "$799",
-      status: "completed",
-      date: "2025-11-27",
+      id: "PAY-004",
+      unit: "Depto A-401",
+      concept: "Expensas Octubre",
+      amount: "$1.100.000",
+      status: "overdue",
+      date: "2025-10-15",
     },
   ];
 
-  const topProducts = [
-    { name: "iPhone 14 Pro", sales: 1234, revenue: "$1,232,766", trend: 12 },
-    { name: "MacBook Air", sales: 987, revenue: "$1,281,963", trend: 8 },
-    { name: "AirPods Pro", sales: 2341, revenue: "$583,109", trend: -3 },
-    { name: "iPad Pro", sales: 456, revenue: "$364,344", trend: 5 },
+  const upcomingReservations = [
+    { amenity: "Quincho/BBQ", unit: "A-302", date: "06 Dic", status: "confirmed" },
+    { amenity: "Piscina", unit: "B-105", date: "10 Dic", status: "pending" },
+    { amenity: "Gimnasio", unit: "C-201", date: "12 Dic", status: "confirmed" },
+    { amenity: "Salón SUM", unit: "A-501", date: "15 Dic", status: "confirmed" },
   ];
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "success" | "warning" | "info"> = {
-      completed: "success",
+      paid: "success",
       pending: "warning",
-      processing: "info",
+      overdue: "info",
+      confirmed: "success",
     };
+
+    const statusKeys: Record<string, string> = {
+      paid: "dashboard.paid",
+      pending: "dashboard.pending",
+      overdue: "dashboard.overdue",
+      confirmed: "dashboard.confirmed",
+    };
+
     return (
       <Badge variant={variants[status]} dot>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {t(statusKeys[status])}
       </Badge>
     );
   };
@@ -81,19 +96,19 @@ const DashboardW3CRM = () => {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-secondary">Dashboard</h1>
+          <h1 className="text-2xl font-semibold text-secondary">{t('dashboard.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Welcome back! Here's what's happening with your business today.
+            {t('dashboard.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
-            Export
+            {t('dashboard.export')}
           </Button>
           <Button size="sm">
             <Eye className="h-4 w-4 mr-2" />
-            View Reports
+            {t('dashboard.viewReports')}
           </Button>
         </div>
       </div>
@@ -101,68 +116,68 @@ const DashboardW3CRM = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Total Customers"
-          value="2,543"
-          icon={Users}
+          title={t('dashboard.totalUnits')}
+          value="45"
+          icon={Home}
           iconColor="primary"
-          trend={{ value: 12, positive: true }}
+          trend={{ value: 2, positive: true }}
         />
         <StatCard
-          title="Total Orders"
-          value="1,245"
-          icon={ShoppingCart}
+          title={t('dashboard.activeReservations')}
+          value="12"
+          icon={Calendar}
           iconColor="success"
           trend={{ value: 8, positive: true }}
         />
         <StatCard
-          title="Total Revenue"
-          value="$45,231"
+          title={t('dashboard.monthlyPayments')}
+          value="$52.450.000"
           icon={DollarSign}
           iconColor="warning"
-          trend={{ value: 23, positive: true }}
+          trend={{ value: 15, positive: true }}
         />
         <StatCard
-          title="Growth Rate"
-          value="23.5%"
-          icon={TrendingUp}
+          title={t('dashboard.openIncidents')}
+          value="3"
+          icon={AlertCircle}
           iconColor="info"
-          trend={{ value: 5, positive: true }}
+          trend={{ value: 2, positive: false }}
         />
       </div>
 
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Orders */}
+        {/* Recent Payments */}
         <DataCard
-          title="Recent Orders"
-          description="Latest customer orders from your store"
+          title={t('dashboard.recentPayments')}
+          description={t('dashboard.recentPaymentsDesc')}
           className="lg:col-span-2"
           actions={[
-            { label: "View All Orders", onClick: () => console.log("View all") },
-            { label: "Export Data", onClick: () => console.log("Export") },
+            { label: t('dashboard.viewAll'), onClick: () => console.log("View all") },
+            { label: t('dashboard.export'), onClick: () => console.log("Export") },
           ]}
         >
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>{t('dashboard.id')}</TableHead>
+                  <TableHead>{t('dashboard.unit')}</TableHead>
+                  <TableHead>{t('dashboard.concept')}</TableHead>
+                  <TableHead>{t('dashboard.amount')}</TableHead>
+                  <TableHead>{t('dashboard.status')}</TableHead>
+                  <TableHead>{t('dashboard.date')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentOrders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.id}</TableCell>
-                    <TableCell>{order.customer}</TableCell>
-                    <TableCell>{order.product}</TableCell>
-                    <TableCell className="font-semibold">{order.amount}</TableCell>
-                    <TableCell>{getStatusBadge(order.status)}</TableCell>
-                    <TableCell className="text-muted-foreground">{order.date}</TableCell>
+                {recentPayments.map((payment) => (
+                  <TableRow key={payment.id}>
+                    <TableCell className="font-medium">{payment.id}</TableCell>
+                    <TableCell>{payment.unit}</TableCell>
+                    <TableCell>{payment.concept}</TableCell>
+                    <TableCell className="font-semibold">{payment.amount}</TableCell>
+                    <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                    <TableCell className="text-muted-foreground">{payment.date}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -170,10 +185,10 @@ const DashboardW3CRM = () => {
           </div>
         </DataCard>
 
-        {/* Top Products */}
+        {/* Upcoming Reservations */}
         <DataCard
-          title="Top Products"
-          description="Best selling products this month"
+          title={t('dashboard.upcomingReservations')}
+          description={t('dashboard.upcomingReservationsDesc')}
           headerAction={
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <MoreVertical className="h-4 w-4" />
@@ -181,23 +196,17 @@ const DashboardW3CRM = () => {
           }
         >
           <div className="space-y-4">
-            {topProducts.map((product, index) => (
+            {upcomingReservations.map((reservation, index) => (
               <div key={index} className="flex items-center justify-between">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-secondary">{product.name}</p>
+                  <p className="text-sm font-medium text-secondary">{reservation.amenity}</p>
                   <p className="text-xs text-muted-foreground">
-                    {product.sales.toLocaleString()} sales
+                    {reservation.unit}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-secondary">{product.revenue}</p>
-                  <p
-                    className={`text-xs font-medium ${
-                      product.trend >= 0 ? "text-success" : "text-danger"
-                    }`}
-                  >
-                    {product.trend >= 0 ? "↗" : "↘"} {Math.abs(product.trend)}%
-                  </p>
+                  <p className="text-sm font-semibold text-secondary">{reservation.date}</p>
+                  {getStatusBadge(reservation.status)}
                 </div>
               </div>
             ))}
@@ -208,17 +217,17 @@ const DashboardW3CRM = () => {
       {/* Additional Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <DataCard
-          title="Sales Overview"
-          description="Monthly sales performance"
+          title={t('dashboard.financialSummary')}
+          description={t('dashboard.financialSummaryDesc')}
         >
           <div className="h-64 flex items-center justify-center text-muted-foreground">
-            <p>Chart will be integrated here (Recharts)</p>
+            <p>{t('dashboard.chartPlaceholder')}</p>
           </div>
         </DataCard>
 
         <DataCard
-          title="Customer Activity"
-          description="Recent customer interactions"
+          title={t('dashboard.recentActivity')}
+          description={t('dashboard.recentActivityDesc')}
         >
           <div className="space-y-3">
             <div className="flex items-start gap-3">
@@ -226,17 +235,17 @@ const DashboardW3CRM = () => {
                 <Users className="h-4 w-4 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-secondary">New customer registered</p>
-                <p className="text-xs text-muted-foreground">John Doe joined 5 minutes ago</p>
+                <p className="text-sm font-medium text-secondary">{t('dashboard.newResidentRegistered')}</p>
+                <p className="text-xs text-muted-foreground">María López - Depto A-302</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center shrink-0">
-                <ShoppingCart className="h-4 w-4 text-success" />
+                <Calendar className="h-4 w-4 text-success" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-secondary">Order completed</p>
-                <p className="text-xs text-muted-foreground">Order #12345 was delivered</p>
+                <p className="text-sm font-medium text-secondary">{t('dashboard.reservationConfirmed')}</p>
+                <p className="text-xs text-muted-foreground">Quincho - 06/12 19:00-22:00</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -244,8 +253,17 @@ const DashboardW3CRM = () => {
                 <DollarSign className="h-4 w-4 text-warning" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-secondary">Payment received</p>
-                <p className="text-xs text-muted-foreground">$1,299 from Jane Smith</p>
+                <p className="text-sm font-medium text-secondary">{t('dashboard.paymentReceived')}</p>
+                <p className="text-xs text-muted-foreground">$1.250.000 - Depto B-105</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-full bg-info/10 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-4 w-4 text-info" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-secondary">{t('dashboard.newIncidentReported')}</p>
+                <p className="text-xs text-muted-foreground">Filtración en estacionamiento</p>
               </div>
             </div>
           </div>

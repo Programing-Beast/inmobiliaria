@@ -1,23 +1,26 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useTranslation } from "react-i18next";
 
 const Aprobaciones = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="grid gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>Aprobaciones de usuarios (pendientes)</CardTitle>
+          <CardTitle>{t('approvals.usersTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto -mx-6 px-6 md:mx-0 md:px-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="whitespace-nowrap">Usuario</TableHead>
-                  <TableHead className="whitespace-nowrap">Correo</TableHead>
-                  <TableHead className="whitespace-nowrap">Unidad</TableHead>
-                  <TableHead className="whitespace-nowrap">Acción</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('approvals.user')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('approvals.email')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('approvals.unit')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('approvals.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -28,10 +31,10 @@ const Aprobaciones = () => {
                   <TableCell>
                     <div className="flex gap-2 whitespace-nowrap">
                       <Button size="sm" className="bg-primary hover:bg-primary/90 text-white h-8">
-                        Aprobar
+                        {t('approvals.approve')}
                       </Button>
                       <Button size="sm" className="bg-warning hover:bg-warning/90 text-white h-8">
-                        Rechazar
+                        {t('approvals.reject')}
                       </Button>
                     </div>
                   </TableCell>
@@ -44,18 +47,18 @@ const Aprobaciones = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Aprobaciones de reservas (pendientes)</CardTitle>
+          <CardTitle>{t('approvals.reservationsTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto -mx-6 px-6 md:mx-0 md:px-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="whitespace-nowrap">Amenity</TableHead>
-                  <TableHead className="whitespace-nowrap">Fecha</TableHead>
-                  <TableHead className="whitespace-nowrap">Hora</TableHead>
-                  <TableHead className="whitespace-nowrap">Solicitante</TableHead>
-                  <TableHead className="whitespace-nowrap">Acción</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('approvals.amenity')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('approvals.date')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('approvals.time')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('approvals.requestor')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('approvals.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -67,10 +70,10 @@ const Aprobaciones = () => {
                   <TableCell>
                     <div className="flex gap-2 whitespace-nowrap">
                       <Button size="sm" className="bg-primary hover:bg-primary/90 text-white h-8">
-                        Aprobar
+                        {t('approvals.approve')}
                       </Button>
                       <Button size="sm" className="bg-warning hover:bg-warning/90 text-white h-8">
-                        Rechazar
+                        {t('approvals.reject')}
                       </Button>
                     </div>
                   </TableCell>

@@ -11,14 +11,20 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { Menu } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface HeaderProps {
   onMenuClick?: () => void;
 }
 
 const Header = ({ onMenuClick }: HeaderProps) => {
+  const { i18n } = useTranslation();
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [language, setLanguage] = useState("en");
+
+  const changeLanguage = (lng: string) => {
+    i18n.changeLanguage(lng);
+    localStorage.setItem("language", lng);
+  };
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -72,17 +78,11 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => setLanguage("en")}>
+              <DropdownMenuItem onClick={() => changeLanguage("en")}>
                 🇬🇧 English
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setLanguage("es")}>
+              <DropdownMenuItem onClick={() => changeLanguage("es")}>
                 🇪🇸 Español
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setLanguage("fr")}>
-                🇫🇷 Français
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setLanguage("de")}>
-                🇩🇪 Deutsch
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
