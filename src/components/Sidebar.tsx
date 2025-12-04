@@ -28,42 +28,42 @@ const Sidebar = ({ isOpen = false, onClose, role = "Owner" }: SidebarProps) => {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
 
-  // Define menu items with role permissions
+  // Define menu items with role permissions (matching portal_residentes_completo.html)
   const allNavItems = [
     {
       key: "dashboard",
       label: t('nav.dashboard'),
       icon: LayoutGrid,
       path: "/dashboard",
-      roles: ["Owner", "Tenant"] // Available to both
+      roles: ["Owner", "Tenant", "Super Admin"] // All roles
     },
     {
       key: "finance",
       label: t('nav.finances'),
       icon: DollarSign,
       path: "/finanzas",
-      roles: ["Owner", "Tenant"] // Available to both
+      roles: ["Owner"] // Only Owner
     },
     {
       key: "reservations",
       label: t('nav.reservations'),
       icon: Calendar,
       path: "/reservas",
-      roles: ["Owner", "Tenant"] // Available to both
+      roles: ["Owner", "Tenant", "Super Admin"] // All roles
     },
     {
       key: "incidents",
       label: t('nav.incidents'),
       icon: AlertCircle,
       path: "/incidencias",
-      roles: ["Owner", "Tenant"] // Available to both
+      roles: ["Owner", "Tenant", "Super Admin"] // All roles
     },
     {
       key: "approvals",
       label: t('nav.approvals'),
       icon: ShieldCheck,
       path: "/aprobaciones",
-      roles: ["Owner"] // Only for Owners
+      roles: ["Super Admin"] // Only Super Admin
     },
   ];
 

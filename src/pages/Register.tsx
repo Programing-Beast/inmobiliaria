@@ -74,10 +74,28 @@ const Register = () => {
 
     // Mock registration - in real app, this would call an API
     setTimeout(() => {
-      // Save the selected role for future login (mock behavior)
-      localStorage.setItem("userRole", formData.role);
+      // Mock database: Save user data to localStorage
+      const mockUsers = JSON.parse(localStorage.getItem("mockUsers") || "[]");
+      const newUser = {
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        unit: formData.unit,
+        role: formData.role,
+      };
 
-      toast.success("Registration successful! Please wait for admin approval");
+      // Check if user already exists
+      const existingUser = mockUsers.find((u: any) => u.email === formData.email);
+      if (existingUser) {
+        toast.error("User with this email already exists");
+        setIsLoading(false);
+        return;
+      }
+
+      mockUsers.push(newUser);
+      localStorage.setItem("mockUsers", JSON.stringify(mockUsers));
+
+      toast.success(`Registration successful as ${formData.role}! You can now login.`);
       navigate("/login");
       setIsLoading(false);
     }, 1500);
@@ -221,6 +239,7 @@ const Register = () => {
                     <SelectContent>
                       <SelectItem value="Owner">{t('register.owner')}</SelectItem>
                       <SelectItem value="Tenant">{t('register.tenant')}</SelectItem>
+                      <SelectItem value="Super Admin">Super Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

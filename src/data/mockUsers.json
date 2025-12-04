@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "email": "owner@test.com",
+    "password": "owner123",
+    "fullName": "Juan Pérez",
+    "unit": "A-302",
+    "role": "Owner"
+  },
+  {
+    "id": 2,
+    "email": "tenant@test.com",
+    "password": "tenant123",
+    "fullName": "María López",
+    "unit": "B-105",
+    "role": "Tenant"
+  },
+  {
+    "id": 3,
+    "email": "admin@test.com",
+    "password": "admin123",
+    "fullName": "Carlos Admin",
+    "unit": "Administración",
+    "role": "Super Admin"
+  }
+]
