@@ -1,4 +1,4 @@
-import { Search, Bell, Mail, Maximize2, Minimize2, ChevronDown, Globe } from "lucide-react";
+import { Search, Bell, Mail, Maximize2, Minimize2, ChevronDown, Globe, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,9 +9,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -19,11 +21,46 @@ interface HeaderProps {
 
 const Header = ({ onMenuClick }: HeaderProps) => {
   const { i18n } = useTranslation();
+  const navigate = useNavigate();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [userName, setUserName] = useState("Usuario");
+  const [userRole, setUserRole] = useState("Owner");
+  const [userInitials, setUserInitials] = useState("U");
+
+  useEffect(() => {
+    // Get user info from localStorage
+    const name = localStorage.getItem("userName") || "Usuario";
+    const role = localStorage.getItem("userRole") || "Owner";
+
+    setUserName(name);
+    setUserRole(role);
+
+    // Generate initials from name
+    const initials = name
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+    setUserInitials(initials);
+  }, []);
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
     localStorage.setItem("language", lng);
+  };
+
+  const handleLogout = () => {
+    // Clear user data from localStorage
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userUnit");
+
+    // Show success message
+    toast.success("Sesión cerrada correctamente");
+
+    // Redirect to login
+    navigate("/login");
   };
 
   const toggleFullscreen = () => {
@@ -163,28 +200,38 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               <Button variant="ghost" className="h-10 gap-2 px-2">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src="/avatars/user.jpg" />
-                  <AvatarFallback>JD</AvatarFallback>
+                  <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                    {userInitials}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-medium">John Doe</span>
-                  <span className="text-xs text-muted-foreground">Owner</span>
+                  <span className="text-sm font-medium">{userName}</span>
+                  <span className="text-xs text-muted-foreground">{userRole}</span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground hidden md:block" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              <div className="px-2 py-2 border-b border-border">
+                <p className="text-sm font-semibold">{userName}</p>
+                <p className="text-xs text-muted-foreground">{userRole}</p>
+              </div>
               <DropdownMenuItem>
-                <span>Profile</span>
+                <span>Perfil</span>
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <span>Settings</span>
+                <span>Configuración</span>
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <span>Activity Log</span>
+                <span>Registro de Actividad</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-danger">
-                <span>Logout</span>
+              <DropdownMenuItem
+                className="text-danger focus:text-danger cursor-pointer"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                <span>Cerrar Sesión</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
