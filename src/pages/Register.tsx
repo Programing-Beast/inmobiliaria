@@ -8,18 +8,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import logoOriginal from "@/assets/logo-original.png";
 import { useTranslation } from "react-i18next";
-import { Eye, EyeOff, Mail, Lock, User, Building, UserCircle } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, UserCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Register = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     password: "",
     confirmPassword: "",
-    unit: "",
-    role: "Owner",
+    role: "Tenant",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -34,7 +35,7 @@ const Register = () => {
     e.preventDefault();
 
     // Validation
-    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword || !formData.unit) {
+    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
       toast.error("Please complete all fields");
       return;
     }
@@ -72,33 +73,38 @@ const Register = () => {
 
     setIsLoading(true);
 
-    // Mock registration - in real app, this would call an API
-    setTimeout(() => {
-      // Mock database: Save user data to localStorage
-      const mockUsers = JSON.parse(localStorage.getItem("mockUsers") || "[]");
-      const newUser = {
-        email: formData.email,
-        password: formData.password,
-        fullName: formData.fullName,
-        unit: formData.unit,
-        role: formData.role,
-      };
+    try {
+      // Sign up with Supabase
+      const { error } = await signUp(formData.email, formData.password, formData.fullName);
 
-      // Check if user already exists
-      const existingUser = mockUsers.find((u: any) => u.email === formData.email);
-      if (existingUser) {
-        toast.error("User with this email already exists");
+      if (error) {
+        // Handle specific error messages
+        if (error.message.includes('already registered')) {
+          toast.error("User with this email already exists");
+        } else if (error.message.includes('Password')) {
+          toast.error("Password must be at least 6 characters");
+        } else {
+          toast.error(error.message || "Error during registration");
+        }
         setIsLoading(false);
         return;
       }
 
-      mockUsers.push(newUser);
-      localStorage.setItem("mockUsers", JSON.stringify(mockUsers));
+      // Success
+      toast.success(
+        "Registration successful! Please check your email to confirm your account before logging in.",
+        { duration: 5000 }
+      );
 
-      toast.success(`Registration successful as ${formData.role}! You can now login.`);
-      navigate("/login");
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      toast.error("Unexpected error during registration");
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -207,43 +213,24 @@ const Register = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="unit" className="text-secondary font-medium">
-                  {t('register.unit')}
-                </Label>
-                <div className="relative group">
-                  <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-success" />
-                  <Input
-                    id="unit"
-                    type="text"
-                    placeholder="A-302"
-                    value={formData.unit}
-                    onChange={(e) => handleChange("unit", e.target.value)}
-                    className="h-12 pl-10 transition-all focus:shadow-md"
-                    disabled={isLoading}
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="role" className="text-secondary font-medium">
+                {t('register.role')}
+              </Label>
+              <div className="relative">
+                <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                <Select value={formData.role} onValueChange={(value) => handleChange("role", value)} disabled={isLoading}>
+                  <SelectTrigger className="h-12 pl-10 transition-all focus:shadow-md">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Tenant">{t('register.tenant')}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-secondary font-medium">
-                  {t('register.role')}
-                </Label>
-                <div className="relative">
-                  <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-                  <Select value={formData.role} onValueChange={(value) => handleChange("role", value)} disabled={isLoading}>
-                    <SelectTrigger className="h-12 pl-10 transition-all focus:shadow-md">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Owner">{t('register.owner')}</SelectItem>
-                      <SelectItem value="Tenant">{t('register.tenant')}</SelectItem>
-                      <SelectItem value="Super Admin">Super Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Owner accounts are created by administrators only
+              </p>
             </div>
 
             <div className="space-y-2">
