@@ -1,4 +1,4 @@
-import { Search, Bell, Mail, Maximize2, Minimize2, ChevronDown, Globe, LogOut } from "lucide-react";
+import { Search, Bell, Mail, Maximize2, Minimize2, ChevronDown, Globe, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import { Menu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -22,45 +23,45 @@ interface HeaderProps {
 const Header = ({ onMenuClick }: HeaderProps) => {
   const { i18n } = useTranslation();
   const navigate = useNavigate();
+  const { profile, signOut } = useAuth();
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [userName, setUserName] = useState("Usuario");
-  const [userRole, setUserRole] = useState("Owner");
-  const [userInitials, setUserInitials] = useState("U");
 
-  useEffect(() => {
-    // Get user info from localStorage
-    const name = localStorage.getItem("userName") || "Usuario";
-    const role = localStorage.getItem("userRole") || "Owner";
+  // Get user info from auth context or localStorage (fallback)
+  const userName = profile?.full_name || localStorage.getItem("userName") || "Usuario";
+  const userRole = profile?.role || localStorage.getItem("userRole") || "tenant";
 
-    setUserName(name);
-    setUserRole(role);
-
-    // Generate initials from name
-    const initials = name
-      .split(" ")
-      .map(n => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-    setUserInitials(initials);
-  }, []);
+  // Generate initials from name
+  const userInitials = userName
+    .split(" ")
+    .map(n => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
     localStorage.setItem("language", lng);
   };
 
-  const handleLogout = () => {
-    // Clear user data from localStorage
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("userName");
-    localStorage.removeItem("userUnit");
+  const handleLogout = async () => {
+    try {
+      // Sign out with Supabase
+      const { error } = await signOut();
 
-    // Show success message
-    toast.success("Sesión cerrada correctamente");
+      if (error) {
+        toast.error("Error al cerrar sesión");
+        return;
+      }
 
-    // Redirect to login
-    navigate("/login");
+      // Show success message
+      toast.success("Sesión cerrada correctamente");
+
+      // Redirect to login
+      navigate("/login");
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error("Error inesperado al cerrar sesión");
+    }
   };
 
   const toggleFullscreen = () => {
@@ -216,14 +217,12 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                 <p className="text-sm font-semibold">{userName}</p>
                 <p className="text-xs text-muted-foreground">{userRole}</p>
               </div>
-              <DropdownMenuItem>
-                <span>Perfil</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <span>Configuración</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <span>Registro de Actividad</span>
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => navigate("/profile")}
+              >
+                <User className="h-4 w-4 mr-2" />
+                <span>Profile</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -231,7 +230,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                 onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4 mr-2" />
-                <span>Cerrar Sesión</span>
+                <span>Logout</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

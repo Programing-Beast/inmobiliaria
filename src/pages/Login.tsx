@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,12 +7,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import logoOriginal from "@/assets/logo-original.png";
 import { useTranslation } from "react-i18next";
-import { Eye, EyeOff, Mail, Lock, Info } from "lucide-react";
-import mockUsers from "@/data/mockUsers.json";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { signIn, profile } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,26 +39,34 @@ const Login = () => {
 
     setIsLoading(true);
 
-    // Mock login - in real app, this would call an API
-    setTimeout(() => {
-      // Check mock users from JSON file
-      const user = mockUsers.find((u) => u.email === email && u.password === password);
+    try {
+      // Sign in with Supabase
+      const { error } = await signIn(email, password);
 
-      if (user) {
-        // User found - set their role and info
-        localStorage.setItem("userRole", user.role);
-        localStorage.setItem("userName", user.fullName);
-        localStorage.setItem("userUnit", user.unit);
-
-        toast.success(`¡Bienvenido ${user.fullName}! Sesión iniciada como ${user.role}`);
-        navigate("/dashboard");
+      if (error) {
+        // Handle specific error messages
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error("Email o contraseña incorrectos");
+        } else if (error.message.includes('Email not confirmed')) {
+          toast.error("Por favor confirma tu email antes de iniciar sesión");
+        } else {
+          toast.error(error.message || "Error al iniciar sesión");
+        }
         setIsLoading(false);
-      } else {
-        // Invalid credentials
-        toast.error("Email o contraseña incorrectos");
-        setIsLoading(false);
+        return;
       }
-    }, 1000);
+
+      // Success - auth context will handle profile loading
+      toast.success("¡Sesión iniciada exitosamente!");
+
+      // Redirect to intended page or dashboard
+      const from = (location.state as any)?.from?.pathname || "/dashboard";
+      navigate(from, { replace: true });
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast.error("Error inesperado al iniciar sesión");
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -170,43 +180,6 @@ const Login = () => {
               )}
             </Button>
           </form>
-
-          {/* Test Credentials */}
-          <div className="mt-6 p-4 bg-info/10 border border-info/20 rounded-xl animate-in fade-in duration-700 delay-300">
-            <div className="flex items-start gap-2 mb-3">
-              <Info className="h-4 w-4 text-info mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-info">Credenciales de Prueba</p>
-                <p className="text-xs text-muted-foreground mt-1">Usa estas cuentas para probar diferentes roles</p>
-              </div>
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2 bg-white rounded border border-border hover:border-primary/30 transition-colors cursor-pointer"
-                   onClick={() => { setEmail("owner@test.com"); setPassword("owner123"); }}>
-                <div>
-                  <p className="font-semibold text-foreground">👤 Owner</p>
-                  <p className="text-muted-foreground">owner@test.com / owner123</p>
-                </div>
-                <span className="text-[10px] bg-primary/10 text-primary px-2 py-1 rounded">Ver Finanzas</span>
-              </div>
-              <div className="flex items-center justify-between p-2 bg-white rounded border border-border hover:border-success/30 transition-colors cursor-pointer"
-                   onClick={() => { setEmail("tenant@test.com"); setPassword("tenant123"); }}>
-                <div>
-                  <p className="font-semibold text-foreground">🏠 Tenant</p>
-                  <p className="text-muted-foreground">tenant@test.com / tenant123</p>
-                </div>
-                <span className="text-[10px] bg-success/10 text-success px-2 py-1 rounded">Sin Finanzas</span>
-              </div>
-              <div className="flex items-center justify-between p-2 bg-white rounded border border-border hover:border-warning/30 transition-colors cursor-pointer"
-                   onClick={() => { setEmail("admin@test.com"); setPassword("admin123"); }}>
-                <div>
-                  <p className="font-semibold text-foreground">⚡ Super Admin</p>
-                  <p className="text-muted-foreground">admin@test.com / admin123</p>
-                </div>
-                <span className="text-[10px] bg-warning/10 text-warning px-2 py-1 rounded">Aprobaciones</span>
-              </div>
-            </div>
-          </div>
 
           {/* Footer */}
           <div className="mt-8 text-center text-sm animate-in fade-in duration-700 delay-500">

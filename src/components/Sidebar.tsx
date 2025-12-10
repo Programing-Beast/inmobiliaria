@@ -1,15 +1,17 @@
-import { 
-  LayoutGrid, 
-  Users, 
-  PieChart, 
-  DollarSign, 
-  FileText, 
-  Calendar, 
-  AlertCircle, 
+import {
+  LayoutGrid,
+  Users,
+  PieChart,
+  DollarSign,
+  FileText,
+  Calendar,
+  AlertCircle,
   CheckSquare,
   ShieldCheck,
   ChevronRight,
-  X
+  X,
+  Bell,
+  Settings
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -17,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import logoOriginal from "@/assets/logo-original.png";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -24,9 +27,20 @@ interface SidebarProps {
   role?: string;
 }
 
-const Sidebar = ({ isOpen = false, onClose, role = "Owner" }: SidebarProps) => {
+const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
   const { t } = useTranslation();
+  const { profile } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Use profile role from auth context, fallback to prop or localStorage
+  const rawRole = profile?.role || propRole || localStorage.getItem("userRole") || "tenant";
+
+  // Normalize role to lowercase for comparison (database returns lowercase with underscores)
+  const normalizeRole = (r: string): string => {
+    return r.toLowerCase().replace(/ /g, "_");
+  };
+
+  const normalizedRole = normalizeRole(rawRole);
 
   // Define menu items with role permissions (matching portal_residentes_completo.html)
   const allNavItems = [
@@ -35,40 +49,54 @@ const Sidebar = ({ isOpen = false, onClose, role = "Owner" }: SidebarProps) => {
       label: t('nav.dashboard'),
       icon: LayoutGrid,
       path: "/dashboard",
-      roles: ["Owner", "Tenant", "Super Admin"] // All roles
+      roles: ["owner", "tenant", "super_admin", "regular_user"] // All roles
     },
     {
       key: "finance",
       label: t('nav.finances'),
       icon: DollarSign,
-      path: "/finanzas",
-      roles: ["Owner"] // Only Owner
+      path: "/finances",
+      roles: ["owner"] // Only Owner
+    },
+    {
+      key: "announcements",
+      label: t('nav.announcements'),
+      icon: Bell,
+      path: "/announcements",
+      roles: ["owner", "tenant", "super_admin"] // All except regular_user
     },
     {
       key: "reservations",
       label: t('nav.reservations'),
       icon: Calendar,
-      path: "/reservas",
-      roles: ["Owner", "Tenant", "Super Admin"] // All roles
+      path: "/reservations",
+      roles: ["owner", "tenant", "super_admin"] // All except regular_user
     },
     {
       key: "incidents",
       label: t('nav.incidents'),
       icon: AlertCircle,
-      path: "/incidencias",
-      roles: ["Owner", "Tenant", "Super Admin"] // All roles
+      path: "/incidents",
+      roles: ["owner", "tenant", "super_admin"] // All except regular_user
     },
     {
       key: "approvals",
       label: t('nav.approvals'),
       icon: ShieldCheck,
-      path: "/aprobaciones",
-      roles: ["Super Admin"] // Only Super Admin
+      path: "/approvals",
+      roles: ["super_admin"] // Only Super Admin
+    },
+    {
+      key: "admin",
+      label: "Admin Panel",
+      icon: Settings,
+      path: "/admin",
+      roles: ["super_admin"] // Only Super Admin
     },
   ];
 
   // Filter menu items based on user role
-  const navItems = allNavItems.filter(item => item.roles.includes(role));
+  const navItems = allNavItems.filter(item => item.roles.includes(normalizedRole));
 
   return (
     <>
