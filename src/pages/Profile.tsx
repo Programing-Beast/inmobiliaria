@@ -25,6 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { updateUserProfile } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { UnitSwitcher } from "@/components/UnitSwitcher";
 
 const Profile = () => {
   const { t, i18n } = useTranslation();
@@ -203,51 +204,67 @@ const Profile = () => {
                 <Shield className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-xs text-muted-foreground">Role</p>
-                <div className="mt-1">{getRoleBadge(profile.role)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {profile.roles && profile.roles.length > 1 ? 'Roles' : 'Role'}
+                </p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {profile.roles && profile.roles.length > 0 ? (
+                    profile.roles.map((role) => (
+                      <span key={role}>{getRoleBadge(role)}</span>
+                    ))
+                  ) : (
+                    getRoleBadge(profile.role)
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Building & Unit Information Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Building & Unit</CardTitle>
-            <CardDescription>Your building and unit information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-              <div className="p-2 bg-primary/10 rounded-full">
-                <Building2 className="w-5 h-5 text-primary" />
+        {/* Building & Unit Information Card - Show simple card for single unit, UnitSwitcher for multiple */}
+        {profile.units && profile.units.length > 1 ? (
+          <div className="md:col-span-2">
+            <UnitSwitcher variant="card" />
+          </div>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Building & Unit</CardTitle>
+              <CardDescription>Your building and unit information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                <div className="p-2 bg-primary/10 rounded-full">
+                  <Building2 className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">Building</p>
+                  <p className="font-medium">
+                    {profile.building?.name || profile.currentUnit?.building_name || 'Not assigned'}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-xs text-muted-foreground">Building</p>
-                <p className="font-medium">
-                  {profile.building?.name || 'Not assigned'}
+
+              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                <div className="p-2 bg-primary/10 rounded-full">
+                  <Home className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">Unit</p>
+                  <p className="font-medium">
+                    {profile.unit?.unit_number || profile.currentUnit?.unit_number || 'Not assigned'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <p className="text-xs text-muted-foreground">
+                  Contact your building administrator if this information is incorrect.
                 </p>
               </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-              <div className="p-2 bg-primary/10 rounded-full">
-                <Home className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-muted-foreground">Unit</p>
-                <p className="font-medium">
-                  {profile.unit?.unit_number || 'Not assigned'}
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <p className="text-xs text-muted-foreground">
-                Contact your building administrator if this information is incorrect.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Security Card */}
         <Card>
