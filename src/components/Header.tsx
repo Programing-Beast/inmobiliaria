@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { UnitSwitcher } from "@/components/UnitSwitcher";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -108,6 +109,9 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
         {/* Right side - Actions */}
         <div className="flex items-center gap-2">
+          {/* Unit Switcher for users with multiple units */}
+          <UnitSwitcher variant="dropdown" className="hidden lg:flex" />
+
           {/* Language Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

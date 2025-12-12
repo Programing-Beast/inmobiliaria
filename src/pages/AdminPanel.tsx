@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { UserPlus, Edit, Search, Shield } from "lucide-react";
+import { UserPlus, Edit, Search, Shield, Key } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -29,6 +29,7 @@ import {
   getBuildingUnits,
   createUserWithRole,
   updateUserProfile,
+  adminChangeUserPassword,
 } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { UserRole } from "@/lib/database.types";
@@ -68,8 +69,13 @@ const AdminPanel = () => {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [newPasswordForm, setNewPasswordForm] = useState({
+    password: "",
+    confirmPassword: "",
+  });
 
   // Form state for creating user
   const [newUser, setNewUser] = useState({
@@ -265,6 +271,61 @@ const AdminPanel = () => {
     setShowEditDialog(true);
   };
 
+  // Open password change dialog
+  const openPasswordDialog = (user: User) => {
+    setSelectedUser(user);
+    setNewPasswordForm({
+      password: "",
+      confirmPassword: "",
+    });
+    setShowPasswordDialog(true);
+  };
+
+  // Handle password change
+  const handleChangePassword = async () => {
+    if (!selectedUser) return;
+
+    // Validation
+    if (!newPasswordForm.password || !newPasswordForm.confirmPassword) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    if (newPasswordForm.password !== newPasswordForm.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (newPasswordForm.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { data, error } = await adminChangeUserPassword(
+        selectedUser.id,
+        newPasswordForm.password
+      );
+
+      if (error) {
+        console.error('Error changing password:', error);
+        toast.error(error.message || "Error changing password");
+        return;
+      }
+
+      toast.success(`Password changed successfully for ${selectedUser.full_name}`);
+      setShowPasswordDialog(false);
+      setSelectedUser(null);
+      setNewPasswordForm({ password: "", confirmPassword: "" });
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Error changing password");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Get role badge
   const getRoleBadge = (role: UserRole) => {
     const roleConfig = {
@@ -396,13 +457,26 @@ const AdminPanel = () => {
                       </TableCell>
                       <TableCell>{formatDate(user.created_at)}</TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => openEditDialog(user)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => openEditDialog(user)}
+                            title="Edit user"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          {profile?.role === 'super_admin' && user.id !== profile.id && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openPasswordDialog(user)}
+                              title="Change password"
+                            >
+                              <Key className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -628,6 +702,62 @@ const AdminPanel = () => {
             </Button>
             <Button onClick={handleEditUser} disabled={submitting}>
               {submitting ? "Updating..." : "Update User"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change User Password</DialogTitle>
+            <DialogDescription>
+              Change password for {selectedUser?.full_name} ({selectedUser?.email})
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Warning:</strong> This will change the user's password immediately.
+                The user will need to use the new password for their next login.
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="newPassword">New Password *</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPasswordForm.password}
+                onChange={(e) => setNewPasswordForm({ ...newPasswordForm, password: e.target.value })}
+                placeholder="Minimum 6 characters"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={newPasswordForm.confirmPassword}
+                onChange={(e) => setNewPasswordForm({ ...newPasswordForm, confirmPassword: e.target.value })}
+                placeholder="Re-enter password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowPasswordDialog(false);
+                setNewPasswordForm({ password: "", confirmPassword: "" });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleChangePassword} disabled={submitting}>
+              {submitting ? "Changing..." : "Change Password"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -89,6 +89,138 @@ export const getUserProfile = async (userId: string) => {
   return { profile: data, error };
 };
 
+/**
+ * Get all units for a user (supports multiple units per user)
+ */
+export const getUserUnits = async (userId: string) => {
+  const { data, error } = await supabase.rpc('get_user_units', {
+    p_user_id: userId,
+  });
+
+  return { units: data, error };
+};
+
+/**
+ * Get all roles for a user (supports multiple roles per user)
+ */
+export const getUserRoles = async (userId: string) => {
+  const { data, error } = await supabase.rpc('get_user_roles', {
+    p_user_id: userId,
+  });
+
+  return { roles: data?.map((r) => r.role) || [], error };
+};
+
+/**
+ * Check if user has a specific role
+ */
+export const userHasRole = async (userId: string, role: string) => {
+  const { data, error } = await supabase.rpc('user_has_role', {
+    p_user_id: userId,
+    p_role: role,
+  });
+
+  return { hasRole: data || false, error };
+};
+
+/**
+ * Get user's primary unit ID
+ */
+export const getUserPrimaryUnit = async (userId: string) => {
+  const { data, error } = await supabase.rpc('get_user_primary_unit', {
+    p_user_id: userId,
+  });
+
+  return { primaryUnitId: data, error };
+};
+
+/**
+ * Add a unit to a user
+ */
+export const addUserUnit = async (
+  userId: string,
+  unitId: string,
+  isPrimary: boolean = false,
+  relationshipType: string = 'owner'
+) => {
+  const { data, error } = await supabase
+    .from('user_units')
+    .insert({
+      user_id: userId,
+      unit_id: unitId,
+      is_primary: isPrimary,
+      relationship_type: relationshipType,
+    })
+    .select()
+    .single();
+
+  return { userUnit: data, error };
+};
+
+/**
+ * Remove a unit from a user
+ */
+export const removeUserUnit = async (userId: string, unitId: string) => {
+  const { error } = await supabase
+    .from('user_units')
+    .delete()
+    .eq('user_id', userId)
+    .eq('unit_id', unitId);
+
+  return { error };
+};
+
+/**
+ * Set a unit as primary for a user
+ */
+export const setUserPrimaryUnit = async (userId: string, unitId: string) => {
+  // First, set all units to non-primary
+  await supabase
+    .from('user_units')
+    .update({ is_primary: false })
+    .eq('user_id', userId);
+
+  // Then set the specified unit as primary
+  const { data, error } = await supabase
+    .from('user_units')
+    .update({ is_primary: true })
+    .eq('user_id', userId)
+    .eq('unit_id', unitId)
+    .select()
+    .single();
+
+  return { userUnit: data, error };
+};
+
+/**
+ * Add a role to a user
+ */
+export const addUserRole = async (userId: string, role: string) => {
+  const { data, error } = await supabase
+    .from('user_roles')
+    .insert({
+      user_id: userId,
+      role,
+    })
+    .select()
+    .single();
+
+  return { userRole: data, error };
+};
+
+/**
+ * Remove a role from a user
+ */
+export const removeUserRole = async (userId: string, role: string) => {
+  const { error } = await supabase
+    .from('user_roles')
+    .delete()
+    .eq('user_id', userId)
+    .eq('role', role);
+
+  return { error };
+};
+
 // =====================================================
 // QUERY HELPERS
 // =====================================================
@@ -389,6 +521,42 @@ export const createUserWithRole = async (
   }
 
   return { data: authData, error: null };
+};
+
+/**
+ * Admin function to change another user's password
+ * Note: This requires admin privileges on the Supabase project
+ * For this to work, you need to use the Supabase Admin API or Service Role
+ */
+export const adminChangeUserPassword = async (
+  userId: string,
+  newPassword: string
+) => {
+  try {
+    // Using Supabase Admin API through Edge Function or Service Role
+    // Since we're in a client app, we'll use the RPC method
+    const { data, error } = await supabase.rpc('admin_update_user_password', {
+      user_id: userId,
+      new_password: newPassword,
+    });
+
+    if (error) {
+      // If RPC doesn't exist, we'll try the alternative method
+      // This method requires the service role key to be available
+      console.error('RPC method failed, trying alternative:', error);
+
+      // Alternative: Use Supabase Auth Admin API if available
+      // This would typically be done on the backend, but for now we'll return an error
+      return {
+        data: null,
+        error: new Error('Password reset requires backend implementation. Please use the Edge Function method.')
+      };
+    }
+
+    return { data, error: null };
+  } catch (error: any) {
+    return { data: null, error };
+  }
 };
 
 // =====================================================

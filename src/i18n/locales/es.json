@@ -325,6 +325,18 @@
     "approve": "Aprobar",
     "reject": "Rechazar"
   },
+  "units": {
+    "myUnits": "Mis Unidades",
+    "selectUnit": "Seleccionar Unidad",
+    "description": "Tienes acceso a múltiples unidades. Selecciona una para ver sus detalles.",
+    "primary": "Principal",
+    "current": "Actual",
+    "owner": "Propietario",
+    "tenant": "Inquilino",
+    "resident": "Residente",
+    "floor": "Piso",
+    "area": "Área"
+  },
   "footer": {
     "rights": "Todos los derechos reservados",
     "terms": "Términos y condiciones",

@@ -433,12 +433,116 @@ export interface Database {
           updated_at?: string;
         };
       };
+      user_units: {
+        Row: {
+          id: string;
+          user_id: string;
+          unit_id: string;
+          is_primary: boolean;
+          relationship_type: string;
+          start_date: string | null;
+          end_date: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          unit_id: string;
+          is_primary?: boolean;
+          relationship_type?: string;
+          start_date?: string | null;
+          end_date?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          unit_id?: string;
+          is_primary?: boolean;
+          relationship_type?: string;
+          start_date?: string | null;
+          end_date?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      user_roles: {
+        Row: {
+          id: string;
+          user_id: string;
+          role: UserRole;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          role: UserRole;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          role?: UserRole;
+          created_at?: string;
+        };
+      };
     };
     Views: {
-      [_ in never]: never;
+      users_with_primary_unit: {
+        Row: {
+          id: string;
+          email: string;
+          full_name: string;
+          role: UserRole;
+          unit_id: string | null;
+          building_id: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+          primary_unit_id: string | null;
+          primary_role: UserRole | null;
+        };
+      };
     };
     Functions: {
-      [_ in never]: never;
+      get_user_units: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: {
+          unit_id: string;
+          unit_number: string;
+          building_id: string;
+          building_name: string;
+          is_primary: boolean;
+          relationship_type: string;
+          floor: number | null;
+          area_sqm: number | null;
+        }[];
+      };
+      get_user_roles: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: {
+          role: UserRole;
+        }[];
+      };
+      user_has_role: {
+        Args: {
+          p_user_id: string;
+          p_role: UserRole;
+        };
+        Returns: boolean;
+      };
+      get_user_primary_unit: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: string | null;
+      };
     };
     Enums: {
       user_role: UserRole;
