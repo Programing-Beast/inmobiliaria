@@ -58,7 +58,6 @@ interface Unit {
 }
 
 const AdminPanel = () => {
-  const { t } = useTranslation();
   const { profile } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -224,7 +223,7 @@ const AdminPanel = () => {
 
     setSubmitting(true);
     try {
-      const { user, error } = await updateUserProfile(selectedUser.id, {
+      const { error } = await updateUserProfile(selectedUser.id, {
         role: editUser.role,
         building_id: editUser.buildingId || null,
         unit_id: editUser.unitId || null,
@@ -233,7 +232,9 @@ const AdminPanel = () => {
 
       if (error) {
         console.error('Error updating user:', error);
-        toast.error("Error updating user");
+        // Show more detailed error message
+        const errorMessage = error.message || error.toString() || "Error updating user";
+        toast.error(`Update failed: ${errorMessage}`);
         return;
       }
 
@@ -244,9 +245,10 @@ const AdminPanel = () => {
       // Refresh users
       const { users: updatedUsers } = await getAllUsers();
       setUsers(updatedUsers || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
-      toast.error("Error updating user");
+      const errorMessage = error?.message || error?.toString() || "Unknown error";
+      toast.error(`Error updating user: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
@@ -303,7 +305,7 @@ const AdminPanel = () => {
 
     setSubmitting(true);
     try {
-      const { data, error } = await adminChangeUserPassword(
+      const { error } = await adminChangeUserPassword(
         selectedUser.id,
         newPasswordForm.password
       );
