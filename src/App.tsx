@@ -15,10 +15,15 @@ import DashboardW3CRM from "./pages/DashboardW3CRM";
 import Finanzas from "./pages/Finanzas";
 import Documentos from "./pages/Documentos";
 import Comunicados from "./pages/Comunicados";
-import Reservas from "./pages/Reservas";
 import Incidencias from "./pages/Incidencias";
 import Aprobaciones from "./pages/Aprobaciones";
 import AdminPanel from "./pages/AdminPanel";
+import PermissionsManagement from "./pages/PermissionsManagement";
+import RolesManagement from "./pages/RolesManagement";
+import BuildingsManagement from "./pages/BuildingsManagement";
+import UnitsManagement from "./pages/UnitsManagement";
+import AmenitiesManagement from "./pages/AmenitiesManagement";
+import ReservationsManagement from "./pages/ReservationsManagement";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -52,10 +57,15 @@ const App = () => (
               <Route path="/finances" element={<Finanzas />} />
               <Route path="/documents" element={<DocumentosWrapper />} />
               <Route path="/announcements" element={<Comunicados />} />
-              <Route path="/reservations" element={<Reservas />} />
+              <Route path="/reservations" element={<ReservationsManagement />} />
               <Route path="/incidents" element={<Incidencias />} />
               <Route path="/approvals" element={<Aprobaciones />} />
               <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/permissions" element={<PermissionsManagement />} />
+              <Route path="/roles" element={<RolesManagement />} />
+              <Route path="/buildings" element={<BuildingsManagement />} />
+              <Route path="/units" element={<UnitsManagement />} />
+              <Route path="/amenities" element={<AmenitiesManagement />} />
               <Route path="/profile" element={<Profile />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

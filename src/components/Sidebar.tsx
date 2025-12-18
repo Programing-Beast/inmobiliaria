@@ -11,7 +11,12 @@ import {
   ChevronRight,
   X,
   Bell,
-  Settings
+  Settings,
+  Lock,
+  UserCog,
+  Building2,
+  Home,
+  Dumbbell
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -67,7 +72,7 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
     },
     {
       key: "reservations",
-      label: t('nav.reservations'),
+      label: t('nav.reservationsManagement'),
       icon: Calendar,
       path: "/reservations",
       roles: ["owner", "tenant", "super_admin"] // All except regular_user
@@ -88,10 +93,45 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
     },
     {
       key: "admin",
-      label: "Admin Panel",
+      label: t('nav.user'),
       icon: Settings,
       path: "/admin",
       roles: ["super_admin"] // Only Super Admin
+    },
+    {
+      key: "permissions",
+      label: t('nav.permissions'),
+      icon: Lock,
+      path: "/permissions",
+      roles: ["super_admin"] // Only Super Admin
+    },
+    {
+      key: "roles",
+      label: t('nav.roles'),
+      icon: UserCog,
+      path: "/roles",
+      roles: ["super_admin"] // Only Super Admin
+    },
+    {
+      key: "buildings",
+      label: t('nav.buildings'),
+      icon: Building2,
+      path: "/buildings",
+      roles: ["super_admin", "owner"] // Super Admin and Owner
+    },
+    {
+      key: "units",
+      label: t('nav.units'),
+      icon: Home,
+      path: "/units",
+      roles: ["super_admin", "owner"] // Super Admin and Owner
+    },
+    {
+      key: "amenities",
+      label: t('nav.amenities'),
+      icon: Dumbbell,
+      path: "/amenities",
+      roles: ["super_admin", "owner"] // Super Admin and Owner
     },
   ];
 
@@ -102,14 +142,14 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
     <>
       {/* Mobile Overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
 
       {/* Sidebar */}
-      <aside 
+      <aside
         className={cn(
           "fixed lg:sticky top-0 left-0 z-50 h-screen bg-white border-r border-border transition-all duration-300 flex flex-col",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
@@ -123,7 +163,7 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
               <img src={logoOriginal} alt="Logo" className="h-8 w-auto" />
             </div>
           )}
-          
+
           {/* Close button for mobile */}
           <Button
             variant="ghost"
@@ -155,7 +195,7 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
               Main Menu
             </div>
           )}
-          
+
           <div className="space-y-1">
             {navItems.map((item) => (
               <NavLink
@@ -165,8 +205,8 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
                 className={({ isActive }) => cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group",
                   "hover:bg-muted/80",
-                  isActive 
-                    ? "bg-primary/10 text-primary font-medium" 
+                  isActive
+                    ? "bg-primary/10 text-primary font-medium"
                     : "text-muted-foreground hover:text-foreground",
                   collapsed && "justify-center"
                 )}
@@ -192,7 +232,7 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-6 mb-3 px-3">
                 Our Features
               </div>
-              
+
               <div className="space-y-1">
                 <NavLink
                   to="#"

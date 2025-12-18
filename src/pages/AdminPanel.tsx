@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -20,19 +21,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { UserPlus, Edit, Search, Shield, Key } from "lucide-react";
+import { UserPlus, Edit, Search, Shield, Key, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  getAllUsers,
   getAllBuildings,
   getBuildingUnits,
   createUserWithRole,
   updateUserProfile,
-  adminChangeUserPassword,
+  sendPasswordResetEmail,
+  getAllUsersWithRoles,
+  setUserRoles,
+  assignRoleToUser,
+  deleteUser,
 } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { UserRole } from "@/lib/database.types";
+
+interface UserRoleEntry {
+  role: UserRole;
+}
 
 interface User {
   id: string;
@@ -41,10 +49,10 @@ interface User {
   role: UserRole;
   unit_id: string | null;
   building_id: string | null;
-  is_active: boolean;
   created_at: string;
   building?: { name: string } | null;
   unit?: { unit_number: string } | null;
+  user_roles?: UserRoleEntry[];
 }
 
 interface Building {
@@ -57,9 +65,16 @@ interface Unit {
   unit_number: string;
 }
 
+const AVAILABLE_ROLES: { value: UserRole; label: string }[] = [
+  { value: "super_admin", label: "Super Admin" },
+  { value: "owner", label: "Owner" },
+  { value: "tenant", label: "Tenant" },
+  { value: "regular_user", label: "Regular User" },
+];
+
 const AdminPanel = () => {
-  const { t } = useTranslation();
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const [users, setUsers] = useState<User[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -70,29 +85,27 @@ const AdminPanel = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [newPasswordForm, setNewPasswordForm] = useState({
-    password: "",
-    confirmPassword: "",
-  });
 
   // Form state for creating user
   const [newUser, setNewUser] = useState({
     email: "",
     password: "",
     fullName: "",
-    role: "tenant" as UserRole,
+    roles: [] as UserRole[],
+    primaryRole: "tenant" as UserRole,
     buildingId: "",
     unitId: "",
   });
 
   // Form state for editing user
   const [editUser, setEditUser] = useState({
-    role: "tenant" as UserRole,
+    roles: [] as UserRole[],
+    primaryRole: "tenant" as UserRole,
     buildingId: "",
     unitId: "",
-    isActive: true,
   });
 
   // Fetch users and buildings
@@ -103,7 +116,7 @@ const AdminPanel = () => {
       setLoading(true);
       try {
         const [usersResult, buildingsResult] = await Promise.all([
-          getAllUsers(),
+          getAllUsersWithRoles(),
           getAllBuildings(),
         ]);
 
@@ -148,7 +161,12 @@ const AdminPanel = () => {
 
     // Role filter
     if (roleFilter !== "all") {
-      filtered = filtered.filter(user => user.role === roleFilter);
+      filtered = filtered.filter(user => {
+        // Check both primary role and user_roles
+        if (user.role === roleFilter) return true;
+        if (user.user_roles?.some(ur => ur.role === roleFilter)) return true;
+        return false;
+      });
     }
 
     setFilteredUsers(filtered);
@@ -172,6 +190,38 @@ const AdminPanel = () => {
     }
   };
 
+  // Handle role checkbox change for new user
+  const handleNewUserRoleChange = (role: UserRole, checked: boolean) => {
+    let newRoles = [...newUser.roles];
+    if (checked) {
+      if (!newRoles.includes(role)) {
+        newRoles.push(role);
+      }
+    } else {
+      newRoles = newRoles.filter(r => r !== role);
+    }
+
+    // Set primary role to first selected role if not already set
+    const primaryRole = newRoles.length > 0 ? newRoles[0] : "tenant";
+    setNewUser({ ...newUser, roles: newRoles, primaryRole });
+  };
+
+  // Handle role checkbox change for edit user
+  const handleEditUserRoleChange = (role: UserRole, checked: boolean) => {
+    let newRoles = [...editUser.roles];
+    if (checked) {
+      if (!newRoles.includes(role)) {
+        newRoles.push(role);
+      }
+    } else {
+      newRoles = newRoles.filter(r => r !== role);
+    }
+
+    // Set primary role to first selected role if not already set
+    const primaryRole = newRoles.length > 0 ? newRoles[0] : editUser.primaryRole;
+    setEditUser({ ...editUser, roles: newRoles, primaryRole });
+  };
+
   // Handle create user
   const handleCreateUser = async () => {
     if (!newUser.email || !newUser.password || !newUser.fullName) {
@@ -179,13 +229,19 @@ const AdminPanel = () => {
       return;
     }
 
+    if (newUser.roles.length === 0) {
+      toast.error("Please select at least one role");
+      return;
+    }
+
     setSubmitting(true);
     try {
+      // Create user with primary role
       const { data, error } = await createUserWithRole(
         newUser.email,
         newUser.password,
         newUser.fullName,
-        newUser.role,
+        newUser.primaryRole,
         newUser.buildingId || undefined,
         newUser.unitId || undefined
       );
@@ -196,19 +252,29 @@ const AdminPanel = () => {
         return;
       }
 
+      // If user created successfully and has multiple roles, add them to user_roles table
+      if (data?.user?.id && newUser.roles.length > 0) {
+        const { error: rolesError } = await setUserRoles(data.user.id, newUser.roles);
+        if (rolesError) {
+          console.error('Error setting user roles:', rolesError);
+          // Don't fail the whole operation, user is created
+        }
+      }
+
       toast.success("User created successfully");
       setShowCreateDialog(false);
       setNewUser({
         email: "",
         password: "",
         fullName: "",
-        role: "tenant",
+        roles: [],
+        primaryRole: "tenant",
         buildingId: "",
         unitId: "",
       });
 
       // Refresh users
-      const { users: updatedUsers } = await getAllUsers();
+      const { users: updatedUsers } = await getAllUsersWithRoles();
       setUsers(updatedUsers || []);
     } catch (error) {
       console.error('Error:', error);
@@ -222,19 +288,32 @@ const AdminPanel = () => {
   const handleEditUser = async () => {
     if (!selectedUser) return;
 
+    if (editUser.roles.length === 0) {
+      toast.error("Please select at least one role");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const { user, error } = await updateUserProfile(selectedUser.id, {
-        role: editUser.role,
+      // Update user profile with primary role
+      const { error } = await updateUserProfile(selectedUser.id, {
+        role: editUser.primaryRole,
         building_id: editUser.buildingId || null,
         unit_id: editUser.unitId || null,
-        is_active: editUser.isActive,
       });
 
       if (error) {
         console.error('Error updating user:', error);
-        toast.error("Error updating user");
+        const errorMessage = error.message || error.toString() || "Error updating user";
+        toast.error(`Update failed: ${errorMessage}`);
         return;
+      }
+
+      // Update user roles in user_roles table
+      const { error: rolesError } = await setUserRoles(selectedUser.id, editUser.roles);
+      if (rolesError) {
+        console.error('Error updating user roles:', rolesError);
+        // Don't fail the whole operation
       }
 
       toast.success("User updated successfully");
@@ -242,11 +321,12 @@ const AdminPanel = () => {
       setSelectedUser(null);
 
       // Refresh users
-      const { users: updatedUsers } = await getAllUsers();
+      const { users: updatedUsers } = await getAllUsersWithRoles();
       setUsers(updatedUsers || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
-      toast.error("Error updating user");
+      const errorMessage = error?.message || error?.toString() || "Unknown error";
+      toast.error(`Error updating user: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
@@ -255,11 +335,15 @@ const AdminPanel = () => {
   // Open edit dialog
   const openEditDialog = async (user: User) => {
     setSelectedUser(user);
+
+    // Get user's roles from user_roles array
+    const userRoles = user.user_roles?.map(ur => ur.role) || [user.role];
+
     setEditUser({
-      role: user.role,
+      roles: userRoles,
+      primaryRole: user.role,
       buildingId: user.building_id || "",
       unitId: user.unit_id || "",
-      isActive: user.is_active,
     });
 
     // Load units if building is set
@@ -271,64 +355,75 @@ const AdminPanel = () => {
     setShowEditDialog(true);
   };
 
-  // Open password change dialog
+  // Open password reset dialog
   const openPasswordDialog = (user: User) => {
     setSelectedUser(user);
-    setNewPasswordForm({
-      password: "",
-      confirmPassword: "",
-    });
     setShowPasswordDialog(true);
   };
 
-  // Handle password change
-  const handleChangePassword = async () => {
+  // Handle password reset email
+  const handleSendPasswordReset = async () => {
     if (!selectedUser) return;
-
-    // Validation
-    if (!newPasswordForm.password || !newPasswordForm.confirmPassword) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    if (newPasswordForm.password !== newPasswordForm.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    if (newPasswordForm.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
 
     setSubmitting(true);
     try {
-      const { data, error } = await adminChangeUserPassword(
-        selectedUser.id,
-        newPasswordForm.password
-      );
+      const { error } = await sendPasswordResetEmail(selectedUser.email);
 
       if (error) {
-        console.error('Error changing password:', error);
-        toast.error(error.message || "Error changing password");
+        console.error('Error sending password reset:', error);
+        toast.error(error.message || "Error sending password reset email");
         return;
       }
 
-      toast.success(`Password changed successfully for ${selectedUser.full_name}`);
+      toast.success(`Password reset email sent to ${selectedUser.email}`);
       setShowPasswordDialog(false);
       setSelectedUser(null);
-      setNewPasswordForm({ password: "", confirmPassword: "" });
     } catch (error) {
       console.error('Error:', error);
-      toast.error("Error changing password");
+      toast.error("Error sending password reset email");
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Get role badge
+  // Open delete confirmation dialog
+  const openDeleteDialog = (user: User) => {
+    setSelectedUser(user);
+    setShowDeleteDialog(true);
+  };
+
+  // Handle delete user
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+
+    setSubmitting(true);
+    try {
+      const { error } = await deleteUser(selectedUser.id);
+
+      if (error) {
+        console.error('Error deleting user:', error);
+        toast.error(error.message || "Error deleting user");
+        return;
+      }
+
+      toast.success(`User ${selectedUser.full_name} deleted successfully`);
+      setShowDeleteDialog(false);
+      setSelectedUser(null);
+
+      // Refresh users
+      const { users: updatedUsers } = await getAllUsersWithRoles();
+      setUsers(updatedUsers || []);
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Error deleting user");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Get role badge with color
   const getRoleBadge = (role: UserRole) => {
-    const roleConfig = {
+    const roleConfig: Record<UserRole, { className: string; label: string }> = {
       owner: { className: "bg-purple-100 text-purple-700 border-purple-200", label: "Owner" },
       tenant: { className: "bg-blue-100 text-blue-700 border-blue-200", label: "Tenant" },
       super_admin: { className: "bg-red-100 text-red-700 border-red-200", label: "Super Admin" },
@@ -340,6 +435,20 @@ const AdminPanel = () => {
       <Badge variant="outline" className={config.className}>
         {config.label}
       </Badge>
+    );
+  };
+
+  // Get all roles display for a user
+  const getUserRolesDisplay = (user: User) => {
+    const roles = user.user_roles?.map(ur => ur.role) || [user.role];
+    const uniqueRoles = [...new Set(roles)];
+
+    return (
+      <div className="flex flex-wrap gap-1">
+        {uniqueRoles.map(role => (
+          <span key={role}>{getRoleBadge(role)}</span>
+        ))}
+      </div>
     );
   };
 
@@ -434,10 +543,9 @@ const AdminPanel = () => {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
+                    <TableHead>Roles</TableHead>
                     <TableHead>Building</TableHead>
                     <TableHead>Unit</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -447,14 +555,9 @@ const AdminPanel = () => {
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.full_name}</TableCell>
                       <TableCell>{user.email}</TableCell>
-                      <TableCell>{getRoleBadge(user.role)}</TableCell>
+                      <TableCell>{getUserRolesDisplay(user)}</TableCell>
                       <TableCell>{user.building?.name || '-'}</TableCell>
                       <TableCell>{user.unit?.unit_number || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={user.is_active ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-700 border-gray-200"}>
-                          {user.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
                       <TableCell>{formatDate(user.created_at)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -467,14 +570,25 @@ const AdminPanel = () => {
                             <Edit className="w-4 h-4" />
                           </Button>
                           {profile?.role === 'super_admin' && user.id !== profile.id && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => openPasswordDialog(user)}
-                              title="Change password"
-                            >
-                              <Key className="w-4 h-4" />
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openPasswordDialog(user)}
+                                title="Send password reset email"
+                              >
+                                <Key className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openDeleteDialog(user)}
+                                title="Delete user"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>
@@ -493,7 +607,7 @@ const AdminPanel = () => {
           <DialogHeader>
             <DialogTitle>Create New User</DialogTitle>
             <DialogDescription>
-              Create a new user account with specific role and building assignment
+              Create a new user account with multiple roles and building assignment
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -519,34 +633,41 @@ const AdminPanel = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="password">Password *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  placeholder="Minimum 6 characters"
-                />
+            <div>
+              <Label htmlFor="password">Password *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                placeholder="Minimum 6 characters"
+              />
+            </div>
+
+            <div>
+              <Label>Roles * (select one or more)</Label>
+              <div className="grid grid-cols-2 gap-3 mt-2 p-4 border rounded-lg">
+                {AVAILABLE_ROLES.map(({ value, label }) => (
+                  <div key={value} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`new-role-${value}`}
+                      checked={newUser.roles.includes(value)}
+                      onCheckedChange={(checked) => handleNewUserRoleChange(value, checked as boolean)}
+                    />
+                    <label
+                      htmlFor={`new-role-${value}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {label}
+                    </label>
+                  </div>
+                ))}
               </div>
-              <div>
-                <Label htmlFor="role">Role *</Label>
-                <Select
-                  value={newUser.role}
-                  onValueChange={(value) => setNewUser({ ...newUser, role: value as UserRole })}
-                >
-                  <SelectTrigger id="role">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="tenant">Tenant</SelectItem>
-                    <SelectItem value="owner">Owner</SelectItem>
-                    <SelectItem value="super_admin">Super Admin</SelectItem>
-                    <SelectItem value="regular_user">Regular User</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {newUser.roles.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Primary role: {AVAILABLE_ROLES.find(r => r.value === newUser.primaryRole)?.label}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -606,7 +727,7 @@ const AdminPanel = () => {
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>
-              Update user role, building, and unit assignment
+              Update user roles, building, and unit assignment
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -621,39 +742,30 @@ const AdminPanel = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="editRole">Role</Label>
-                <Select
-                  value={editUser.role}
-                  onValueChange={(value) => setEditUser({ ...editUser, role: value as UserRole })}
-                >
-                  <SelectTrigger id="editRole">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="tenant">Tenant</SelectItem>
-                    <SelectItem value="owner">Owner</SelectItem>
-                    <SelectItem value="super_admin">Super Admin</SelectItem>
-                    <SelectItem value="regular_user">Regular User</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div>
+              <Label>Roles * (select one or more)</Label>
+              <div className="grid grid-cols-2 gap-3 mt-2 p-4 border rounded-lg">
+                {AVAILABLE_ROLES.map(({ value, label }) => (
+                  <div key={value} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`edit-role-${value}`}
+                      checked={editUser.roles.includes(value)}
+                      onCheckedChange={(checked) => handleEditUserRoleChange(value, checked as boolean)}
+                    />
+                    <label
+                      htmlFor={`edit-role-${value}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {label}
+                    </label>
+                  </div>
+                ))}
               </div>
-              <div>
-                <Label htmlFor="editStatus">Status</Label>
-                <Select
-                  value={editUser.isActive ? "active" : "inactive"}
-                  onValueChange={(value) => setEditUser({ ...editUser, isActive: value === "active" })}
-                >
-                  <SelectTrigger id="editStatus">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {editUser.roles.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Primary role: {AVAILABLE_ROLES.find(r => r.value === editUser.primaryRole)?.label}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -711,53 +823,69 @@ const AdminPanel = () => {
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Change User Password</DialogTitle>
+            <DialogTitle>Reset User Password</DialogTitle>
             <DialogDescription>
-              Change password for {selectedUser?.full_name} ({selectedUser?.email})
+              Send a password reset email to this user
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                <strong>Warning:</strong> This will change the user's password immediately.
-                The user will need to use the new password for their next login.
-              </p>
+          <div className="py-4">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="font-medium text-blue-800">{selectedUser?.full_name}</p>
+              <p className="text-sm text-blue-600">{selectedUser?.email}</p>
             </div>
-
-            <div>
-              <Label htmlFor="newPassword">New Password *</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPasswordForm.password}
-                onChange={(e) => setNewPasswordForm({ ...newPasswordForm, password: e.target.value })}
-                placeholder="Minimum 6 characters"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="confirmPassword">Confirm Password *</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={newPasswordForm.confirmPassword}
-                onChange={(e) => setNewPasswordForm({ ...newPasswordForm, confirmPassword: e.target.value })}
-                placeholder="Re-enter password"
-              />
-            </div>
+            <p className="text-sm text-muted-foreground mt-4">
+              A password reset link will be sent to the user's email address.
+              They can use it to set a new password.
+            </p>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
                 setShowPasswordDialog(false);
-                setNewPasswordForm({ password: "", confirmPassword: "" });
+                setSelectedUser(null);
               }}
             >
               Cancel
             </Button>
-            <Button onClick={handleChangePassword} disabled={submitting}>
-              {submitting ? "Changing..." : "Change Password"}
+            <Button onClick={handleSendPasswordReset} disabled={submitting}>
+              {submitting ? "Sending..." : "Send Reset Email"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this user? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="font-medium text-red-800">{selectedUser?.full_name}</p>
+              <p className="text-sm text-red-600">{selectedUser?.email}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setSelectedUser(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={submitting}
+            >
+              {submitting ? "Deleting..." : "Delete User"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -14,7 +14,7 @@ export type Json =
 export type UserRole = 'regular_user' | 'tenant' | 'owner' | 'super_admin';
 export type PaymentStatus = 'paid' | 'pending' | 'overdue';
 export type ConceptType = 'invoice_credit' | 'invoice_cash' | 'receipt' | 'credit_note';
-export type ReservationStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
+export type ReservationStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type IncidentStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 export type IncidentType = 'maintenance' | 'complaint' | 'suggestion';
 

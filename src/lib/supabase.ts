@@ -101,17 +101,6 @@ export const getUserUnits = async (userId: string) => {
 };
 
 /**
- * Get all roles for a user (supports multiple roles per user)
- */
-export const getUserRoles = async (userId: string) => {
-  const { data, error } = await supabase.rpc('get_user_roles', {
-    p_user_id: userId,
-  });
-
-  return { roles: data?.map((r) => r.role) || [], error };
-};
-
-/**
  * Check if user has a specific role
  */
 export const userHasRole = async (userId: string, role: string) => {
@@ -269,9 +258,94 @@ export const getBuildingAmenities = async (buildingId: string) => {
     .select('*')
     .eq('building_id', buildingId)
     .eq('is_active', true)
-    .order('display_name_es');
+    .order('name_es');
 
   return { amenities: data, error };
+};
+
+/**
+ * Get all amenities with building info
+ */
+export const getAllAmenities = async () => {
+  const { data, error } = await supabase
+    .from('amenities')
+    .select('*, building:buildings(id, name)')
+    .order('name_es');
+
+  return { amenities: data, error };
+};
+
+/**
+ * Get a single amenity by ID
+ */
+export const getAmenity = async (id: string) => {
+  const { data, error } = await supabase
+    .from('amenities')
+    .select('*, building:buildings(id, name)')
+    .eq('id', id)
+    .single();
+
+  return { amenity: data, error };
+};
+
+/**
+ * Create a new amenity
+ */
+export const createAmenity = async (amenity: {
+  building_id: string;
+  name_es: string;
+  name_en?: string | null;
+  description_es?: string | null;
+  description_en?: string | null;
+  max_capacity?: number | null;
+  requires_approval?: boolean;
+  is_active?: boolean;
+}) => {
+  const { data, error } = await supabase
+    .from('amenities')
+    .insert(amenity)
+    .select('*, building:buildings(id, name)')
+    .single();
+
+  return { amenity: data, error };
+};
+
+/**
+ * Update an amenity
+ */
+export const updateAmenity = async (
+  id: string,
+  updates: {
+    building_id?: string;
+    name_es?: string;
+    name_en?: string | null;
+    description_es?: string | null;
+    description_en?: string | null;
+    max_capacity?: number | null;
+    requires_approval?: boolean;
+    is_active?: boolean;
+  }
+) => {
+  const { data, error } = await supabase
+    .from('amenities')
+    .update(updates)
+    .eq('id', id)
+    .select('*, building:buildings(id, name)')
+    .single();
+
+  return { amenity: data, error };
+};
+
+/**
+ * Delete an amenity
+ */
+export const deleteAmenity = async (id: string) => {
+  const { error } = await supabase
+    .from('amenities')
+    .delete()
+    .eq('id', id);
+
+  return { error };
 };
 
 /**
@@ -309,7 +383,95 @@ export const createReservation = async (
       notes,
       status: 'pending',
     })
-    .select()
+    .select('*, amenity:amenities(id, name_es, name_en, building_id), user:users(id, full_name, email)')
+    .single();
+
+  return { reservation: data, error };
+};
+
+/**
+ * Get all reservations with amenity and user info (admin view)
+ */
+export const getAllReservations = async () => {
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('*, amenity:amenities(id, name_es, name_en, building_id, building:buildings(id, name)), user:users(id, full_name, email)')
+    .order('reservation_date', { ascending: false });
+
+  return { reservations: data, error };
+};
+
+/**
+ * Get reservations by building (for building admins)
+ */
+export const getReservationsByBuilding = async (buildingId: string) => {
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('*, amenity:amenities!inner(id, name_es, name_en, building_id, building:buildings(id, name)), user:users(id, full_name, email)')
+    .eq('amenity.building_id', buildingId)
+    .order('reservation_date', { ascending: false });
+
+  return { reservations: data, error };
+};
+
+/**
+ * Get a single reservation by ID
+ */
+export const getReservation = async (id: string) => {
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('*, amenity:amenities(id, name_es, name_en, building_id, building:buildings(id, name)), user:users(id, full_name, email)')
+    .eq('id', id)
+    .single();
+
+  return { reservation: data, error };
+};
+
+/**
+ * Update a reservation
+ */
+export const updateReservation = async (
+  id: string,
+  updates: {
+    amenity_id?: string;
+    reservation_date?: string;
+    start_time?: string;
+    end_time?: string;
+    status?: string;
+    notes?: string | null;
+  }
+) => {
+  const { data, error } = await supabase
+    .from('reservations')
+    .update(updates)
+    .eq('id', id)
+    .select('*, amenity:amenities(id, name_es, name_en, building_id, building:buildings(id, name)), user:users(id, full_name, email)')
+    .single();
+
+  return { reservation: data, error };
+};
+
+/**
+ * Delete a reservation
+ */
+export const deleteReservation = async (id: string) => {
+  const { error } = await supabase
+    .from('reservations')
+    .delete()
+    .eq('id', id);
+
+  return { error };
+};
+
+/**
+ * Update reservation status (approve/reject/cancel)
+ */
+export const updateReservationStatus = async (id: string, status: string) => {
+  const { data, error } = await supabase
+    .from('reservations')
+    .update({ status })
+    .eq('id', id)
+    .select('*, amenity:amenities(id, name_es, name_en, building_id), user:users(id, full_name, email)')
     .single();
 
   return { reservation: data, error };
@@ -435,6 +597,73 @@ export const getAllBuildings = async () => {
 };
 
 /**
+ * Get a single building by ID
+ */
+export const getBuilding = async (id: string) => {
+  const { data, error } = await supabase
+    .from('buildings')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  return { building: data, error };
+};
+
+/**
+ * Create a new building
+ */
+export const createBuilding = async (building: {
+  name: string;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  total_units?: number | null;
+}) => {
+  const { data, error } = await supabase
+    .from('buildings')
+    .insert(building)
+    .select()
+    .single();
+
+  return { building: data, error };
+};
+
+/**
+ * Update a building
+ */
+export const updateBuilding = async (
+  id: string,
+  updates: {
+    name?: string;
+    address?: string | null;
+    city?: string | null;
+    country?: string | null;
+    total_units?: number | null;
+  }
+) => {
+  const { data, error } = await supabase
+    .from('buildings')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  return { building: data, error };
+};
+
+/**
+ * Delete a building
+ */
+export const deleteBuilding = async (id: string) => {
+  const { error } = await supabase
+    .from('buildings')
+    .delete()
+    .eq('id', id);
+
+  return { error };
+};
+
+/**
  * Get units in a building
  */
 export const getBuildingUnits = async (buildingId: string) => {
@@ -448,6 +677,89 @@ export const getBuildingUnits = async (buildingId: string) => {
 };
 
 /**
+ * Get all units with building info
+ */
+export const getAllUnits = async () => {
+  const { data, error } = await supabase
+    .from('units')
+    .select('*, building:buildings(id, name)')
+    .order('unit_number');
+
+  return { units: data, error };
+};
+
+/**
+ * Get a single unit by ID
+ */
+export const getUnit = async (id: string) => {
+  const { data, error } = await supabase
+    .from('units')
+    .select('*, building:buildings(id, name)')
+    .eq('id', id)
+    .single();
+
+  return { unit: data, error };
+};
+
+/**
+ * Create a new unit
+ */
+export const createUnit = async (unit: {
+  building_id: string;
+  unit_number: string;
+  floor?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  area_sqm?: number | null;
+  monthly_fee?: number | null;
+}) => {
+  const { data, error } = await supabase
+    .from('units')
+    .insert(unit)
+    .select('*, building:buildings(id, name)')
+    .single();
+
+  return { unit: data, error };
+};
+
+/**
+ * Update a unit
+ */
+export const updateUnit = async (
+  id: string,
+  updates: {
+    building_id?: string;
+    unit_number?: string;
+    floor?: number | null;
+    bedrooms?: number | null;
+    bathrooms?: number | null;
+    area_sqm?: number | null;
+    monthly_fee?: number | null;
+  }
+) => {
+  const { data, error } = await supabase
+    .from('units')
+    .update(updates)
+    .eq('id', id)
+    .select('*, building:buildings(id, name)')
+    .single();
+
+  return { unit: data, error };
+};
+
+/**
+ * Delete a unit
+ */
+export const deleteUnit = async (id: string) => {
+  const { error } = await supabase
+    .from('units')
+    .delete()
+    .eq('id', id);
+
+  return { error };
+};
+
+/**
  * Update user profile (role, building, unit)
  */
 export const updateUserProfile = async (
@@ -456,7 +768,6 @@ export const updateUserProfile = async (
     role?: string;
     building_id?: string;
     unit_id?: string;
-    is_active?: boolean;
     full_name?: string;
   }
 ) => {
@@ -497,66 +808,193 @@ export const createUserWithRole = async (
     return { data: null, error: authError };
   }
 
-  // Wait a moment for the trigger to create the user profile
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  if (!authData.user) {
+    return { data: authData, error: null };
+  }
 
-  // Update the user profile with role, building, and unit
-  if (authData.user) {
+  // Wait for the trigger to create the user profile with retry mechanism
+  const maxRetries = 5;
+  const retryDelay = 1000; // 1 second between retries
+
+  let existingUser = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, retryDelay));
+
+    const { data: user, error: checkError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', authData.user.id)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error(`Attempt ${attempt}: Error checking user:`, checkError);
+    }
+
+    if (user) {
+      existingUser = user;
+      break;
+    }
+
+    console.log(`Attempt ${attempt}: User profile not found yet, retrying...`);
+  }
+
+  if (existingUser) {
+    // User exists, update it with role and other details
     const { data: userData, error: updateError } = await supabase
       .from('users')
       .update({
         role,
         building_id: buildingId || null,
         unit_id: unitId || null,
+        full_name: fullName,
       })
       .eq('id', authData.user.id)
-      .select()
-      .single();
+      .select();
 
     if (updateError) {
+      console.error('Error updating user:', updateError);
       return { data: authData, error: updateError };
     }
 
-    return { data: { auth: authData, user: userData }, error: null };
+    return { data: { auth: authData, user: userData?.[0] || null }, error: null };
+  } else {
+    // User profile was not created by trigger after all retries
+    // Return auth data with a warning - the user exists in auth but profile needs manual setup
+    console.error('User profile was not created by database trigger after multiple retries');
+    return {
+      data: authData,
+      error: new Error('User account created but profile setup failed. The database trigger may not be configured correctly.')
+    };
   }
-
-  return { data: authData, error: null };
 };
 
 /**
- * Admin function to change another user's password
- * Note: This requires admin privileges on the Supabase project
- * For this to work, you need to use the Supabase Admin API or Service Role
+ * Delete a user (removes from users table - auth user remains)
  */
-export const adminChangeUserPassword = async (
-  userId: string,
-  newPassword: string
-) => {
-  try {
-    // Using Supabase Admin API through Edge Function or Service Role
-    // Since we're in a client app, we'll use the RPC method
-    const { data, error } = await supabase.rpc('admin_update_user_password', {
-      user_id: userId,
-      new_password: newPassword,
-    });
+export const deleteUser = async (userId: string) => {
+  // First delete from user_roles
+  await supabase
+    .from('user_roles')
+    .delete()
+    .eq('user_id', userId);
 
-    if (error) {
-      // If RPC doesn't exist, we'll try the alternative method
-      // This method requires the service role key to be available
-      console.error('RPC method failed, trying alternative:', error);
+  // Then delete from users table
+  const { error } = await supabase
+    .from('users')
+    .delete()
+    .eq('id', userId);
 
-      // Alternative: Use Supabase Auth Admin API if available
-      // This would typically be done on the backend, but for now we'll return an error
-      return {
-        data: null,
-        error: new Error('Password reset requires backend implementation. Please use the Edge Function method.')
-      };
-    }
+  return { error };
+};
 
-    return { data, error: null };
-  } catch (error: any) {
-    return { data: null, error };
+/**
+ * Send password reset email to a user
+ * This sends an email to the user with a link to reset their password
+ */
+export const sendPasswordResetEmail = async (email: string) => {
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+
+  return { data, error };
+};
+
+// =====================================================
+// USER ROLES MANAGEMENT (Multiple roles per user)
+// =====================================================
+
+/**
+ * Get all roles for a user
+ */
+export const getUserRoles = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at');
+
+  return { roles: data, error };
+};
+
+/**
+ * Assign a role to a user
+ */
+export const assignRoleToUser = async (userId: string, role: string) => {
+  const { data, error } = await supabase
+    .from('user_roles')
+    .insert({ user_id: userId, role })
+    .select()
+    .single();
+
+  return { userRole: data, error };
+};
+
+/**
+ * Remove a role from a user
+ */
+export const removeRoleFromUser = async (userId: string, role: string) => {
+  const { error } = await supabase
+    .from('user_roles')
+    .delete()
+    .eq('user_id', userId)
+    .eq('role', role);
+
+  return { error };
+};
+
+/**
+ * Set multiple roles for a user (replaces existing roles)
+ */
+export const setUserRoles = async (userId: string, roles: string[]) => {
+  // First, delete all existing roles for this user
+  const { error: deleteError } = await supabase
+    .from('user_roles')
+    .delete()
+    .eq('user_id', userId);
+
+  if (deleteError) {
+    return { error: deleteError };
   }
+
+  // If no roles to add, return success
+  if (roles.length === 0) {
+    return { error: null };
+  }
+
+  // Insert new roles
+  const rolesToInsert = roles.map(role => ({
+    user_id: userId,
+    role
+  }));
+
+  const { data, error } = await supabase
+    .from('user_roles')
+    .insert(rolesToInsert)
+    .select();
+
+  return { roles: data, error };
+};
+
+/**
+ * Get all users with their roles
+ */
+export const getAllUsersWithRoles = async () => {
+  const { data: users, error: usersError } = await supabase
+    .from('users')
+    .select(`
+      *,
+      building:buildings(id, name),
+      unit:units(id, unit_number),
+      user_roles(role)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (usersError) {
+    return { users: null, error: usersError };
+  }
+
+  return { users, error: null };
 };
 
 // =====================================================
@@ -665,4 +1103,136 @@ export const getPublicUrl = (bucket: string, path: string) => {
 export const deleteFile = async (bucket: string, path: string) => {
   const { data, error } = await supabase.storage.from(bucket).remove([path]);
   return { data, error };
+};
+
+// =====================================================
+// PERMISSIONS MANAGEMENT
+// =====================================================
+
+/**
+ * Get all permissions
+ */
+export const getAllPermissions = async () => {
+  const { data, error } = await supabase
+    .from('permissions')
+    .select('*');
+
+  return { permissions: data, error };
+};
+
+/**
+ * Get a single permission by ID
+ */
+export const getPermission = async (id: string) => {
+  const { data, error } = await supabase
+    .from('permissions')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  return { permission: data, error };
+};
+
+/**
+ * Create a new permission
+ */
+export const createPermission = async (permission: {
+  name: string;
+  resource: string;
+  action: string;
+  description?: string | null;
+}) => {
+  const { data, error } = await supabase
+    .from('permissions')
+    .insert(permission)
+    .select()
+    .single();
+
+  return { permission: data, error };
+};
+
+/**
+ * Update a permission
+ */
+export const updatePermission = async (
+  id: string,
+  updates: {
+    name?: string;
+    resource?: string;
+    action?: string;
+    description?: string | null;
+  }
+) => {
+  const { data, error } = await supabase
+    .from('permissions')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  return { permission: data, error };
+};
+
+/**
+ * Delete a permission
+ */
+export const deletePermission = async (id: string) => {
+  const { error } = await supabase
+    .from('permissions')
+    .delete()
+    .eq('id', id);
+
+  return { error };
+};
+
+/**
+ * Get permissions for a specific role
+ */
+export const getRolePermissions = async (role: string) => {
+  const { data, error } = await supabase
+    .from('role_permissions')
+    .select('*, permission:permissions(*)')
+    .eq('role', role);
+
+  return { rolePermissions: data, error };
+};
+
+/**
+ * Assign a permission to a role
+ */
+export const assignPermissionToRole = async (role: string, permissionId: string) => {
+  const { data, error } = await supabase
+    .from('role_permissions')
+    .insert({
+      role,
+      permission_id: permissionId,
+    })
+    .select()
+    .single();
+
+  return { rolePermission: data, error };
+};
+
+/**
+ * Remove a permission from a role
+ */
+export const removePermissionFromRole = async (role: string, permissionId: string) => {
+  const { error } = await supabase
+    .from('role_permissions')
+    .delete()
+    .eq('role', role)
+    .eq('permission_id', permissionId);
+
+  return { error };
+};
+
+/**
+ * Get all role permissions (for all roles)
+ */
+export const getAllRolePermissions = async () => {
+  const { data, error } = await supabase
+    .from('role_permissions')
+    .select('*, permission:permissions(*)');
+
+  return { rolePermissions: data, error };
 };
