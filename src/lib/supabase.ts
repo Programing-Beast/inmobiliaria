@@ -812,35 +812,18 @@ export const createUserWithRole = async (
     return { data: authData, error: null };
   }
 
-  // Wait for the trigger to create the user profile with retry mechanism
-  const maxRetries = 5;
-  const retryDelay = 1000; // 1 second between retries
+  // Wait briefly for the trigger to create the user profile
+  await new Promise(resolve => setTimeout(resolve, 500));
 
-  let existingUser = null;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    await new Promise(resolve => setTimeout(resolve, retryDelay));
-
-    const { data: user, error: checkError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('id', authData.user.id)
-      .maybeSingle();
-
-    if (checkError) {
-      console.error(`Attempt ${attempt}: Error checking user:`, checkError);
-    }
-
-    if (user) {
-      existingUser = user;
-      break;
-    }
-
-    console.log(`Attempt ${attempt}: User profile not found yet, retrying...`);
-  }
+  // Check if trigger created the profile
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', authData.user.id)
+    .maybeSingle();
 
   if (existingUser) {
-    // User exists, update it with role and other details
+    // Trigger worked - update with role and other details
     const { data: userData, error: updateError } = await supabase
       .from('users')
       .update({
@@ -858,15 +841,30 @@ export const createUserWithRole = async (
     }
 
     return { data: { auth: authData, user: userData?.[0] || null }, error: null };
-  } else {
-    // User profile was not created by trigger after all retries
-    // Return auth data with a warning - the user exists in auth but profile needs manual setup
-    console.error('User profile was not created by database trigger after multiple retries');
-    return {
-      data: authData,
-      error: new Error('User account created but profile setup failed. The database trigger may not be configured correctly.')
-    };
   }
+
+  // Trigger didn't create profile - create it directly
+  console.log('Database trigger did not create profile, creating directly...');
+
+  const { data: insertedUser, error: insertError } = await supabase
+    .from('users')
+    .insert({
+      id: authData.user.id,
+      email: email,
+      full_name: fullName,
+      role,
+      building_id: buildingId || null,
+      unit_id: unitId || null,
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error('Error creating user profile directly:', insertError);
+    return { data: authData, error: insertError };
+  }
+
+  return { data: { auth: authData, user: insertedUser }, error: null };
 };
 
 /**
