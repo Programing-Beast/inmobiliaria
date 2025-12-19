@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase, getUserProfile, getUserUnits, getUserRoles } from '@/lib/supabase';
+import { supabase, getUserProfile, getUserUnits, getUserRoles, signIn, signUp as signUpUser, signOut as signOutUser } from '@/lib/supabase';
 import type { UserRole } from '@/lib/database.types';
 
 interface UserUnit {
@@ -12,6 +11,11 @@ interface UserUnit {
   relationship_type: string;
   floor: number | null;
   area_sqm: number | null;
+}
+
+interface User {
+  id: string;
+  email: string | null;
 }
 
 interface UserProfile {
@@ -26,6 +30,10 @@ interface UserProfile {
   units?: UserUnit[];
   roles?: UserRole[];
   currentUnit?: UserUnit | null;
+}
+
+interface Session {
+  user: User;
 }
 
 interface AuthContextType {
@@ -78,12 +86,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return;
       }
 
+      if (!userProfile) {
+        console.error('No profile found for user:', userId);
+        return;
+      }
+
+      // Extract roles from the roles array
+      const userRoles = roles?.map((r: any) => r.role) || [userProfile.role];
+
       // Combine all data
       const enhancedProfile: UserProfile = {
         ...userProfile,
         units: units || [],
-        roles: roles || [userProfile.role],
-        currentUnit: units?.find(u => u.is_primary) || units?.[0] || null,
+        roles: userRoles,
+        currentUnit: units?.find((u: UserUnit) => u.is_primary) || units?.[0] || null,
       };
 
       setProfile(enhancedProfile);
@@ -128,52 +144,59 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Initialize auth state
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
+    // Check for existing session in localStorage
+    const userId = localStorage.getItem('currentUserId');
+    const userEmail = localStorage.getItem('currentUserEmail');
+
+    if (userId && userEmail) {
+      const currentUser = { id: userId, email: userEmail };
+      setUser(currentUser);
+      setSession({ user: currentUser });
+      fetchProfile(userId);
+    }
+
+    setLoading(false);
+
+    // Listen for storage changes (for multi-tab support)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'currentUserId') {
+        if (e.newValue) {
+          const newUser = { id: e.newValue, email: localStorage.getItem('currentUserEmail') };
+          setUser(newUser);
+          setSession({ user: newUser });
+          fetchProfile(e.newValue);
+        } else {
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+        }
       }
-      setLoading(false);
-    });
+    };
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    window.addEventListener('storage', handleStorageChange);
 
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
-        // Clear localStorage
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('userName');
-        localStorage.removeItem('userUnit');
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // Sign up function
   const handleSignUp = async (email: string, password: string, fullName: string) => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-        },
-      });
+      const { data, error } = await signUpUser(email, password, fullName);
 
-      return { error };
+      if (error) {
+        return { error };
+      }
+
+      if (data?.user) {
+        const newUser = { id: data.user.id, email: data.user.email || email };
+        setUser(newUser);
+        setSession({ user: newUser });
+        await fetchProfile(data.user.id);
+      }
+
+      return { error: null };
     } catch (error: any) {
       return { error };
     }
@@ -182,12 +205,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Sign in function
   const handleSignIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await signIn(email, password);
 
-      return { error };
+      if (error) {
+        return { error };
+      }
+
+      if (data?.user) {
+        const newUser = { id: data.user.id, email: data.user.email || email };
+        setUser(newUser);
+        setSession({ user: newUser });
+        await fetchProfile(data.user.id);
+      }
+
+      return { error: null };
     } catch (error: any) {
       return { error };
     }
@@ -196,12 +227,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Sign out function
   const handleSignOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await signOutUser();
+
+      // Clear state
+      setUser(null);
+      setSession(null);
+      setProfile(null);
 
       // Clear localStorage
+      localStorage.removeItem('currentUserId');
+      localStorage.removeItem('currentUserEmail');
       localStorage.removeItem('userRole');
       localStorage.removeItem('userName');
       localStorage.removeItem('userUnit');
+      localStorage.removeItem('currentUnitNumber');
+      localStorage.removeItem('userUnits');
+      localStorage.removeItem('userRoles');
 
       return { error };
     } catch (error: any) {
