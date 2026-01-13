@@ -1,6 +1,10 @@
 const DEFAULT_BASE_URL = "https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal";
 
 const portalBaseUrl = import.meta.env.VITE_PORTAL_API_BASE_URL || DEFAULT_BASE_URL;
+const dashboardIncidentsPath =
+  import.meta.env.VITE_PORTAL_DASHBOARD_INCIDENTS_PATH || "dashboard/incidencias";
+const approvalsReservationsPath =
+  import.meta.env.VITE_PORTAL_APPROVALS_RESERVATIONS_PATH || "approvals/reservations";
 const portalTokenKey = "portalToken";
 const portalTokenTypeKey = "portalTokenType";
 
@@ -183,10 +187,10 @@ export const portalGetDashboardIncidents = (params?: {
   titulo?: string;
   page?: number;
   limit?: number;
-}) => portalRequest("dashboard/incidencias", { params });
+}) => portalRequest(dashboardIncidentsPath, { params });
 
 export const portalGetApprovalsReservations = (params?: { page?: number; limit?: number }) =>
-  portalRequest("approvals/reservations", { params });
+  portalRequest(approvalsReservationsPath, { params });
 
 export const portalApproveReservation = (reservationId: number | string) =>
-  portalRequest(`approvals/reservations/${reservationId}`, { method: "PUT" });
+  portalRequest(`${approvalsReservationsPath}/${reservationId}`, { method: "PUT" });

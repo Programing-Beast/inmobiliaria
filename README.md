@@ -67,3 +67,20 @@ npm run test
 
 ## Sync Queue
 Failed Portal API writes are stored in a local queue. Use the Sync Queue panel in the Admin screen to view and retry pending jobs.
+
+## Turso Migration & Seeding
+1) Ensure `.env` has the Turso credentials:
+```env
+VITE_TURSO_DATABASE_URL=libsql://your-db.turso.io
+VITE_TURSO_AUTH_TOKEN=your-turso-auth-token
+```
+
+2) Run the migration script:
+```bash
+node turso/migrate.js
+```
+
+3) Seed demo users:
+```bash
+node turso/seed-users.js
+```
