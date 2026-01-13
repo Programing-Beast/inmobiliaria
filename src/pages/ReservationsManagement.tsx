@@ -36,13 +36,13 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getAllReservations,
-  createReservation,
   updateReservation,
   deleteReservation,
   updateReservationStatus,
   getAllAmenities,
   getAllUsersWithRoles,
 } from "@/lib/supabase";
+import { createReservationSynced } from "@/lib/portal-sync";
 import { toast } from "sonner";
 
 type ReservationStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
@@ -112,7 +112,7 @@ const ReservationsManagement = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // Form state
-  const [reservationForm, setReservationForm] = useState({
+  const getDefaultReservationForm = () => ({
     user_id: "",
     amenity_id: "",
     reservation_date: "",
@@ -120,7 +120,14 @@ const ReservationsManagement = () => {
     end_time: "",
     status: "pending" as ReservationStatus,
     notes: "",
+    razonSocial: "",
+    correo: "",
+    celular: "",
+    cantidadPersonas: "",
+    abonado: "",
   });
+
+  const [reservationForm, setReservationForm] = useState(getDefaultReservationForm);
 
   // Check if user can access this page
   const canAccess = profile?.role === "super_admin" || profile?.role === "owner";
@@ -196,34 +203,69 @@ const ReservationsManagement = () => {
 
   // Reset form
   const resetForm = () => {
-    setReservationForm({
-      user_id: "",
-      amenity_id: "",
-      reservation_date: "",
-      start_time: "",
-      end_time: "",
-      status: "pending",
-      notes: "",
-    });
+    setReservationForm(getDefaultReservationForm());
   };
+
+  useEffect(() => {
+    if (!reservationForm.user_id) return;
+    const selectedUser = users.find((user) => user.id === reservationForm.user_id);
+    if (!selectedUser) return;
+    setReservationForm((prev) => ({
+      ...prev,
+      razonSocial: prev.razonSocial || selectedUser.full_name || "",
+      correo: prev.correo || selectedUser.email || "",
+      idUnidad: prev.idUnidad || selectedUser.unit?.id || "",
+    }));
+  }, [reservationForm.user_id, users]);
+
 
   // Handle create reservation
   const handleCreateReservation = async () => {
-    if (!reservationForm.user_id || !reservationForm.amenity_id || !reservationForm.reservation_date || !reservationForm.start_time || !reservationForm.end_time) {
+    if (
+      !reservationForm.user_id ||
+      !reservationForm.amenity_id ||
+      !reservationForm.reservation_date ||
+      !reservationForm.start_time ||
+      !reservationForm.end_time ||
+      !reservationForm.razonSocial ||
+      !reservationForm.correo ||
+      !reservationForm.celular ||
+      !reservationForm.cantidadPersonas
+    ) {
       toast.error(t("reservationsManagement.fillRequired"));
       return;
     }
 
     setSubmitting(true);
     try {
-      const { reservation, error } = await createReservation(
-        reservationForm.user_id,
-        reservationForm.amenity_id,
-        reservationForm.reservation_date,
-        reservationForm.start_time,
-        reservationForm.end_time,
-        reservationForm.notes || undefined
-      );
+      const selectedUser = users.find((user) => user.id === reservationForm.user_id);
+      const unitId = selectedUser?.unit?.id;
+      if (!unitId) {
+        toast.error("Selected user has no unit mapping");
+        setSubmitting(false);
+        return;
+      }
+
+      const { reservation, error } = await createReservationSynced({
+        email: profile?.email || undefined,
+        portalFields: {
+          razonSocial: reservationForm.razonSocial,
+          cantidadPersonas: Number(reservationForm.cantidadPersonas),
+          correo: reservationForm.correo,
+          celular: reservationForm.celular,
+          observacion: reservationForm.notes || undefined,
+          abonado: reservationForm.abonado || undefined,
+        },
+        localPayload: {
+          userId: reservationForm.user_id,
+          amenityId: reservationForm.amenity_id,
+          unitId,
+          reservationDate: reservationForm.reservation_date,
+          startTime: reservationForm.start_time,
+          endTime: reservationForm.end_time,
+          notes: reservationForm.notes || undefined,
+        },
+      });
 
       if (error) {
         console.error("Error creating reservation:", error);
@@ -693,6 +735,53 @@ const ReservationsManagement = () => {
                 onChange={(e) => setReservationForm({ ...reservationForm, notes: e.target.value })}
                 placeholder={t("reservationsManagement.notesPlaceholder")}
                 rows={3}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="razonSocial">Razón social *</Label>
+              <Input
+                id="razonSocial"
+                value={reservationForm.razonSocial}
+                onChange={(e) => setReservationForm({ ...reservationForm, razonSocial: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="correo">Correo *</Label>
+              <Input
+                id="correo"
+                type="email"
+                value={reservationForm.correo}
+                onChange={(e) => setReservationForm({ ...reservationForm, correo: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="celular">Celular *</Label>
+                <Input
+                  id="celular"
+                  value={reservationForm.celular}
+                  onChange={(e) => setReservationForm({ ...reservationForm, celular: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="cantidadPersonas">Cantidad de personas *</Label>
+                <Input
+                  id="cantidadPersonas"
+                  type="number"
+                  min="1"
+                  value={reservationForm.cantidadPersonas}
+                  onChange={(e) => setReservationForm({ ...reservationForm, cantidadPersonas: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="abonado">Abonado</Label>
+              <Input
+                id="abonado"
+                placeholder="SI/NO"
+                value={reservationForm.abonado}
+                onChange={(e) => setReservationForm({ ...reservationForm, abonado: e.target.value })}
               />
             </div>
           </div>

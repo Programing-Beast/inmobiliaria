@@ -17,7 +17,8 @@ import { Calendar, Clock, Plus, Info, CheckCircle2, XCircle, AlertCircle, FileTe
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { getBuildingAmenities, getUserReservations, createReservation } from "@/lib/supabase";
+import { getBuildingAmenities, getUserReservations } from "@/lib/supabase";
+import { createReservationSynced } from "@/lib/portal-sync";
 import { useLocalizedField } from "@/lib/i18n-helpers";
 import { toast } from "sonner";
 import type { ReservationStatus } from "@/lib/database.types";
@@ -57,12 +58,19 @@ const Reservas = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // New reservation form
-  const [newReservation, setNewReservation] = useState({
+  const getDefaultReservation = () => ({
     date: "",
     startTime: "",
     endTime: "",
     notes: "",
+    razonSocial: profile?.full_name || "",
+    correo: profile?.email || "",
+    celular: "",
+    cantidadPersonas: "",
+    abonado: "",
   });
+
+  const [newReservation, setNewReservation] = useState(getDefaultReservation);
 
   // Fetch amenities
   useEffect(() => {
@@ -99,6 +107,15 @@ const Reservas = () => {
     fetchAmenities();
   }, [profile, t]);
 
+  useEffect(() => {
+    if (!profile) return;
+    setNewReservation((prev) => ({
+      ...prev,
+      razonSocial: prev.razonSocial || profile.full_name || "",
+      correo: prev.correo || profile.email || "",
+    }));
+  }, [profile]);
+
   // Fetch user reservations
   useEffect(() => {
     const fetchReservations = async () => {
@@ -126,21 +143,47 @@ const Reservas = () => {
     if (!profile?.id || !selectedAmenity?.id) return;
 
     // Validation
-    if (!newReservation.date || !newReservation.startTime || !newReservation.endTime) {
+    if (
+      !newReservation.date ||
+      !newReservation.startTime ||
+      !newReservation.endTime ||
+      !newReservation.razonSocial ||
+      !newReservation.correo ||
+      !newReservation.celular ||
+      !newReservation.cantidadPersonas
+    ) {
       toast.error("Por favor completa todos los campos requeridos");
       return;
     }
 
     setSubmitting(true);
     try {
-      const { reservation, error } = await createReservation(
-        profile.id,
-        selectedAmenity.id,
-        newReservation.date,
-        newReservation.startTime,
-        newReservation.endTime,
-        newReservation.notes
-      );
+      const unitId = profile.currentUnit?.unit_id || profile.unit_id;
+      if (!unitId) {
+        toast.error("No hay unidad asignada");
+        return;
+      }
+
+      const { reservation, error } = await createReservationSynced({
+        email: profile.email || undefined,
+        portalFields: {
+          razonSocial: newReservation.razonSocial,
+          cantidadPersonas: Number(newReservation.cantidadPersonas),
+          correo: newReservation.correo,
+          celular: newReservation.celular,
+          observacion: newReservation.notes || undefined,
+          abonado: newReservation.abonado || undefined,
+        },
+        localPayload: {
+          userId: profile.id,
+          amenityId: selectedAmenity.id,
+          unitId,
+          reservationDate: newReservation.date,
+          startTime: newReservation.startTime,
+          endTime: newReservation.endTime,
+          notes: newReservation.notes || undefined,
+        },
+      });
 
       if (error) {
         console.error('Error creating reservation:', error);
@@ -150,7 +193,7 @@ const Reservas = () => {
 
       toast.success(t('reservations.success.created'));
       setShowNewReservationDialog(false);
-      setNewReservation({ date: "", startTime: "", endTime: "", notes: "" });
+      setNewReservation(getDefaultReservation());
 
       // Refresh reservations
       const { reservations: updatedReservations } = await getUserReservations(profile.id);
@@ -434,6 +477,52 @@ const Reservas = () => {
                 value={newReservation.notes}
                 onChange={(e) => setNewReservation({ ...newReservation, notes: e.target.value })}
                 rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="razonSocial">Razón social *</Label>
+              <Input
+                id="razonSocial"
+                value={newReservation.razonSocial}
+                onChange={(e) => setNewReservation({ ...newReservation, razonSocial: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="correo">Correo *</Label>
+              <Input
+                id="correo"
+                type="email"
+                value={newReservation.correo}
+                onChange={(e) => setNewReservation({ ...newReservation, correo: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="celular">Celular *</Label>
+                <Input
+                  id="celular"
+                  value={newReservation.celular}
+                  onChange={(e) => setNewReservation({ ...newReservation, celular: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="cantidadPersonas">Cantidad de personas *</Label>
+                <Input
+                  id="cantidadPersonas"
+                  type="number"
+                  min="1"
+                  value={newReservation.cantidadPersonas}
+                  onChange={(e) => setNewReservation({ ...newReservation, cantidadPersonas: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="abonado">Abonado</Label>
+              <Input
+                id="abonado"
+                placeholder="SI/NO"
+                value={newReservation.abonado}
+                onChange={(e) => setNewReservation({ ...newReservation, abonado: e.target.value })}
               />
             </div>
           </div>

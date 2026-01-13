@@ -24,6 +24,7 @@ export interface Database {
       buildings: {
         Row: {
           id: string;
+          portal_id: number | null;
           name: string;
           address: string | null;
           welcome_message_es: string | null;
@@ -33,6 +34,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          portal_id?: number | null;
           name: string;
           address?: string | null;
           welcome_message_es?: string | null;
@@ -42,6 +44,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          portal_id?: number | null;
           name?: string;
           address?: string | null;
           welcome_message_es?: string | null;
@@ -54,6 +57,7 @@ export interface Database {
         Row: {
           id: string;
           building_id: string;
+          portal_id: number | null;
           unit_number: string;
           floor: number | null;
           area_sqm: number | null;
@@ -62,6 +66,7 @@ export interface Database {
         Insert: {
           id?: string;
           building_id: string;
+          portal_id?: number | null;
           unit_number: string;
           floor?: number | null;
           area_sqm?: number | null;
@@ -70,6 +75,7 @@ export interface Database {
         Update: {
           id?: string;
           building_id?: string;
+          portal_id?: number | null;
           unit_number?: string;
           floor?: number | null;
           area_sqm?: number | null;
@@ -205,6 +211,7 @@ export interface Database {
         Row: {
           id: string;
           building_id: string;
+          portal_id: number | null;
           name: string;
           type: string;
           display_name_es: string;
@@ -222,6 +229,7 @@ export interface Database {
         Insert: {
           id?: string;
           building_id: string;
+          portal_id?: number | null;
           name: string;
           type: string;
           display_name_es: string;
@@ -239,6 +247,7 @@ export interface Database {
         Update: {
           id?: string;
           building_id?: string;
+          portal_id?: number | null;
           name?: string;
           type?: string;
           display_name_es?: string;
@@ -257,6 +266,7 @@ export interface Database {
       reservations: {
         Row: {
           id: string;
+          portal_id: number | null;
           user_id: string;
           amenity_id: string;
           reservation_date: string;
@@ -271,6 +281,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          portal_id?: number | null;
           user_id: string;
           amenity_id: string;
           reservation_date: string;
@@ -285,6 +296,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          portal_id?: number | null;
           user_id?: string;
           amenity_id?: string;
           reservation_date?: string;
@@ -301,6 +313,7 @@ export interface Database {
       incidents: {
         Row: {
           id: string;
+          portal_id: number | null;
           user_id: string;
           building_id: string;
           type: IncidentType;
@@ -316,6 +329,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          portal_id?: number | null;
           user_id: string;
           building_id: string;
           type: IncidentType;
@@ -331,6 +345,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          portal_id?: number | null;
           user_id?: string;
           building_id?: string;
           type?: IncidentType;

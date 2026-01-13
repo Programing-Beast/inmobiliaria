@@ -35,6 +35,8 @@ import {
   assignRoleToUser,
   deleteUser,
 } from "@/lib/supabase";
+import { createAuthUsuarioSynced } from "@/lib/portal-sync";
+import SyncQueuePanel from "@/components/SyncQueuePanel";
 import { toast } from "sonner";
 import type { UserRole } from "@/lib/database.types";
 
@@ -236,6 +238,23 @@ const AdminPanel = () => {
 
     setSubmitting(true);
     try {
+      const { error: portalError } = await createAuthUsuarioSynced({
+        email: profile?.email || undefined,
+        payload: {
+          correo: newUser.email,
+          nombre: newUser.fullName,
+          rol: newUser.primaryRole,
+          buildingId: newUser.buildingId || undefined,
+          unitId: newUser.unitId || undefined,
+        },
+      });
+
+      if (portalError) {
+        console.error("Portal auth/usuarios error:", portalError);
+        toast.error(portalError.message || "Error creating portal user");
+        return;
+      }
+
       // Create user with primary role
       const { data, error } = await createUserWithRole(
         newUser.email,
@@ -471,6 +490,7 @@ const AdminPanel = () => {
 
   return (
     <div className="space-y-6">
+      <SyncQueuePanel />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

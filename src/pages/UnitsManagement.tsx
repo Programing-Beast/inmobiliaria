@@ -46,6 +46,7 @@ import { toast } from "sonner";
 interface Unit {
   id: string;
   building_id: string;
+  portal_id: number | null;
   unit_number: string;
   floor: number | null;
   bedrooms: number | null;
@@ -85,6 +86,7 @@ const UnitsManagement = () => {
   // Form state matching database columns
   const [unitForm, setUnitForm] = useState({
     building_id: "",
+    portal_id: "",
     unit_number: "",
     floor: "",
     bedrooms: "",
@@ -187,6 +189,7 @@ const UnitsManagement = () => {
     try {
       const { unit, error } = await createUnit({
         building_id: unitForm.building_id,
+        portal_id: unitForm.portal_id ? parseInt(unitForm.portal_id) : null,
         unit_number: unitForm.unit_number.trim(),
         floor: unitForm.floor ? parseInt(unitForm.floor) : null,
         bedrooms: unitForm.bedrooms ? parseInt(unitForm.bedrooms) : null,
@@ -241,6 +244,7 @@ const UnitsManagement = () => {
     try {
       const { error } = await updateUnit(selectedUnit.id, {
         building_id: unitForm.building_id,
+        portal_id: unitForm.portal_id ? parseInt(unitForm.portal_id) : null,
         unit_number: unitForm.unit_number.trim(),
         floor: unitForm.floor ? parseInt(unitForm.floor) : null,
         bedrooms: unitForm.bedrooms ? parseInt(unitForm.bedrooms) : null,
@@ -316,6 +320,7 @@ const UnitsManagement = () => {
     setSelectedUnit(unit);
     setUnitForm({
       building_id: unit.building_id,
+      portal_id: unit.portal_id?.toString() || "",
       unit_number: unit.unit_number,
       floor: unit.floor?.toString() || "",
       bedrooms: unit.bedrooms?.toString() || "",
@@ -340,6 +345,7 @@ const UnitsManagement = () => {
   const resetForm = () => {
     setUnitForm({
       building_id: profile?.role === "owner" && profile.building_id ? profile.building_id : "",
+      portal_id: "",
       unit_number: "",
       floor: "",
       bedrooms: "",
@@ -667,6 +673,15 @@ const UnitsManagement = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label htmlFor="portal_id">Portal ID</Label>
+              <Input
+                id="portal_id"
+                type="number"
+                value={unitForm.portal_id}
+                onChange={(e) => setUnitForm({ ...unitForm, portal_id: e.target.value })}
+              />
+            </div>
 
             <div>
               <Label htmlFor="unit_number">{t("units.unitNumber")} *</Label>
@@ -779,6 +794,15 @@ const UnitsManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label htmlFor="editPortalId">Portal ID</Label>
+              <Input
+                id="editPortalId"
+                type="number"
+                value={unitForm.portal_id}
+                onChange={(e) => setUnitForm({ ...unitForm, portal_id: e.target.value })}
+              />
             </div>
 
             <div>

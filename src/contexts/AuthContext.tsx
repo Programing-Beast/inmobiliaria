@@ -7,6 +7,7 @@ interface UserUnit {
   unit_number: string;
   building_id: string;
   building_name: string;
+  portal_id?: number | null;
   is_primary: boolean;
   relationship_type: string;
   floor: number | null;

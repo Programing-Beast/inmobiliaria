@@ -37,6 +37,7 @@ import { toast } from "sonner";
 // Building interface matching actual database schema
 interface Building {
   id: string;
+  portal_id: number | null;
   name: string;
   address: string | null;
   city: string | null;
@@ -63,6 +64,7 @@ const BuildingsManagement = () => {
 
   // Form state matching database columns
   const [buildingForm, setBuildingForm] = useState({
+    portal_id: "",
     name: "",
     address: "",
     city: "",
@@ -144,6 +146,7 @@ const BuildingsManagement = () => {
     setSubmitting(true);
     try {
       const { building, error } = await createBuilding({
+        portal_id: buildingForm.portal_id ? parseInt(buildingForm.portal_id) : null,
         name: buildingForm.name.trim(),
         address: buildingForm.address.trim() || null,
         city: buildingForm.city.trim() || null,
@@ -188,6 +191,7 @@ const BuildingsManagement = () => {
     setSubmitting(true);
     try {
       const { error } = await updateBuilding(selectedBuilding.id, {
+        portal_id: buildingForm.portal_id ? parseInt(buildingForm.portal_id) : null,
         name: buildingForm.name.trim(),
         address: buildingForm.address.trim() || null,
         city: buildingForm.city.trim() || null,
@@ -257,6 +261,7 @@ const BuildingsManagement = () => {
     }
     setSelectedBuilding(building);
     setBuildingForm({
+      portal_id: building.portal_id?.toString() || "",
       name: building.name,
       address: building.address || "",
       city: building.city || "",
@@ -279,6 +284,7 @@ const BuildingsManagement = () => {
   // Reset form
   const resetForm = () => {
     setBuildingForm({
+      portal_id: "",
       name: "",
       address: "",
       city: "",
@@ -513,6 +519,15 @@ const BuildingsManagement = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
+              <Label htmlFor="portal_id">Portal ID</Label>
+              <Input
+                id="portal_id"
+                type="number"
+                value={buildingForm.portal_id}
+                onChange={(e) => setBuildingForm({ ...buildingForm, portal_id: e.target.value })}
+              />
+            </div>
+            <div>
               <Label htmlFor="name">{t("buildings.name")} *</Label>
               <Input
                 id="name"
@@ -585,6 +600,15 @@ const BuildingsManagement = () => {
             <DialogDescription>{t("buildings.editDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label htmlFor="editPortalId">Portal ID</Label>
+              <Input
+                id="editPortalId"
+                type="number"
+                value={buildingForm.portal_id}
+                onChange={(e) => setBuildingForm({ ...buildingForm, portal_id: e.target.value })}
+              />
+            </div>
             <div>
               <Label htmlFor="editName">{t("buildings.name")} *</Label>
               <Input

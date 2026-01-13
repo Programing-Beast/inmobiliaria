@@ -47,6 +47,7 @@ import { toast } from "sonner";
 interface Amenity {
   id: string;
   building_id: string;
+  portal_id: number | null;
   name_es: string;
   name_en: string | null;
   description_es: string | null;
@@ -87,6 +88,7 @@ const AmenitiesManagement = () => {
   // Form state matching database columns
   const [amenityForm, setAmenityForm] = useState({
     building_id: "",
+    portal_id: "",
     name_es: "",
     name_en: "",
     description_es: "",
@@ -163,6 +165,7 @@ const AmenitiesManagement = () => {
   const resetForm = () => {
     setAmenityForm({
       building_id: "",
+      portal_id: "",
       name_es: "",
       name_en: "",
       description_es: "",
@@ -184,6 +187,7 @@ const AmenitiesManagement = () => {
     try {
       const { amenity, error } = await createAmenity({
         building_id: amenityForm.building_id,
+        portal_id: amenityForm.portal_id ? parseInt(amenityForm.portal_id) : null,
         name_es: amenityForm.name_es,
         name_en: amenityForm.name_en || null,
         description_es: amenityForm.description_es || null,
@@ -225,6 +229,7 @@ const AmenitiesManagement = () => {
     try {
       const { amenity, error } = await updateAmenity(selectedAmenity.id, {
         building_id: amenityForm.building_id,
+        portal_id: amenityForm.portal_id ? parseInt(amenityForm.portal_id) : null,
         name_es: amenityForm.name_es,
         name_en: amenityForm.name_en || null,
         description_es: amenityForm.description_es || null,
@@ -290,6 +295,7 @@ const AmenitiesManagement = () => {
     setSelectedAmenity(amenity);
     setAmenityForm({
       building_id: amenity.building_id,
+      portal_id: amenity.portal_id?.toString() || "",
       name_es: amenity.name_es,
       name_en: amenity.name_en || "",
       description_es: amenity.description_es || "",
@@ -527,6 +533,15 @@ const AmenitiesManagement = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label htmlFor="portal_id">Portal ID</Label>
+              <Input
+                id="portal_id"
+                type="number"
+                value={amenityForm.portal_id}
+                onChange={(e) => setAmenityForm({ ...amenityForm, portal_id: e.target.value })}
+              />
+            </div>
 
             {/* Names */}
             <div className="grid grid-cols-2 gap-4">
@@ -645,6 +660,15 @@ const AmenitiesManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit_portal_id">Portal ID</Label>
+              <Input
+                id="edit_portal_id"
+                type="number"
+                value={amenityForm.portal_id}
+                onChange={(e) => setAmenityForm({ ...amenityForm, portal_id: e.target.value })}
+              />
             </div>
 
             {/* Names */}

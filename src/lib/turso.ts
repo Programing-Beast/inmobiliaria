@@ -207,7 +207,8 @@ export const getUserProfile = async (userId: string) => {
   try {
     const result = await db.execute({
       sql: `SELECT u.*, b.name as building_name, b.address as building_address,
-                   un.unit_number, un.floor, un.area_sqm as unit_area
+                   b.portal_id as building_portal_id,
+                   un.unit_number, un.floor, un.area_sqm as unit_area, un.portal_id as unit_portal_id
             FROM users u
             LEFT JOIN buildings b ON u.building_id = b.id
             LEFT JOIN units un ON u.unit_id = un.id
@@ -221,12 +222,14 @@ export const getUserProfile = async (userId: string) => {
       // Transform to match expected structure
       profile.building = profile.building_id ? {
         id: profile.building_id,
+        portal_id: profile.building_portal_id ?? null,
         name: profile.building_name,
         address: profile.building_address,
       } : null;
 
       profile.unit = profile.unit_id ? {
         id: profile.unit_id,
+        portal_id: profile.unit_portal_id ?? null,
         unit_number: profile.unit_number,
         floor: profile.floor,
         area_sqm: profile.unit_area,
@@ -246,7 +249,7 @@ export const getUserUnits = async (userId: string) => {
   try {
     const result = await db.execute({
       sql: `SELECT uu.unit_id, u.unit_number, u.building_id, b.name as building_name,
-                   uu.is_primary, uu.relationship_type, u.floor, u.area_sqm
+                   uu.is_primary, uu.relationship_type, u.floor, u.area_sqm, u.portal_id as unit_portal_id
             FROM user_units uu
             JOIN units u ON uu.unit_id = u.id
             JOIN buildings b ON u.building_id = b.id
@@ -255,7 +258,10 @@ export const getUserUnits = async (userId: string) => {
       args: [userId],
     });
 
-    const units = rowsToObjects<any>(result);
+    const units = rowsToObjects<any>(result).map((unit) => ({
+      ...unit,
+      portal_id: unit.unit_portal_id ?? null,
+    }));
     return { units, error: null };
   } catch (error: any) {
     return { units: [], error: { message: error.message } };
@@ -530,17 +536,19 @@ export const createAmenity = async (amenity: {
   max_capacity?: number | null;
   requires_approval?: boolean;
   is_active?: boolean;
+  portal_id?: number | null;
 }) => {
   try {
     const id = generateUUID();
     const timestamp = now();
 
     await db.execute({
-      sql: `INSERT INTO amenities (id, building_id, name_es, name_en, description_es, description_en, max_capacity, requires_approval, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO amenities (id, building_id, portal_id, name_es, name_en, description_es, description_en, max_capacity, requires_approval, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id,
         amenity.building_id,
+        amenity.portal_id || null,
         amenity.name_es,
         amenity.name_en || null,
         amenity.description_es || null,
@@ -566,6 +574,7 @@ export const updateAmenity = async (
   id: string,
   updates: {
     building_id?: string;
+    portal_id?: number | null;
     name_es?: string;
     name_en?: string | null;
     description_es?: string | null;
@@ -663,16 +672,17 @@ export const createReservation = async (
   reservationDate: string,
   startTime: string,
   endTime: string,
-  notes?: string
+  notes?: string,
+  portalId?: number | null
 ) => {
   try {
     const id = generateUUID();
     const timestamp = now();
 
     await db.execute({
-      sql: `INSERT INTO reservations (id, user_id, amenity_id, reservation_date, start_time, end_time, notes, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
-      args: [id, userId, amenityId, reservationDate, startTime, endTime, notes || null, timestamp, timestamp],
+      sql: `INSERT INTO reservations (id, portal_id, user_id, amenity_id, reservation_date, start_time, end_time, notes, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+      args: [id, portalId || null, userId, amenityId, reservationDate, startTime, endTime, notes || null, timestamp, timestamp],
     });
 
     return await getReservation(id);
@@ -897,16 +907,17 @@ export const createIncident = async (
   title: string,
   description: string,
   location?: string,
-  priority?: string
+  priority?: string,
+  portalId?: number | null
 ) => {
   try {
     const id = generateUUID();
     const timestamp = now();
 
     await db.execute({
-      sql: `INSERT INTO incidents (id, user_id, building_id, type, title, description, location, priority, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
-      args: [id, userId, buildingId, type, title, description, location || null, priority || 'medium', timestamp, timestamp],
+      sql: `INSERT INTO incidents (id, portal_id, user_id, building_id, type, title, description, location, priority, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
+      args: [id, portalId || null, userId, buildingId, type, title, description, location || null, priority || 'medium', timestamp, timestamp],
     });
 
     const result = await db.execute({
@@ -917,6 +928,102 @@ export const createIncident = async (
     return { incident: rowToObject<any>(result), error: null };
   } catch (error: any) {
     return { incident: null, error: { message: error.message } };
+  }
+};
+
+/**
+ * Update an incident
+ */
+export const updateIncident = async (
+  id: string,
+  updates: {
+    title?: string;
+    description?: string;
+    location?: string | null;
+    priority?: string | null;
+    status?: 'open' | 'in_progress' | 'resolved' | 'closed';
+    portal_id?: number | null;
+  }
+) => {
+  try {
+    const fields: string[] = [];
+    const args: any[] = [];
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined) {
+        fields.push(`${key} = ?`);
+        args.push(value);
+      }
+    });
+
+    fields.push('updated_at = ?');
+    args.push(now());
+    args.push(id);
+
+    await db.execute({
+      sql: `UPDATE incidents SET ${fields.join(', ')} WHERE id = ?`,
+      args,
+    });
+
+    const result = await db.execute({
+      sql: 'SELECT * FROM incidents WHERE id = ?',
+      args: [id],
+    });
+
+    return { incident: rowToObject<any>(result), error: null };
+  } catch (error: any) {
+    return { incident: null, error: { message: error.message } };
+  }
+};
+
+export const getBuildingPortalId = async (buildingId: string) => {
+  const result = await db.execute({
+    sql: 'SELECT portal_id FROM buildings WHERE id = ?',
+    args: [buildingId],
+  });
+  const row = rowToObject<{ portal_id: number | null }>(result);
+  return row?.portal_id ?? null;
+};
+
+export const getUnitPortalId = async (unitId: string) => {
+  const result = await db.execute({
+    sql: 'SELECT portal_id FROM units WHERE id = ?',
+    args: [unitId],
+  });
+  const row = rowToObject<{ portal_id: number | null }>(result);
+  return row?.portal_id ?? null;
+};
+
+export const getAmenityPortalId = async (amenityId: string) => {
+  const result = await db.execute({
+    sql: 'SELECT portal_id FROM amenities WHERE id = ?',
+    args: [amenityId],
+  });
+  const row = rowToObject<{ portal_id: number | null }>(result);
+  return row?.portal_id ?? null;
+};
+
+export const updateReservationPortalId = async (id: string, portalId: number) => {
+  try {
+    await db.execute({
+      sql: 'UPDATE reservations SET portal_id = ?, updated_at = ? WHERE id = ?',
+      args: [portalId, now(), id],
+    });
+    return { error: null };
+  } catch (error: any) {
+    return { error: { message: error.message } };
+  }
+};
+
+export const updateIncidentPortalId = async (id: string, portalId: number) => {
+  try {
+    await db.execute({
+      sql: 'UPDATE incidents SET portal_id = ?, updated_at = ? WHERE id = ?',
+      args: [portalId, now(), id],
+    });
+    return { error: null };
+  } catch (error: any) {
+    return { error: { message: error.message } };
   }
 };
 
@@ -1045,15 +1152,16 @@ export const createBuilding = async (building: {
   city?: string | null;
   country?: string | null;
   total_units?: number | null;
+  portal_id?: number | null;
 }) => {
   try {
     const id = generateUUID();
     const timestamp = now();
 
     await db.execute({
-      sql: `INSERT INTO buildings (id, name, address, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)`,
-      args: [id, building.name, building.address || null, timestamp, timestamp],
+      sql: `INSERT INTO buildings (id, portal_id, name, address, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [id, building.portal_id || null, building.name, building.address || null, timestamp, timestamp],
     });
 
     return await getBuilding(id);
@@ -1073,6 +1181,7 @@ export const updateBuilding = async (
     city?: string | null;
     country?: string | null;
     total_units?: number | null;
+    portal_id?: number | null;
   }
 ) => {
   try {
@@ -1193,15 +1302,16 @@ export const createUnit = async (unit: {
   bathrooms?: number | null;
   area_sqm?: number | null;
   monthly_fee?: number | null;
+  portal_id?: number | null;
 }) => {
   try {
     const id = generateUUID();
     const timestamp = now();
 
     await db.execute({
-      sql: `INSERT INTO units (id, building_id, unit_number, floor, area_sqm, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [id, unit.building_id, unit.unit_number, unit.floor || null, unit.area_sqm || null, timestamp],
+      sql: `INSERT INTO units (id, building_id, portal_id, unit_number, floor, area_sqm, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, unit.building_id, unit.portal_id || null, unit.unit_number, unit.floor || null, unit.area_sqm || null, timestamp],
     });
 
     return await getUnit(id);
@@ -1223,6 +1333,7 @@ export const updateUnit = async (
     bathrooms?: number | null;
     area_sqm?: number | null;
     monthly_fee?: number | null;
+    portal_id?: number | null;
   }
 ) => {
   try {
@@ -1478,7 +1589,7 @@ export const setUserRoles = async (userId: string, roles: string[]) => {
 export const getAllUsersWithRoles = async () => {
   try {
     const result = await db.execute({
-      sql: `SELECT u.*, b.id as building_id, b.name as building_name, un.id as unit_id, un.unit_number
+      sql: `SELECT u.*, b.id as building_id, b.name as building_name, un.id as unit_id, un.unit_number, un.portal_id as unit_portal_id
             FROM users u
             LEFT JOIN buildings b ON u.building_id = b.id
             LEFT JOIN units un ON u.unit_id = un.id
@@ -1496,7 +1607,7 @@ export const getAllUsersWithRoles = async () => {
       });
       user.user_roles = rowsToObjects<{ role: string }>(rolesResult);
       user.building = user.building_id ? { id: user.building_id, name: user.building_name } : null;
-      user.unit = user.unit_id ? { id: user.unit_id, unit_number: user.unit_number } : null;
+      user.unit = user.unit_id ? { id: user.unit_id, unit_number: user.unit_number, portal_id: user.unit_portal_id ?? null } : null;
     }
 
     return { users, error: null };

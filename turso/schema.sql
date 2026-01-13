@@ -4,6 +4,7 @@
 -- Buildings table
 CREATE TABLE IF NOT EXISTS buildings (
     id TEXT PRIMARY KEY,
+    portal_id INTEGER,
     name TEXT NOT NULL,
     address TEXT,
     welcome_message_es TEXT,
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS buildings (
 CREATE TABLE IF NOT EXISTS units (
     id TEXT PRIMARY KEY,
     building_id TEXT NOT NULL,
+    portal_id INTEGER,
     unit_number TEXT NOT NULL,
     floor INTEGER,
     area_sqm REAL,
@@ -108,6 +110,7 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE TABLE IF NOT EXISTS amenities (
     id TEXT PRIMARY KEY,
     building_id TEXT NOT NULL,
+    portal_id INTEGER,
     name_es TEXT NOT NULL,
     name_en TEXT,
     description_es TEXT,
@@ -126,6 +129,7 @@ CREATE TABLE IF NOT EXISTS amenities (
 -- Reservations table
 CREATE TABLE IF NOT EXISTS reservations (
     id TEXT PRIMARY KEY,
+    portal_id INTEGER,
     user_id TEXT NOT NULL,
     amenity_id TEXT NOT NULL,
     reservation_date TEXT NOT NULL,
@@ -145,6 +149,7 @@ CREATE TABLE IF NOT EXISTS reservations (
 -- Incidents table
 CREATE TABLE IF NOT EXISTS incidents (
     id TEXT PRIMARY KEY,
+    portal_id INTEGER,
     user_id TEXT NOT NULL,
     building_id TEXT NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('maintenance', 'complaint', 'suggestion')),

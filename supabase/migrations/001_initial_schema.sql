@@ -25,6 +25,7 @@ CREATE TYPE incident_type AS ENUM ('maintenance', 'complaint', 'suggestion');
 
 CREATE TABLE buildings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  portal_id INTEGER,
   name TEXT NOT NULL,
   address TEXT,
   -- Settings with translations
@@ -41,6 +42,7 @@ CREATE TABLE buildings (
 CREATE TABLE units (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   building_id UUID REFERENCES buildings(id) ON DELETE CASCADE,
+  portal_id INTEGER,
   unit_number TEXT NOT NULL, -- e.g., "A-302", "B-105"
   floor INTEGER,
   area_sqm DECIMAL,
@@ -111,6 +113,7 @@ CREATE TABLE payments (
 CREATE TABLE amenities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   building_id UUID REFERENCES buildings(id) ON DELETE CASCADE,
+  portal_id INTEGER,
   name TEXT NOT NULL,           -- Technical name: "quincho_1", "piscina_norte"
   type TEXT NOT NULL,           -- Type: "quincho", "piscina", "gym", "sum", "sports_court"
   -- Display names (HYBRID translation)
@@ -135,6 +138,7 @@ CREATE TABLE amenities (
 
 CREATE TABLE reservations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  portal_id INTEGER,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   amenity_id UUID REFERENCES amenities(id) ON DELETE CASCADE,
   reservation_date DATE NOT NULL,
@@ -154,6 +158,7 @@ CREATE TABLE reservations (
 
 CREATE TABLE incidents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  portal_id INTEGER,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   building_id UUID REFERENCES buildings(id) ON DELETE CASCADE,
   type incident_type NOT NULL,

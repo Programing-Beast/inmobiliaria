@@ -1,177 +1,69 @@
-# Supabase CLI
+# Inmobiliaria Portal
 
-[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
-](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
+Resident/admin portal for buildings, units, amenities, reservations, incidents, approvals, finances, and communications. The app syncs write operations to the external Portal API first and then stores them locally in Turso; failed API writes are queued for retry.
 
-[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+## Features
+- Authentication and role-based access (owner/tenant/admin)
+- Buildings, units, amenities management
+- Reservations (user + admin) with approval flow
+- Incidents creation + status updates
+- Communications, documents, and finances views
+- External Portal API integration with queued retries
+- Portal ID mapping for buildings/units/amenities
+- i18n (Spanish/English)
 
-This repository contains all the functionality for Supabase CLI.
+## Tech Stack
+- Vite + React + TypeScript
+- TanStack Query
+- Tailwind + Radix UI
+- Turso/LibSQL
+- Vitest + React Testing Library
 
-- [x] Running Supabase locally
-- [x] Managing database migrations
-- [x] Creating and deploying Supabase Functions
-- [x] Generating types directly from your database schema
-- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
+## Requirements
+- Node.js 18+
+- npm/yarn/pnpm
 
-## Getting started
+## Installation
+1) Install dependencies
+```bash
+npm install
+```
 
-### Install the CLI
+2) Create `.env` in the project root
+```env
+VITE_TURSO_DATABASE_URL=libsql://your-db.turso.io
+VITE_TURSO_AUTH_TOKEN=your-turso-auth-token
+VITE_PORTAL_API_BASE_URL=https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal
+```
 
-Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
+3) Run the app
+```bash
+npm run dev
+```
+
+## Portal ID Mapping
+Portal write endpoints require portal IDs for buildings/units/amenities. Set these in:
+- Buildings Management (Portal ID field)
+- Units Management (Portal ID field)
+- Amenities Management (Portal ID field)
+
+If a portal ID is missing, reservation/incident creation will fail with a mapping error and will not enqueue.
+
+## Scripts
+- `npm run dev` - start dev server
+- `npm run build` - production build
+- `npm run preview` - preview build
+- `npm run lint` - lint
+- `npm run test` - run Vitest
+- `npm run test:watch` - run Vitest in watch mode
+- `npm run test:coverage` - run Vitest coverage
+
+## Testing
+Vitest + React Testing Library are configured. Tests cover `src/pages` and custom components in `src/components` and `src/components/w3crm`.
 
 ```bash
-npm i supabase --save-dev
+npm run test
 ```
 
-When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
-
-```
-NODE_OPTIONS=--no-experimental-fetch yarn add supabase
-```
-
-> **Note**
-For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
-
-<details>
-  <summary><b>macOS</b></summary>
-
-  Available via [Homebrew](https://brew.sh). To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To install the beta release channel:
-  
-  ```sh
-  brew install supabase/tap/supabase-beta
-  brew link --overwrite supabase-beta
-  ```
-  
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Windows</b></summary>
-
-  Available via [Scoop](https://scoop.sh). To install:
-
-  ```powershell
-  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-  scoop install supabase
-  ```
-
-  To upgrade:
-
-  ```powershell
-  scoop update supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Linux</b></summary>
-
-  Available via [Homebrew](https://brew.sh) and Linux packages.
-
-  #### via Homebrew
-
-  To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-
-  #### via Linux packages
-
-  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
-
-  ```sh
-  sudo apk add --allow-untrusted <...>.apk
-  ```
-
-  ```sh
-  sudo dpkg -i <...>.deb
-  ```
-
-  ```sh
-  sudo rpm -i <...>.rpm
-  ```
-
-  ```sh
-  sudo pacman -U <...>.pkg.tar.zst
-  ```
-</details>
-
-<details>
-  <summary><b>Other Platforms</b></summary>
-
-  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
-
-  ```sh
-  go install github.com/supabase/cli@latest
-  ```
-
-  Add a symlink to the binary in `$PATH` for easier access:
-
-  ```sh
-  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
-  ```
-
-  This works on other non-standard Linux distros.
-</details>
-
-<details>
-  <summary><b>Community Maintained Packages</b></summary>
-
-  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
-  To install in your working directory:
-
-  ```bash
-  pkgx install supabase
-  ```
-
-  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
-</details>
-
-### Run the CLI
-
-```bash
-supabase bootstrap
-```
-
-Or using npx:
-
-```bash
-npx supabase bootstrap
-```
-
-The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
-
-## Docs
-
-Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
-
-## Breaking changes
-
-We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
-
-However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
-
-## Developing
-
-To run from source:
-
-```sh
-# Go >= 1.22
-go run . help
-```
+## Sync Queue
+Failed Portal API writes are stored in a local queue. Use the Sync Queue panel in the Admin screen to view and retry pending jobs.
