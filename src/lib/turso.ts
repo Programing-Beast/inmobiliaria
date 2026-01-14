@@ -525,6 +525,30 @@ export const getAmenity = async (id: string) => {
 };
 
 /**
+ * Get an amenity by name within a building
+ */
+export const getAmenityByNameInBuilding = async (buildingId: string, nameEs: string) => {
+  try {
+    const result = await db.execute({
+      sql: `SELECT a.*, b.id as building_id, b.name as building_name
+            FROM amenities a
+            LEFT JOIN buildings b ON a.building_id = b.id
+            WHERE a.building_id = ? AND LOWER(a.name_es) = LOWER(?)`,
+      args: [buildingId, nameEs],
+    });
+
+    const amenity = rowToObject<any>(result);
+    if (amenity) {
+      amenity.building = { id: amenity.building_id, name: amenity.building_name };
+    }
+
+    return { amenity, error: null };
+  } catch (error: any) {
+    return { amenity: null, error: { message: error.message } };
+  }
+};
+
+/**
  * Create a new amenity
  */
 export const createAmenity = async (amenity: {
@@ -932,6 +956,30 @@ export const createIncident = async (
 };
 
 /**
+ * Get a single amenity by portal ID
+ */
+export const getAmenityByPortalId = async (portalId: number) => {
+  try {
+    const result = await db.execute({
+      sql: `SELECT a.*, b.id as building_id, b.name as building_name
+            FROM amenities a
+            LEFT JOIN buildings b ON a.building_id = b.id
+            WHERE a.portal_id = ?`,
+      args: [portalId],
+    });
+
+    const amenity = rowToObject<any>(result);
+    if (amenity) {
+      amenity.building = { id: amenity.building_id, name: amenity.building_name };
+    }
+
+    return { amenity, error: null };
+  } catch (error: any) {
+    return { amenity: null, error: { message: error.message } };
+  }
+};
+
+/**
  * Update an incident
  */
 export const updateIncident = async (
@@ -1144,6 +1192,40 @@ export const getBuilding = async (id: string) => {
 };
 
 /**
+ * Get a single building by name (case-insensitive)
+ */
+export const getBuildingByName = async (name: string) => {
+  try {
+    const result = await db.execute({
+      sql: 'SELECT * FROM buildings WHERE LOWER(name) = LOWER(?)',
+      args: [name],
+    });
+
+    const building = rowToObject<any>(result);
+    return { building, error: null };
+  } catch (error: any) {
+    return { building: null, error: { message: error.message } };
+  }
+};
+
+/**
+ * Get a single building by portal ID
+ */
+export const getBuildingByPortalId = async (portalId: number) => {
+  try {
+    const result = await db.execute({
+      sql: 'SELECT * FROM buildings WHERE portal_id = ?',
+      args: [portalId],
+    });
+
+    const building = rowToObject<any>(result);
+    return { building, error: null };
+  } catch (error: any) {
+    return { building: null, error: { message: error.message } };
+  }
+};
+
+/**
  * Create a new building
  */
 export const createBuilding = async (building: {
@@ -1285,6 +1367,52 @@ export const getUnit = async (id: string) => {
       unit.building = { id: unit.building_id, name: unit.building_name };
     }
 
+    return { unit, error: null };
+  } catch (error: any) {
+    return { unit: null, error: { message: error.message } };
+  }
+};
+
+/**
+ * Get a unit by number within a building
+ */
+export const getUnitByNumberInBuilding = async (buildingId: string, unitNumber: string) => {
+  try {
+    const result = await db.execute({
+      sql: `SELECT u.*, b.id as building_id, b.name as building_name
+            FROM units u
+            LEFT JOIN buildings b ON u.building_id = b.id
+            WHERE u.building_id = ? AND u.unit_number = ?`,
+      args: [buildingId, unitNumber],
+    });
+
+    const unit = rowToObject<any>(result);
+    if (unit) {
+      unit.building = { id: unit.building_id, name: unit.building_name };
+    }
+    return { unit, error: null };
+  } catch (error: any) {
+    return { unit: null, error: { message: error.message } };
+  }
+};
+
+/**
+ * Get a single unit by portal ID
+ */
+export const getUnitByPortalId = async (portalId: number) => {
+  try {
+    const result = await db.execute({
+      sql: `SELECT u.*, b.id as building_id, b.name as building_name
+            FROM units u
+            LEFT JOIN buildings b ON u.building_id = b.id
+            WHERE u.portal_id = ?`,
+      args: [portalId],
+    });
+
+    const unit = rowToObject<any>(result);
+    if (unit) {
+      unit.building = { id: unit.building_id, name: unit.building_name };
+    }
     return { unit, error: null };
   } catch (error: any) {
     return { unit: null, error: { message: error.message } };

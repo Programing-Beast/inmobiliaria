@@ -6,6 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -25,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Building2, Plus, Edit, Trash2, Search, Home, MapPin, Globe } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getAllBuildings,
@@ -32,6 +41,8 @@ import {
   updateBuilding,
   deleteBuilding,
 } from "@/lib/supabase";
+import { syncPortalCatalog } from "@/lib/portal-sync";
+import { portalGetProperties } from "@/lib/portal-api";
 import { toast } from "sonner";
 
 // Building interface matching actual database schema
@@ -61,6 +72,9 @@ const BuildingsManagement = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [hasNextPage, setHasNextPage] = useState(false);
 
   // Form state matching database columns
   const [buildingForm, setBuildingForm] = useState({
@@ -75,6 +89,25 @@ const BuildingsManagement = () => {
   // Check if user can access this page
   const canAccess = profile?.role === "super_admin" || profile?.role === "owner";
   const isSuperAdmin = profile?.role === "super_admin";
+  const isReadOnly = true;
+
+  const toPortalList = (payload: any): any[] => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.result)) return payload.result;
+    return [];
+  };
+
+  const readNumber = (record: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record?.[key];
+      const asNumber = Number(value);
+      if (Number.isFinite(asNumber)) return asNumber;
+    }
+    return null;
+  };
 
   // Fetch buildings
   useEffect(() => {
@@ -82,7 +115,35 @@ const BuildingsManagement = () => {
       if (!profile || !canAccess) return;
 
       setLoading(true);
+      setHasNextPage(false);
       try {
+        const propertiesResult = await portalGetProperties({ page, limit });
+        const portalProperties = propertiesResult.error?.status === 404 ? [] : toPortalList(propertiesResult.data);
+        let portalIds: number[] = [];
+        if (propertiesResult.error && propertiesResult.error.status !== 404) {
+          console.error("Error fetching portal properties:", propertiesResult.error);
+          toast.error("No se pudieron cargar las propiedades");
+        } else {
+          portalIds = portalProperties
+            .map((property) =>
+              readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"])
+            )
+            .filter((value): value is number => value !== null);
+          setHasNextPage(portalProperties.length === limit);
+
+          if (portalProperties.length > 0) {
+            const syncResult = await syncPortalCatalog({
+              email: profile?.email || undefined,
+              properties: portalProperties,
+              includeUnits: false,
+              includeAmenities: false,
+            });
+            if (syncResult.error) {
+              console.error("Error syncing portal data:", syncResult.error);
+              toast.error("No se pudo sincronizar los edificios");
+            }
+          }
+        }
         const { buildings: allBuildings, error } = await getAllBuildings();
 
         if (error) {
@@ -91,7 +152,9 @@ const BuildingsManagement = () => {
           return;
         }
 
-        let buildingsToShow = allBuildings || [];
+        let buildingsToShow = (allBuildings || [])
+          .filter((b) => b.portal_id !== null)
+          .filter((b) => (portalIds.length ? portalIds.includes(b.portal_id as number) : false));
 
         // If owner, filter to only show their assigned building
         if (profile.role === "owner" && profile.building_id) {
@@ -109,7 +172,7 @@ const BuildingsManagement = () => {
     };
 
     fetchData();
-  }, [profile, canAccess, t]);
+  }, [profile, canAccess, t, page, limit]);
 
   // Filter buildings
   useEffect(() => {
@@ -131,6 +194,7 @@ const BuildingsManagement = () => {
 
   // Check if user can edit/delete a building
   const canModifyBuilding = (building: Building): boolean => {
+    if (isReadOnly) return false;
     if (isSuperAdmin) return true;
     if (profile?.role === "owner" && profile.building_id === building.id) return true;
     return false;
@@ -166,7 +230,7 @@ const BuildingsManagement = () => {
 
       // Refresh list
       const { buildings: updatedBuildings } = await getAllBuildings();
-      let buildingsToShow = updatedBuildings || [];
+      let buildingsToShow = (updatedBuildings || []).filter((b) => b.portal_id !== null);
       if (profile?.role === "owner" && profile.building_id) {
         buildingsToShow = buildingsToShow.filter((b) => b.id === profile.building_id);
       }
@@ -212,7 +276,7 @@ const BuildingsManagement = () => {
 
       // Refresh list
       const { buildings: updatedBuildings } = await getAllBuildings();
-      let buildingsToShow = updatedBuildings || [];
+      let buildingsToShow = (updatedBuildings || []).filter((b) => b.portal_id !== null);
       if (profile?.role === "owner" && profile.building_id) {
         buildingsToShow = buildingsToShow.filter((b) => b.id === profile.building_id);
       }
@@ -333,7 +397,7 @@ const BuildingsManagement = () => {
           </h1>
           <p className="text-muted-foreground mt-1">{t("buildings.subtitle")}</p>
         </div>
-        {isSuperAdmin && (
+        {!isReadOnly && isSuperAdmin && (
           <Button
             onClick={() => {
               resetForm();
@@ -387,7 +451,9 @@ const BuildingsManagement = () => {
                     <TableHead>{t("buildings.country")}</TableHead>
                     <TableHead className="text-center">{t("buildings.totalUnits")}</TableHead>
                     <TableHead>{t("buildings.createdAt")}</TableHead>
-                    <TableHead>{t("buildings.actions")}</TableHead>
+                    <TableHead>Unidades</TableHead>
+                    <TableHead>Amenities</TableHead>
+                    {!isReadOnly && <TableHead>{t("buildings.actions")}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -432,29 +498,41 @@ const BuildingsManagement = () => {
                         {formatDate(building.created_at)}
                       </TableCell>
                       <TableCell>
-                        {canModifyBuilding(building) && (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => openEditDialog(building)}
-                              title={t("buildings.edit")}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            {isSuperAdmin && (
+                        <Button size="sm" variant="ghost" asChild>
+                          <Link to={`/units?buildingId=${building.id}`}>Ver unidades</Link>
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Button size="sm" variant="ghost" asChild>
+                          <Link to={`/amenities?buildingId=${building.id}`}>Ver amenities</Link>
+                        </Button>
+                      </TableCell>
+                      {!isReadOnly && (
+                        <TableCell>
+                          {canModifyBuilding(building) && (
+                            <div className="flex items-center gap-1">
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => openDeleteDialog(building)}
-                                title={t("buildings.delete")}
+                                onClick={() => openEditDialog(building)}
+                                title={t("buildings.edit")}
                               >
-                                <Trash2 className="w-4 h-4 text-destructive" />
+                                <Edit className="w-4 h-4" />
                               </Button>
-                            )}
-                          </div>
-                        )}
-                      </TableCell>
+                              {isSuperAdmin && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => openDeleteDialog(building)}
+                                  title={t("buildings.delete")}
+                                >
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -463,6 +541,26 @@ const BuildingsManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              className={page === 1 ? "pointer-events-none opacity-50" : ""}
+            />
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationLink isActive>{page}</PaginationLink>
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationNext
+              onClick={() => setPage((prev) => prev + 1)}
+              className={!hasNextPage ? "pointer-events-none opacity-50" : ""}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
 
       {/* Building Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -474,7 +572,7 @@ const BuildingsManagement = () => {
                   <Building2 className="w-5 h-5" />
                   {building.name}
                 </CardTitle>
-                {canModifyBuilding(building) && (
+                {!isReadOnly && canModifyBuilding(building) && (
                   <Button size="sm" variant="ghost" onClick={() => openEditDialog(building)}>
                     <Edit className="w-4 h-4" />
                   </Button>

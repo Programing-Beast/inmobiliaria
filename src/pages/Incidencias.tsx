@@ -296,14 +296,16 @@ const Incidencias = () => {
             <div>
               <label className="text-sm font-medium">Amenity</label>
               <Select
-                value={newIncident.amenityId}
-                onValueChange={(value) => setNewIncident({ ...newIncident, amenityId: value })}
+                value={newIncident.amenityId || "none"}
+                onValueChange={(value) =>
+                  setNewIncident({ ...newIncident, amenityId: value === "none" ? "" : value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un amenity" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin amenity</SelectItem>
+                  <SelectItem value="none">Sin amenity</SelectItem>
                   {amenities.map((amenity) => (
                     <SelectItem key={amenity.id} value={amenity.id}>
                       {amenity.display_name_es || amenity.name_es || amenity.name}

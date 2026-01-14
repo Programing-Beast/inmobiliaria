@@ -4,12 +4,13 @@ Resident/admin portal for buildings, units, amenities, reservations, incidents, 
 
 ## Features
 - Authentication and role-based access (owner/tenant/admin)
-- Buildings, units, amenities management
+- Buildings, units, amenities (read-only, synced from Portal API)
 - Reservations (user + admin) with approval flow
 - Incidents creation + status updates
 - Communications, documents, and finances views
 - External Portal API integration with queued retries
-- Portal ID mapping for buildings/units/amenities
+- Portal catalog sync (properties -> units -> amenities)
+- Pagination for portal catalog (page/limit headers)
 - i18n (Spanish/English)
 
 ## Tech Stack
@@ -41,13 +42,12 @@ VITE_PORTAL_API_BASE_URL=https://desarrollo.app.kove.com.py/ords/inmobiliaria_vi
 npm run dev
 ```
 
-## Portal ID Mapping
-Portal write endpoints require portal IDs for buildings/units/amenities. Set these in:
-- Buildings Management (Portal ID field)
-- Units Management (Portal ID field)
-- Amenities Management (Portal ID field)
+## Portal Catalog Sync
+Buildings, units, and amenities are fetched from the Portal API and stored locally. These screens are read-only.
 
-If a portal ID is missing, reservation/incident creation will fail with a mapping error and will not enqueue.
+Pagination uses `page` and `limit` headers as defined by the Portal API. Units and amenities are fetched per building only.
+
+If a portal ID is missing on a local record, reservation/incident creation will fail with a mapping error and will not enqueue.
 
 ## Scripts
 - `npm run dev` - start dev server

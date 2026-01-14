@@ -6,6 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -32,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Home, Plus, Edit, Trash2, Search, Building2, Layers, Ruler, Bed, Bath, DollarSign } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getAllUnits,
@@ -39,7 +48,10 @@ import {
   updateUnit,
   deleteUnit,
   getAllBuildings,
+  getBuilding,
 } from "@/lib/supabase";
+import { syncPortalUnitsForBuilding } from "@/lib/portal-sync";
+import { portalGetUnits } from "@/lib/portal-api";
 import { toast } from "sonner";
 
 // Unit interface matching actual database schema
@@ -69,6 +81,7 @@ interface Building {
 const UnitsManagement = () => {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
+  const [searchParams] = useSearchParams();
 
   // State
   const [units, setUnits] = useState<Unit[]>([]);
@@ -82,6 +95,9 @@ const UnitsManagement = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [hasNextPage, setHasNextPage] = useState(false);
 
   // Form state matching database columns
   const [unitForm, setUnitForm] = useState({
@@ -98,6 +114,25 @@ const UnitsManagement = () => {
   // Check if user can access this page
   const canAccess = profile?.role === "super_admin" || profile?.role === "owner";
   const isSuperAdmin = profile?.role === "super_admin";
+  const isReadOnly = true;
+
+  const toPortalList = (payload: any): any[] => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.result)) return payload.result;
+    return [];
+  };
+
+  const readNumber = (record: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record?.[key];
+      const asNumber = Number(value);
+      if (Number.isFinite(asNumber)) return asNumber;
+    }
+    return null;
+  };
 
   // Fetch units and buildings
   useEffect(() => {
@@ -105,10 +140,45 @@ const UnitsManagement = () => {
       if (!profile || !canAccess) return;
 
       setLoading(true);
+      setHasNextPage(false);
       try {
+        const buildingIdParam = searchParams.get("buildingId");
+        let portalIds: number[] = [];
+        if (!buildingIdParam) {
+          setHasNextPage(false);
+        }
+        if (buildingIdParam) {
+          const { building } = await getBuilding(buildingIdParam);
+          if (!building?.portal_id) {
+            toast.error("No hay mapeo de portal para este edificio");
+          } else {
+            const unitsResult = await portalGetUnits(building.portal_id, { page, limit });
+            const portalUnits = unitsResult.error?.status === 404 ? [] : toPortalList(unitsResult.data);
+            if (unitsResult.error && unitsResult.error.status !== 404) {
+              console.error("Error fetching portal units:", unitsResult.error);
+              toast.error(t("units.error.load"));
+            } else {
+              portalIds = portalUnits
+                .map((unit) => readNumber(unit, ["idUnidad", "id_unidad", "unidadId", "unidad_id"]))
+                .filter((value): value is number => value !== null);
+              setHasNextPage(portalUnits.length === limit);
+
+              if (portalUnits.length > 0) {
+                const syncResult = await syncPortalUnitsForBuilding({
+                  buildingId: building.id,
+                  unitsPayload: portalUnits,
+                });
+                if (syncResult.error) {
+                  console.error("Error syncing portal data:", syncResult.error);
+                  toast.error(t("units.error.load"));
+                }
+              }
+            }
+          }
+        }
         // Fetch buildings first
         const { buildings: allBuildings } = await getAllBuildings();
-        let buildingsToShow = allBuildings || [];
+        let buildingsToShow = (allBuildings || []).filter((b) => b.portal_id !== null);
 
         // If owner, filter to only show their building
         if (profile.role === "owner" && profile.building_id) {
@@ -125,7 +195,9 @@ const UnitsManagement = () => {
           return;
         }
 
-        let unitsToShow = allUnits || [];
+        let unitsToShow = (allUnits || [])
+          .filter((u) => u.portal_id !== null)
+          .filter((u) => (portalIds.length ? portalIds.includes(u.portal_id as number) : false));
 
         // If owner, filter to only show units in their building
         if (profile.role === "owner" && profile.building_id) {
@@ -143,7 +215,15 @@ const UnitsManagement = () => {
     };
 
     fetchData();
-  }, [profile, canAccess, t]);
+  }, [profile, canAccess, t, searchParams, page, limit]);
+
+  useEffect(() => {
+    const buildingId = searchParams.get("buildingId");
+    if (buildingId) {
+      setFilterBuildingId(buildingId);
+      setPage(1);
+    }
+  }, [searchParams]);
 
   // Filter units
   useEffect(() => {
@@ -169,6 +249,7 @@ const UnitsManagement = () => {
 
   // Check if user can modify a unit
   const canModifyUnit = (unit: Unit): boolean => {
+    if (isReadOnly) return false;
     if (isSuperAdmin) return true;
     if (profile?.role === "owner" && profile.building_id === unit.building_id) return true;
     return false;
@@ -214,7 +295,7 @@ const UnitsManagement = () => {
 
       // Refresh list
       const { units: updatedUnits } = await getAllUnits();
-      let unitsToShow = updatedUnits || [];
+      let unitsToShow = (updatedUnits || []).filter((u) => u.portal_id !== null);
       if (profile?.role === "owner" && profile.building_id) {
         unitsToShow = unitsToShow.filter((u) => u.building_id === profile.building_id);
       }
@@ -270,7 +351,7 @@ const UnitsManagement = () => {
 
       // Refresh list
       const { units: updatedUnits } = await getAllUnits();
-      let unitsToShow = updatedUnits || [];
+      let unitsToShow = (updatedUnits || []).filter((u) => u.portal_id !== null);
       if (profile?.role === "owner" && profile.building_id) {
         unitsToShow = unitsToShow.filter((u) => u.building_id === profile.building_id);
       }
@@ -404,16 +485,18 @@ const UnitsManagement = () => {
           </h1>
           <p className="text-muted-foreground mt-1">{t("units.subtitle")}</p>
         </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setShowCreateDialog(true);
-          }}
-          className="bg-primary hover:bg-primary/90 gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          {t("units.createUnit")}
-        </Button>
+        {!isReadOnly && (
+          <Button
+            onClick={() => {
+              resetForm();
+              setShowCreateDialog(true);
+            }}
+            className="bg-primary hover:bg-primary/90 gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            {t("units.createUnit")}
+          </Button>
+        )}
       </div>
 
       {/* Search and Filter */}
@@ -473,7 +556,7 @@ const UnitsManagement = () => {
                     <TableHead className="text-center">{t("units.areaSqm")}</TableHead>
                     <TableHead className="text-right">{t("units.monthlyFee")}</TableHead>
                     <TableHead>{t("units.createdAt")}</TableHead>
-                    <TableHead>{t("units.actions")}</TableHead>
+                    {!isReadOnly && <TableHead>{t("units.actions")}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -541,28 +624,30 @@ const UnitsManagement = () => {
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(unit.created_at)}
                       </TableCell>
-                      <TableCell>
-                        {canModifyUnit(unit) && (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => openEditDialog(unit)}
-                              title={t("units.edit")}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => openDeleteDialog(unit)}
-                              title={t("units.delete")}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
+                      {!isReadOnly && (
+                        <TableCell>
+                          {canModifyUnit(unit) && (
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openEditDialog(unit)}
+                                title={t("units.edit")}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openDeleteDialog(unit)}
+                                title={t("units.delete")}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -571,6 +656,26 @@ const UnitsManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              className={page === 1 ? "pointer-events-none opacity-50" : ""}
+            />
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationLink isActive>{page}</PaginationLink>
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationNext
+              onClick={() => setPage((prev) => prev + 1)}
+              className={!hasNextPage ? "pointer-events-none opacity-50" : ""}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
 
       {/* Unit Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -582,7 +687,7 @@ const UnitsManagement = () => {
                   <Home className="w-5 h-5" />
                   {unit.unit_number}
                 </CardTitle>
-                {canModifyUnit(unit) && (
+                {!isReadOnly && canModifyUnit(unit) && (
                   <Button size="sm" variant="ghost" onClick={() => openEditDialog(unit)}>
                     <Edit className="w-4 h-4" />
                   </Button>

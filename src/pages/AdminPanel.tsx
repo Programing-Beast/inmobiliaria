@@ -242,10 +242,7 @@ const AdminPanel = () => {
         email: profile?.email || undefined,
         payload: {
           correo: newUser.email,
-          nombre: newUser.fullName,
-          rol: newUser.primaryRole,
-          buildingId: newUser.buildingId || undefined,
-          unitId: newUser.unitId || undefined,
+          nombreCompleto: newUser.fullName,
         },
       });
 

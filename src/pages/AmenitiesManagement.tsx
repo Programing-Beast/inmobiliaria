@@ -8,6 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -34,6 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dumbbell, Plus, Edit, Trash2, Search, Building2, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getAllAmenities,
@@ -41,7 +50,10 @@ import {
   updateAmenity,
   deleteAmenity,
   getAllBuildings,
+  getBuilding,
 } from "@/lib/supabase";
+import { syncPortalAmenitiesForBuilding } from "@/lib/portal-sync";
+import { portalGetAmenities } from "@/lib/portal-api";
 import { toast } from "sonner";
 
 interface Amenity {
@@ -71,6 +83,7 @@ interface Building {
 const AmenitiesManagement = () => {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
+  const [searchParams] = useSearchParams();
 
   // State
   const [amenities, setAmenities] = useState<Amenity[]>([]);
@@ -84,6 +97,9 @@ const AmenitiesManagement = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedAmenity, setSelectedAmenity] = useState<Amenity | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [hasNextPage, setHasNextPage] = useState(false);
 
   // Form state matching database columns
   const [amenityForm, setAmenityForm] = useState({
@@ -100,6 +116,25 @@ const AmenitiesManagement = () => {
 
   // Check if user can access this page
   const canAccess = profile?.role === "super_admin" || profile?.role === "owner";
+  const isReadOnly = true;
+
+  const toPortalList = (payload: any): any[] => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.result)) return payload.result;
+    return [];
+  };
+
+  const readNumber = (record: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record?.[key];
+      const asNumber = Number(value);
+      if (Number.isFinite(asNumber)) return asNumber;
+    }
+    return null;
+  };
 
   // Fetch amenities and buildings
   useEffect(() => {
@@ -107,7 +142,42 @@ const AmenitiesManagement = () => {
       if (!profile) return;
 
       setLoading(true);
+      setHasNextPage(false);
       try {
+        const buildingIdParam = searchParams.get("buildingId");
+        let portalIds: number[] = [];
+        if (!buildingIdParam) {
+          setHasNextPage(false);
+        }
+        if (buildingIdParam) {
+          const { building } = await getBuilding(buildingIdParam);
+          if (!building?.portal_id) {
+            toast.error("No hay mapeo de portal para este edificio");
+          } else {
+            const amenitiesResult = await portalGetAmenities(building.portal_id, { page, limit });
+            const portalAmenities = amenitiesResult.error?.status === 404 ? [] : toPortalList(amenitiesResult.data);
+            if (amenitiesResult.error && amenitiesResult.error.status !== 404) {
+              console.error("Error fetching portal amenities:", amenitiesResult.error);
+              toast.error(t("amenities.errorLoading"));
+            } else {
+              portalIds = portalAmenities
+                .map((amenity) => readNumber(amenity, ["idAmenity", "idQuincho", "amenity_id", "id_amenity"]))
+                .filter((value): value is number => value !== null);
+              setHasNextPage(portalAmenities.length === limit);
+
+              if (portalAmenities.length > 0) {
+                const syncResult = await syncPortalAmenitiesForBuilding({
+                  buildingId: building.id,
+                  amenitiesPayload: portalAmenities,
+                });
+                if (syncResult.error) {
+                  console.error("Error syncing portal data:", syncResult.error);
+                  toast.error(t("amenities.errorLoading"));
+                }
+              }
+            }
+          }
+        }
         const [amenitiesResult, buildingsResult] = await Promise.all([
           getAllAmenities(),
           getAllBuildings(),
@@ -125,9 +195,13 @@ const AmenitiesManagement = () => {
           return;
         }
 
-        setAmenities(amenitiesResult.amenities || []);
-        setFilteredAmenities(amenitiesResult.amenities || []);
-        setBuildings(buildingsResult.buildings || []);
+        const portalAmenities = (amenitiesResult.amenities || [])
+          .filter((a) => a.portal_id !== null)
+          .filter((a) => (portalIds.length ? portalIds.includes(a.portal_id as number) : false));
+        const portalBuildings = (buildingsResult.buildings || []).filter((b) => b.portal_id !== null);
+        setAmenities(portalAmenities);
+        setFilteredAmenities(portalAmenities);
+        setBuildings(portalBuildings);
       } catch (error) {
         console.error("Error:", error);
         toast.error(t("amenities.errorLoading"));
@@ -137,7 +211,15 @@ const AmenitiesManagement = () => {
     };
 
     fetchData();
-  }, [profile, t]);
+  }, [profile, t, searchParams, page, limit]);
+
+  useEffect(() => {
+    const buildingId = searchParams.get("buildingId");
+    if (buildingId) {
+      setFilterBuildingId(buildingId);
+      setPage(1);
+    }
+  }, [searchParams]);
 
   // Filter amenities based on search and building
   useEffect(() => {
@@ -209,7 +291,7 @@ const AmenitiesManagement = () => {
 
       // Refresh amenities
       const { amenities: updatedAmenities } = await getAllAmenities();
-      setAmenities(updatedAmenities || []);
+      setAmenities((updatedAmenities || []).filter((a) => a.portal_id !== null));
     } catch (error) {
       console.error("Error:", error);
       toast.error(t("amenities.errorCreating"));
@@ -252,7 +334,7 @@ const AmenitiesManagement = () => {
 
       // Refresh amenities
       const { amenities: updatedAmenities } = await getAllAmenities();
-      setAmenities(updatedAmenities || []);
+      setAmenities((updatedAmenities || []).filter((a) => a.portal_id !== null));
     } catch (error) {
       console.error("Error:", error);
       toast.error(t("amenities.errorUpdating"));
@@ -281,7 +363,7 @@ const AmenitiesManagement = () => {
 
       // Refresh amenities
       const { amenities: updatedAmenities } = await getAllAmenities();
-      setAmenities(updatedAmenities || []);
+      setAmenities((updatedAmenities || []).filter((a) => a.portal_id !== null));
     } catch (error) {
       console.error("Error:", error);
       toast.error(t("amenities.errorDeleting"));
@@ -356,16 +438,18 @@ const AmenitiesManagement = () => {
           </h1>
           <p className="text-muted-foreground mt-1">{t("amenities.subtitle")}</p>
         </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setShowCreateDialog(true);
-          }}
-          className="bg-primary hover:bg-primary/90 gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          {t("amenities.addAmenity")}
-        </Button>
+        {!isReadOnly && (
+          <Button
+            onClick={() => {
+              resetForm();
+              setShowCreateDialog(true);
+            }}
+            className="bg-primary hover:bg-primary/90 gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            {t("amenities.addAmenity")}
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -427,7 +511,7 @@ const AmenitiesManagement = () => {
                     <TableHead>{t("amenities.maxCapacity")}</TableHead>
                     <TableHead>{t("amenities.requiresApproval")}</TableHead>
                     <TableHead>{t("amenities.status")}</TableHead>
-                    <TableHead>{t("common.actions")}</TableHead>
+                    {!isReadOnly && <TableHead>{t("common.actions")}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -476,27 +560,29 @@ const AmenitiesManagement = () => {
                           {amenity.is_active ? t("common.active") : t("common.inactive")}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => openEditDialog(amenity)}
-                            title={t("common.edit")}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => openDeleteDialog(amenity)}
-                            title={t("common.delete")}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {!isReadOnly && (
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openEditDialog(amenity)}
+                              title={t("common.edit")}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openDeleteDialog(amenity)}
+                              title={t("common.delete")}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -505,6 +591,26 @@ const AmenitiesManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              className={page === 1 ? "pointer-events-none opacity-50" : ""}
+            />
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationLink isActive>{page}</PaginationLink>
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationNext
+              onClick={() => setPage((prev) => prev + 1)}
+              className={!hasNextPage ? "pointer-events-none opacity-50" : ""}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
 
       {/* Create Amenity Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

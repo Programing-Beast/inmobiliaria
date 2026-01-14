@@ -1,12 +1,27 @@
+import type { UserRole } from "@/lib/database.types";
+import { setUserRoles, updateUserProfile } from "@/lib/supabase";
+
 const DEFAULT_BASE_URL = "https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal";
 
 const portalBaseUrl = import.meta.env.VITE_PORTAL_API_BASE_URL || DEFAULT_BASE_URL;
 const dashboardIncidentsPath =
   import.meta.env.VITE_PORTAL_DASHBOARD_INCIDENTS_PATH || "dashboard/incidencias";
+const dashboardExpensasPath =
+  import.meta.env.VITE_PORTAL_DASHBOARD_EXPENSAS_PATH || "dashboard/expensas";
+const dashboardReservationsPath =
+  import.meta.env.VITE_PORTAL_DASHBOARD_RESERVAS_PATH || "dashboard/reservas";
+const dashboardComunicadosPath =
+  import.meta.env.VITE_PORTAL_DASHBOARD_COMUNICADOS_PATH || "dashboard/comunicados";
 const approvalsReservationsPath =
   import.meta.env.VITE_PORTAL_APPROVALS_RESERVATIONS_PATH || "approvals/reservations";
-const portalTokenKey = "portalToken";
-const portalTokenTypeKey = "portalTokenType";
+const finanzasResumenPath =
+  import.meta.env.VITE_PORTAL_FINANZAS_RESUMEN_PATH || "finanzas/resumen";
+const finanzasPagosPath =
+  import.meta.env.VITE_PORTAL_FINANZAS_PAGOS_PATH || "finanzas";
+const portalAuthEmailKey = "currentUserEmail";
+const portalTokenKey = "token";
+const portalTokenTypeKey = "Bearer";
+const portalRoleKey = "portalRole";
 
 type PortalError = {
   message: string;
@@ -31,11 +46,55 @@ const buildUrl = (path: string, params?: Record<string, string | number | undefi
   return url.toString();
 };
 
+const buildPaginationHeaders = (params?: { page?: number; limit?: number }) => {
+  const headers: Record<string, string> = {};
+  if (params?.page) {
+    headers.page = String(params.page);
+  }
+  if (params?.limit) {
+    headers.limit = String(params.limit);
+  }
+  return Object.keys(headers).length > 0 ? headers : undefined;
+};
+
 const getPortalAuth = () => {
   const token = localStorage.getItem(portalTokenKey);
   const tokenType = localStorage.getItem(portalTokenTypeKey) || "Bearer";
   if (!token) return null;
   return { token, tokenType };
+};
+
+const getPortalAuthEmail = () => localStorage.getItem(portalAuthEmailKey) || undefined;
+
+const mapPortalRoleToLocalRole = (role?: string | null): UserRole | null => {
+  if (!role) return null;
+  const normalized = role.trim().toLowerCase();
+  if (["super_admin", "superadmin", "admin", "administrador", "administrator"].includes(normalized)) {
+    return "super_admin";
+  }
+  if (["owner", "propietario", "dueno"].includes(normalized)) {
+    return "owner";
+  }
+  if (["tenant", "inquilino", "arrendatario"].includes(normalized)) {
+    return "tenant";
+  }
+  if (["regular_user", "resident", "residente", "usuario"].includes(normalized)) {
+    return "regular_user";
+  }
+  return null;
+};
+
+const syncPortalRoleToLocalUser = async (portalRole?: string | null) => {
+  const mappedRole = mapPortalRoleToLocalRole(portalRole);
+  if (!mappedRole) return;
+
+  const userId = localStorage.getItem("currentUserId");
+  if (!userId) return;
+
+  await updateUserProfile(userId, { role: mappedRole });
+  await setUserRoles(userId, [mappedRole]);
+  localStorage.setItem("userRole", mappedRole);
+  localStorage.setItem("userRoles", JSON.stringify([mappedRole]));
 };
 
 export const setPortalAuth = (token: string, tokenType: string = "Bearer") => {
@@ -46,6 +105,7 @@ export const setPortalAuth = (token: string, tokenType: string = "Bearer") => {
 export const clearPortalAuth = () => {
   localStorage.removeItem(portalTokenKey);
   localStorage.removeItem(portalTokenTypeKey);
+  localStorage.removeItem(portalRoleKey);
 };
 
 const normalizePortalError = (payload: any, status?: number): PortalError => {
@@ -58,6 +118,9 @@ const normalizePortalError = (payload: any, status?: number): PortalError => {
   }
   if (payload?.message) {
     return { message: payload.message, status };
+  }
+  if (status === 404) {
+    return { message: "No record found", status };
   }
   return { message: "Unexpected portal API error", status };
 };
@@ -73,7 +136,14 @@ const portalRequest = async <T>(
 ): Promise<PortalResponse<T>> => {
   const { method = "GET", body, headers, params } = options || {};
   const url = buildUrl(path, params);
-  const auth = getPortalAuth();
+  let auth = getPortalAuth();
+  if (!auth && path !== "auth/login") {
+    const email = getPortalAuthEmail();
+    if (email) {
+      await portalLogin(email);
+      auth = getPortalAuth();
+    }
+  }
   const requestHeaders: Record<string, string> = {
     Accept: "application/json",
     ...headers,
@@ -113,6 +183,10 @@ export const portalLogin = async (email: string) => {
 
   if (!result.error && result.data?.data?.token) {
     setPortalAuth(result.data.data.token, result.data.data.tokenType);
+    if (result.data.data.rol) {
+      localStorage.setItem(portalRoleKey, result.data.data.rol);
+      await syncPortalRoleToLocalUser(result.data.data.rol);
+    }
   }
 
   return result;
@@ -130,13 +204,13 @@ export const ensurePortalAuth = async (email?: string) => {
 };
 
 export const portalGetProperties = (params?: { page?: number; limit?: number }) =>
-  portalRequest("propiedades", { params });
+  portalRequest("propiedades", { headers: buildPaginationHeaders(params) });
 
 export const portalGetUnits = (propertyId: number | string, params?: { page?: number; limit?: number }) =>
-  portalRequest(`unidades/${propertyId}`, { params });
+  portalRequest(`unidades/${propertyId}`, { headers: buildPaginationHeaders(params) });
 
 export const portalGetAmenities = (propertyId: number | string, params?: { page?: number; limit?: number }) =>
-  portalRequest(`amenity/${propertyId}`, { params });
+  portalRequest(`amenity/${propertyId}`, { headers: buildPaginationHeaders(params) });
 
 export const portalGetAmenityInfo = (amenityId: number | string) =>
   portalRequest(`reservas/amenities/${amenityId}/info`);
@@ -188,6 +262,21 @@ export const portalGetDashboardIncidents = (params?: {
   page?: number;
   limit?: number;
 }) => portalRequest(dashboardIncidentsPath, { params });
+
+export const portalGetDashboardExpensas = (params?: { page?: number; limit?: number }) =>
+  portalRequest(dashboardExpensasPath, { params });
+
+export const portalGetDashboardReservations = (params?: { page?: number; limit?: number }) =>
+  portalRequest(dashboardReservationsPath, { params });
+
+export const portalGetDashboardComunicados = (params?: { page?: number; limit?: number }) =>
+  portalRequest(dashboardComunicadosPath, { params });
+
+export const portalGetFinanzasResumen = (params?: { page?: number; limit?: number }) =>
+  portalRequest(finanzasResumenPath, { params });
+
+export const portalGetFinanzasPagos = (params?: { page?: number; limit?: number }) =>
+  portalRequest(finanzasPagosPath, { params });
 
 export const portalGetApprovalsReservations = (params?: { page?: number; limit?: number }) =>
   portalRequest(approvalsReservationsPath, { params });
