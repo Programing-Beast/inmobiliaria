@@ -99,7 +99,11 @@ vi.mock("@/lib/supabase", () => ({
   setUserRoles: vi.fn(async () => ({ error: null })),
   assignRoleToUser: vi.fn(async () => ({ error: null })),
   deleteUser: vi.fn(async () => ({ error: null })),
-  getUserProfile: vi.fn(async () => ({ profile: null, error: null })),
+  getUserProfile: vi.fn(async () => ({
+    profile: { id: "user-1", unit_id: "unit-1", building_id: "building-1" },
+    error: null,
+  })),
+  getUserPrimaryUnit: vi.fn(async () => ({ primaryUnitId: "unit-1", error: null })),
   signIn: vi.fn(async () => ({ data: null, error: null })),
   signUp: vi.fn(async () => ({ data: null, error: null })),
   signOut: vi.fn(async () => ({ error: null })),

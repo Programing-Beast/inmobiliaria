@@ -144,6 +144,9 @@ const portalRequest = async <T>(
       auth = getPortalAuth();
     }
   }
+  if (!auth && path !== "auth/login") {
+    return { data: null, error: { message: "Missing portal auth token" } };
+  }
   const requestHeaders: Record<string, string> = {
     Accept: "application/json",
     ...headers,
@@ -194,7 +197,10 @@ export const portalLogin = async (email: string) => {
 
 export const ensurePortalAuth = async (email?: string) => {
   const auth = getPortalAuth();
-  if (auth || !email) return { token: auth?.token || null, error: null };
+  if (auth) return { token: auth.token, error: null };
+  if (!email) {
+    return { token: null, error: { message: "Missing portal auth token" } };
+  }
 
   const loginResult = await portalLogin(email);
   if (loginResult.error || !loginResult.data?.data?.token) {

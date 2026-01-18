@@ -21,6 +21,8 @@ import {
   getBuildingPortalId,
   getBuildingByName,
   getBuildingByPortalId,
+  getUserPrimaryUnit,
+  getUserProfile,
   getUnitPortalId,
   getUnitByNumberInBuilding,
   getUnitByPortalId,
@@ -218,6 +220,40 @@ const readBoolean = (record: Record<string, any>, keys: string[]) => {
     }
   }
   return undefined;
+};
+
+const normalizeRole = (role?: string | null) => (role || "").trim().toLowerCase();
+
+const getCurrentUserRoles = (): string[] => {
+  const storedRoles = localStorage.getItem("userRoles");
+  if (storedRoles) {
+    try {
+      const parsed = JSON.parse(storedRoles);
+      if (Array.isArray(parsed)) {
+        return parsed.map((role) => normalizeRole(role)).filter(Boolean);
+      }
+    } catch {
+      // Ignore malformed roles data
+    }
+  }
+  const fallbackRole = normalizeRole(localStorage.getItem("userRole"));
+  return fallbackRole ? [fallbackRole] : [];
+};
+
+const userHasAnyRole = (allowedRoles: string[]) => {
+  const roles = getCurrentUserRoles();
+  if (!roles.length) return false;
+  return allowedRoles.some((role) => roles.includes(normalizeRole(role)));
+};
+
+const resolveAssignedUnitId = async (userId: string) => {
+  const { primaryUnitId, error: primaryError } = await getUserPrimaryUnit(userId);
+  if (primaryError) return { unitId: null, error: primaryError };
+  if (primaryUnitId) return { unitId: primaryUnitId, error: null };
+
+  const { profile, error: profileError } = await getUserProfile(userId);
+  if (profileError) return { unitId: null, error: profileError };
+  return { unitId: profile?.unit_id || null, error: null };
 };
 
 export const syncPortalCatalog = async (params?: {
@@ -651,6 +687,25 @@ export const createReservationSynced = async (params: {
     return { reservation: null, error: { message: "Missing or invalid reservation fields" }, queued: false };
   }
 
+  if (!userHasAnyRole(["tenant", "owner"])) {
+    return { reservation: null, error: { message: "User role not permitted to create reservations" }, queued: false };
+  }
+
+  const { unitId: assignedUnitId, error: unitError } = await resolveAssignedUnitId(localPayload.userId);
+  if (unitError) {
+    return { reservation: null, error: unitError, queued: false };
+  }
+  if (!assignedUnitId) {
+    return { reservation: null, error: { message: "User has no assigned unit" }, queued: false };
+  }
+  if (assignedUnitId !== localPayload.unitId) {
+    return {
+      reservation: null,
+      error: { message: "Reservations must use the user's assigned unit" },
+      queued: false,
+    };
+  }
+
   const unitPortalId = await getUnitPortalId(localPayload.unitId);
   const amenityPortalId = await getAmenityPortalId(localPayload.amenityId);
 
@@ -730,6 +785,10 @@ export const createIncidentSynced = async (params: {
   };
 }) => {
   const { email, portalFields, localPayload } = params;
+
+  if (!userHasAnyRole(["tenant"])) {
+    return { incident: null, error: { message: "User role not permitted to create incidents" }, queued: false };
+  }
 
   const buildingPortalId = await getBuildingPortalId(localPayload.buildingId);
   const unitPortalId = await getUnitPortalId(localPayload.unitId);
