@@ -278,6 +278,9 @@ export const portalGetDashboardReservations = (params?: { page?: number; limit?:
 export const portalGetDashboardComunicados = (params?: { page?: number; limit?: number }) =>
   portalRequest(dashboardComunicadosPath, { params });
 
+export const portalGetComunicado = (comunicadoId: number | string) =>
+  portalRequest(`comunicados/${comunicadoId}`);
+
 export const portalGetFinanzasResumen = (params?: { page?: number; limit?: number }) =>
   portalRequest(finanzasResumenPath, { params });
 

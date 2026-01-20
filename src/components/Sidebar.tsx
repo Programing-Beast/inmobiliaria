@@ -25,6 +25,7 @@ import logoOriginal from "@/assets/logo-original.png";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { getEnumTranslationKey } from "@/lib/i18n-helpers";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -39,6 +40,7 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
 
   // Use profile role from auth context, fallback to prop or localStorage
   const rawRole = profile?.role || propRole || localStorage.getItem("userRole") || "tenant";
+  const displayName = profile?.full_name || localStorage.getItem("userName") || "Usuario";
 
   // Normalize role to lowercase for comparison (database returns lowercase with underscores)
   const normalizeRole = (r: string): string => {
@@ -46,6 +48,13 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
   };
 
   const normalizedRole = normalizeRole(rawRole);
+  const roleLabel = t(getEnumTranslationKey("user_role", normalizedRole));
+  const initials = displayName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   // Define menu items with role permissions (matching portal_residentes_completo.html)
   const allNavItems = [
@@ -254,17 +263,17 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
 
         {/* User Section at Bottom */}
         <div className="border-t border-border p-3 shrink-0">
-          <div className={cn(
+        <div className={cn(
             "flex items-center gap-3 p-2 rounded-lg bg-muted/50",
             collapsed && "justify-center"
           )}>
             <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold shrink-0">
-              JD
+              {initials}
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">John Doe</p>
-                <p className="text-xs text-muted-foreground truncate">Owner</p>
+                <p className="text-sm font-medium truncate">{displayName}</p>
+                <p className="text-xs text-muted-foreground truncate">{roleLabel}</p>
               </div>
             )}
           </div>

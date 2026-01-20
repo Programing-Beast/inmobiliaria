@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileDown, Search, Filter, Plus } from "lucide-react";
+import { FileDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,26 +14,21 @@ import {
 } from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { getBuildingPayments, getUserPayments } from "@/lib/supabase";
+import { portalGetFinanzasPagos } from "@/lib/portal-api";
 import { toast } from "sonner";
-import type { PaymentStatus, ConceptType } from "@/lib/database.types";
+import type { PaymentStatus } from "@/lib/database.types";
 
 interface Payment {
   id: string;
-  concept_type: ConceptType;
-  concept_description: string | null;
-  amount: number;
+  invoice_number: string | null;
+  ruc: string | null;
+  timbrado: string | null;
+  total_amount: number;
+  balance: number;
   status: PaymentStatus;
+  recorded_at: string | null;
   due_date: string | null;
-  payment_date: string | null;
-  unit: {
-    unit_number: string;
-  } | null;
-  user?: {
-    full_name: string;
-    email: string;
-  } | null;
-  created_at: string;
+  pdf_url: string | null;
 }
 
 const Finanzas = () => {
@@ -44,7 +39,41 @@ const Finanzas = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  const toPortalList = (payload: any): any[] => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.result)) return payload.result;
+    return [];
+  };
+
+  const readString = (record: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record?.[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+      if (typeof value === "number") return String(value);
+    }
+    return "";
+  };
+
+  const readNumber = (record: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record?.[key];
+      const asNumber = Number(value);
+      if (Number.isFinite(asNumber)) return asNumber;
+    }
+    return null;
+  };
+
+  const normalizePaymentStatus = (status?: string): PaymentStatus => {
+    const value = (status || "").toLowerCase();
+    if (["pagado", "paid"].includes(value)) return "paid";
+    if (["pendiente", "pending"].includes(value)) return "pending";
+    if (["vencido", "overdue", "mora"].includes(value)) return "overdue";
+    return "pending";
+  };
 
   // Fetch payments based on user role
   useEffect(() => {
@@ -53,26 +82,32 @@ const Finanzas = () => {
 
       setLoading(true);
       try {
-        let result;
-
-        // Owners see all building payments, others see only their own
-        if (profile.role === 'owner' && profile.building_id) {
-          result = await getBuildingPayments(profile.building_id);
-        } else {
-          result = await getUserPayments(profile.id);
-        }
-
+        const result = await portalGetFinanzasPagos();
         if (result.error) {
-          console.error('Error fetching payments:', result.error);
-          toast.error(t('finance.error.load'));
+          console.error("Error fetching payments:", result.error);
+          toast.error(t("finance.error.load"));
           return;
         }
 
-        setPayments(result.payments || []);
-        setFilteredPayments(result.payments || []);
+        const portalPayments = toPortalList(result.data);
+        const mappedPayments: Payment[] = portalPayments.map((payment, index) => ({
+          id: readString(payment, ["idFactura", "id", "codigo", "numero"]) || `FAC-${index + 1}`,
+          invoice_number: readString(payment, ["numFactura", "numero", "invoice_number"]) || null,
+          ruc: readString(payment, ["ruc"]) || null,
+          timbrado: readString(payment, ["timbrado"]) || null,
+          total_amount: readNumber(payment, ["montoTotal", "total", "monto_total"]) ?? 0,
+          balance: readNumber(payment, ["saldo", "balance"]) ?? 0,
+          status: normalizePaymentStatus(readString(payment, ["estado", "status"])),
+          recorded_at: readString(payment, ["fechaGrabado", "created_at", "fecha"]) || null,
+          due_date: readString(payment, ["fechaVencimiento", "fecha_vencimiento", "due_date"]) || null,
+          pdf_url: readString(payment, ["pdf", "pdf_url", "url"]) || null,
+        }));
+
+        setPayments(mappedPayments);
+        setFilteredPayments(mappedPayments);
       } catch (error) {
-        console.error('Error:', error);
-        toast.error(t('finance.error.load'));
+        console.error("Error:", error);
+        toast.error(t("finance.error.load"));
       } finally {
         setLoading(false);
       }
@@ -88,8 +123,9 @@ const Finanzas = () => {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(payment =>
-        payment.concept_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.unit?.unit_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        payment.invoice_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        payment.ruc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        payment.timbrado?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -99,13 +135,8 @@ const Finanzas = () => {
       filtered = filtered.filter(payment => payment.status === statusFilter);
     }
 
-    // Type filter
-    if (typeFilter !== "all") {
-      filtered = filtered.filter(payment => payment.concept_type === typeFilter);
-    }
-
     setFilteredPayments(filtered);
-  }, [searchTerm, statusFilter, typeFilter, payments]);
+  }, [searchTerm, statusFilter, payments]);
 
   // Get status badge
   const getStatusBadge = (status: PaymentStatus) => {
@@ -121,17 +152,6 @@ const Finanzas = () => {
         {config.label}
       </Badge>
     );
-  };
-
-  // Get concept type label
-  const getConceptTypeLabel = (type: ConceptType) => {
-    const typeLabels = {
-      invoice_credit: t('finance.invoiceCredit'),
-      invoice_cash: t('finance.invoiceCash'),
-      receipt: t('finance.receipt'),
-      credit_note: t('finance.creditNote')
-    };
-    return typeLabels[type];
   };
 
   // Format currency
@@ -155,17 +175,19 @@ const Finanzas = () => {
   // Export to CSV
   const handleExport = () => {
     const csv = [
-      [t('finance.id'), t('finance.unit'), t('finance.type'), t('finance.description'), t('finance.amount'), t('finance.status'), t('finance.dueDate'), t('finance.paymentDate')].join(','),
+      ["ID", "Factura", "RUC", "Timbrado", "Monto Total", "Saldo", "Estado", "Fecha grabado", "Fecha vencimiento", "PDF"].join(','),
       ...filteredPayments.map(payment =>
         [
           payment.id,
-          payment.unit?.unit_number || '-',
-          getConceptTypeLabel(payment.concept_type),
-          payment.concept_description || '-',
-          payment.amount,
+          payment.invoice_number || '-',
+          payment.ruc || '-',
+          payment.timbrado || '-',
+          payment.total_amount,
+          payment.balance,
           payment.status,
+          formatDate(payment.recorded_at),
           formatDate(payment.due_date),
-          formatDate(payment.payment_date)
+          payment.pdf_url || '-'
         ].join(',')
       )
     ].join('\n');
@@ -216,20 +238,6 @@ const Finanzas = () => {
               </div>
             </div>
 
-            {/* Type Filter */}
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('finance.filterByType')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('finance.allTypes')}</SelectItem>
-                <SelectItem value="invoice_credit">{t('finance.invoiceCredit')}</SelectItem>
-                <SelectItem value="invoice_cash">{t('finance.invoiceCash')}</SelectItem>
-                <SelectItem value="receipt">{t('finance.receipt')}</SelectItem>
-                <SelectItem value="credit_note">{t('finance.creditNote')}</SelectItem>
-              </SelectContent>
-            </Select>
-
             {/* Status Filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
@@ -261,43 +269,51 @@ const Finanzas = () => {
             </div>
           ) : filteredPayments.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">{searchTerm || statusFilter !== 'all' || typeFilter !== 'all' ? 'No se encontraron conceptos con los filtros aplicados' : 'No hay conceptos registrados'}</p>
+              <p className="text-muted-foreground">{searchTerm || statusFilter !== 'all' ? 'No se encontraron conceptos con los filtros aplicados' : 'No hay conceptos registrados'}</p>
             </div>
           ) : (
             <div className="overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('finance.id')}</TableHead>
-                    {profile?.role === 'owner' && <TableHead>{t('finance.unit')}</TableHead>}
-                    <TableHead>{t('finance.type')}</TableHead>
-                    <TableHead>{t('finance.description')}</TableHead>
-                    <TableHead>{t('finance.amount')}</TableHead>
-                    <TableHead>{t('finance.status')}</TableHead>
-                    <TableHead>{t('finance.dueDate')}</TableHead>
-                    <TableHead>{t('finance.actions')}</TableHead>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Factura</TableHead>
+                    <TableHead>RUC</TableHead>
+                    <TableHead>Timbrado</TableHead>
+                    <TableHead>Monto Total</TableHead>
+                    <TableHead>Saldo</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Fecha grabado</TableHead>
+                    <TableHead>Fecha vencimiento</TableHead>
+                    <TableHead>PDF</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredPayments.map((payment) => (
                     <TableRow key={payment.id}>
-                      <TableCell className="font-mono text-xs">{payment.id.slice(0, 8)}...</TableCell>
-                      {profile?.role === 'owner' && (
-                        <TableCell className="font-semibold">{payment.unit?.unit_number || '-'}</TableCell>
-                      )}
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {getConceptTypeLabel(payment.concept_type)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{payment.concept_description || '-'}</TableCell>
-                      <TableCell className="font-semibold">{formatCurrency(payment.amount)}</TableCell>
+                      <TableCell className="font-mono text-xs">{payment.id}</TableCell>
+                      <TableCell className="font-semibold">{payment.invoice_number || "-"}</TableCell>
+                      <TableCell>{payment.ruc || "-"}</TableCell>
+                      <TableCell>{payment.timbrado || "-"}</TableCell>
+                      <TableCell className="font-semibold">{formatCurrency(payment.total_amount)}</TableCell>
+                      <TableCell className="font-semibold">{formatCurrency(payment.balance)}</TableCell>
                       <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                      <TableCell>{formatDate(payment.recorded_at)}</TableCell>
                       <TableCell>{formatDate(payment.due_date)}</TableCell>
                       <TableCell>
-                        <Button size="sm" variant="ghost" className="h-8">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8"
+                          onClick={() => {
+                            if (payment.pdf_url) {
+                              window.open(payment.pdf_url, "_blank", "noopener,noreferrer");
+                            }
+                          }}
+                          disabled={!payment.pdf_url}
+                        >
                           <FileDown className="w-3 h-3 mr-1" />
-                          {t('finance.viewReceipt')}
+                          PDF
                         </Button>
                       </TableCell>
                     </TableRow>

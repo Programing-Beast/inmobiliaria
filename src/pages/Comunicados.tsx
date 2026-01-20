@@ -13,22 +13,18 @@ import {
 import { Bell, Calendar, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { getBuildingAnnouncements } from "@/lib/supabase";
+import { portalGetComunicado, portalGetDashboardComunicados } from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
 import { toast } from "sonner";
 
 interface Announcement {
   id: string;
-  building_id: string;
   title_es: string;
   title_en: string | null;
   content_es: string;
   content_en: string | null;
-  is_published: boolean;
   published_at: string | null;
-  created_by: string | null;
-  created_at: string;
-  updated_at: string;
+  status?: string | null;
 }
 
 const Comunicados = () => {
@@ -39,30 +35,83 @@ const Comunicados = () => {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const toPortalList = (payload: any): any[] => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.result)) return payload.result;
+    return [];
+  };
+
+  const getPortalRecord = (payload: any): any | null => {
+    if (!payload) return null;
+    if (Array.isArray(payload)) return payload[0] || null;
+    if (Array.isArray(payload?.data)) return payload.data[0] || null;
+    if (payload?.data) return payload.data;
+    return payload;
+  };
+
+  const readString = (record: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record?.[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+      if (typeof value === "number") return String(value);
+    }
+    return "";
+  };
+
+  const mapAnnouncement = (record: Record<string, any>, index: number, fallback?: Announcement | null): Announcement => {
+    const titleEs =
+      readString(record, ["titulo_es", "titulo", "title", "asunto"]) ||
+      fallback?.title_es ||
+      "";
+    const titleEn = readString(record, ["titulo_en", "title_en"]) || fallback?.title_en || null;
+    const contentEs =
+      readString(record, ["contenido_es", "descripcion", "detalle", "mensaje", "contenido", "content"]) ||
+      fallback?.content_es ||
+      "";
+    const contentEn = readString(record, ["contenido_en", "content_en"]) || fallback?.content_en || null;
+    return {
+      id: readString(record, ["idComunicado", "id", "codigo", "numero"]) || fallback?.id || `COM-${index + 1}`,
+      title_es: titleEs,
+      title_en: titleEn,
+      content_es: contentEs,
+      content_en: contentEn,
+      published_at:
+        readString(record, ["fecha", "fecha_publicacion", "published_at", "created_at"]) ||
+        fallback?.published_at ||
+        null,
+      status: readString(record, ["estado", "status"]) || fallback?.status || null,
+    };
+  };
 
   // Fetch announcements
   useEffect(() => {
     const fetchAnnouncements = async () => {
-      if (!profile) return;
-
-      if (!profile.building_id) {
+      if (!profile) {
         setLoading(false);
         return;
       }
 
       setLoading(true);
       try {
-        const { announcements: fetchedAnnouncements, error } = await getBuildingAnnouncements(profile.building_id);
-
-        if (error) {
-          console.error('Error fetching announcements:', error);
+        const result = await portalGetDashboardComunicados();
+        if (result.error) {
+          console.error("Error fetching announcements:", result.error);
           toast.error(t('announcements.error.load'));
           return;
         }
 
-        setAnnouncements(fetchedAnnouncements || []);
+        const portalAnnouncements = toPortalList(result.data);
+        const mappedAnnouncements = portalAnnouncements.map((announcement, index) =>
+          mapAnnouncement(announcement, index)
+        );
+        setAnnouncements(mappedAnnouncements);
       } catch (error) {
-        console.error('Error:', error);
+        console.error("Error:", error);
         toast.error(t('announcements.error.load'));
       } finally {
         setLoading(false);
@@ -82,10 +131,29 @@ const Comunicados = () => {
     });
   };
 
+  const loadingLabel = i18n.language === "en" ? "Loading..." : "Cargando...";
+
   // Handle view announcement
-  const handleViewAnnouncement = (announcement: Announcement) => {
+  const handleViewAnnouncement = async (announcement: Announcement) => {
     setSelectedAnnouncement(announcement);
     setShowDetailDialog(true);
+
+    if (announcement.id.startsWith("COM-")) return;
+
+    setLoadingDetail(true);
+    try {
+      const result = await portalGetComunicado(announcement.id);
+      if (result.error) {
+        console.error("Error fetching announcement detail:", result.error);
+        return;
+      }
+      const record = getPortalRecord(result.data);
+      if (record) {
+        setSelectedAnnouncement(mapAnnouncement(record, 0, announcement));
+      }
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   // Get announcement excerpt (first 150 chars)
@@ -101,24 +169,6 @@ const Comunicados = () => {
     return (
       <div className="flex justify-center items-center py-12">
         <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!profile?.building_id) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">{t('announcements.title')}</h1>
-          <p className="text-muted-foreground mt-1">{t('announcements.subtitle')}</p>
-        </div>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Bell className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground font-medium">No Building Assigned</p>
-            <p className="text-sm text-muted-foreground mt-1">Please contact your administrator to assign you to a building.</p>
-          </CardContent>
-        </Card>
       </div>
     );
   }
@@ -205,7 +255,10 @@ const Comunicados = () => {
           </DialogHeader>
           <div className="prose prose-sm max-w-none py-4">
             <div className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">
-              {selectedAnnouncement && (
+              {loadingDetail && (
+                <p className="text-muted-foreground">{loadingLabel}</p>
+              )}
+              {!loadingDetail && selectedAnnouncement && (
                 i18n.language === 'en' && selectedAnnouncement.content_en
                   ? selectedAnnouncement.content_en
                   : selectedAnnouncement.content_es
