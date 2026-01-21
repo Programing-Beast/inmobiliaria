@@ -19,12 +19,29 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { getBuildingAmenities, getUserReservations } from "@/lib/supabase";
 import { createReservationSynced } from "@/lib/portal-sync";
+import { portalGetAmenityAvailability, portalGetAmenityInfo } from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
 import { toast } from "sonner";
 import type { ReservationStatus } from "@/lib/database.types";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Amenity {
   id: string;
+  portal_id?: number | null;
   name: string;
   type: string;
   display_name_es: string;
@@ -56,6 +73,13 @@ const Reservas = () => {
   const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [amenityInfo, setAmenityInfo] = useState<Record<string, any> | null>(null);
+  const [availabilitySlots, setAvailabilitySlots] = useState<{ start: string; end: string }[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const [reservationsSort, setReservationsSort] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
 
   // New reservation form
   const getDefaultReservation = () => ({
@@ -116,6 +140,81 @@ const Reservas = () => {
     }));
   }, [profile]);
 
+  const toPortalList = (payload: any): any[] => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.result)) return payload.result;
+    return [];
+  };
+
+  const readString = (record: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record?.[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+      if (typeof value === "number") return String(value);
+    }
+    return "";
+  };
+
+  useEffect(() => {
+    const fetchAmenityInfo = async () => {
+      if (!selectedAmenity?.portal_id) {
+        setAmenityInfo(null);
+        return;
+      }
+      const result = await portalGetAmenityInfo(selectedAmenity.portal_id);
+      if (result.error) {
+        console.error("Error fetching amenity info:", result.error);
+        setAmenityInfo(null);
+        return;
+      }
+      const record = toPortalList(result.data)[0] || (result.data as any);
+      setAmenityInfo(record || null);
+    };
+
+    fetchAmenityInfo();
+  }, [selectedAmenity?.portal_id]);
+
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      if (!selectedAmenity?.portal_id || !newReservation.date) {
+        setAvailabilitySlots([]);
+        setAvailabilityError(null);
+        return;
+      }
+
+      setAvailabilityLoading(true);
+      setAvailabilityError(null);
+      try {
+        const result = await portalGetAmenityAvailability(selectedAmenity.portal_id, {
+          fecha: newReservation.date,
+        });
+
+        if (result.error) {
+          setAvailabilityError(result.error.message || "Error checking availability");
+          setAvailabilitySlots([]);
+          return;
+        }
+
+        const slots = toPortalList(result.data).map((slot: Record<string, any>) => ({
+          start: readString(slot, ["horaInicio", "hora_inicio", "start", "desde", "inicio"]),
+          end: readString(slot, ["horaFin", "hora_fin", "end", "hasta", "fin"]),
+        }));
+
+        setAvailabilitySlots(slots.filter((slot) => slot.start && slot.end));
+      } catch (error: any) {
+        setAvailabilityError(error?.message || "Error checking availability");
+        setAvailabilitySlots([]);
+      } finally {
+        setAvailabilityLoading(false);
+      }
+    };
+
+    fetchAvailability();
+  }, [newReservation.date, selectedAmenity?.portal_id]);
+
   // Fetch user reservations
   useEffect(() => {
     const fetchReservations = async () => {
@@ -153,6 +252,11 @@ const Reservas = () => {
       !newReservation.cantidadPersonas
     ) {
       toast.error("Por favor completa todos los campos requeridos");
+      return;
+    }
+
+    if (availabilitySlots.length > 0 && !isSlotAvailable()) {
+      toast.error(t("reservations.error.notAvailable"));
       return;
     }
 
@@ -263,6 +367,42 @@ const Reservas = () => {
     return icons[type] || "📍";
   };
 
+  const isSlotAvailable = () => {
+    if (availabilitySlots.length === 0) return true;
+    if (!newReservation.startTime || !newReservation.endTime) return true;
+    return availabilitySlots.some((slot) => {
+      return newReservation.startTime >= slot.start && newReservation.endTime <= slot.end;
+    });
+  };
+
+  const canSubmit = !availabilityLoading && (availabilitySlots.length === 0 || isSlotAvailable());
+
+  const getReservationDate = (reservation: Reservation) =>
+    reservation.reservation_date ? new Date(reservation.reservation_date).getTime() : 0;
+
+  const sortedReservations = [...reservations].sort((a, b) => {
+    const diff = getReservationDate(a) - getReservationDate(b);
+    return reservationsSort === "newest" ? -diff : diff;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedReservations.length / pageSize));
+  const startIndex = (page - 1) * pageSize;
+  const pagedReservations = sortedReservations.slice(startIndex, startIndex + pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [reservations.length, reservationsSort]);
+
+  const amenityStart = amenityInfo ? readString(amenityInfo, ["horaInicio", "hora_inicio", "start"]) : "";
+  const amenityEnd = amenityInfo ? readString(amenityInfo, ["horaFin", "hora_fin", "end"]) : "";
+  const amenityNotes = amenityInfo ? readString(amenityInfo, ["descripcion", "description", "detalle"]) : "";
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -358,6 +498,15 @@ const Reservas = () => {
                           {t('reservations.capacity')}: {selectedAmenity.max_capacity} personas
                         </p>
                       )}
+                      {(amenityStart || amenityEnd) && (
+                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          Horario: {amenityStart || "--"} - {amenityEnd || "--"}
+                        </p>
+                      )}
+                      {amenityNotes && (
+                        <p className="text-sm text-muted-foreground">{amenityNotes}</p>
+                      )}
                     </div>
                   </div>
                   <Button
@@ -373,24 +522,35 @@ const Reservas = () => {
             </Card>
           )}
 
-          {/* My Reservations */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('reservations.myReservations')}</CardTitle>
-              <CardDescription>
-                {reservations.length} {reservations.length === 1 ? 'reserva' : 'reservas'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {reservations.length === 0 ? (
-                <div className="text-center py-8">
-                  <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">No tienes reservas activas</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {reservations.map((reservation) => (
-                    <Card key={reservation.id} className="border">
+      {/* My Reservations */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <CardTitle>{t('reservations.myReservations')}</CardTitle>
+            <Select value={reservationsSort} onValueChange={(value) => setReservationsSort(value as "newest" | "oldest")}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <CardDescription>
+            {reservations.length} {reservations.length === 1 ? 'reserva' : 'reservas'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pagedReservations.length === 0 ? (
+            <div className="text-center py-8">
+              <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+              <p className="text-muted-foreground">No tienes reservas activas</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pagedReservations.map((reservation) => (
+                <Card key={reservation.id} className="border">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
@@ -420,6 +580,27 @@ const Reservas = () => {
               )}
             </CardContent>
           </Card>
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink isActive>{page}</PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                    className={page === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </>
       ) : (
         <Card>
@@ -468,6 +649,29 @@ const Reservas = () => {
                   onChange={(e) => setNewReservation({ ...newReservation, endTime: e.target.value })}
                 />
               </div>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
+              {availabilityLoading ? (
+                <p className="text-muted-foreground">Verificando disponibilidad...</p>
+              ) : availabilityError ? (
+                <p className="text-muted-foreground">{availabilityError}</p>
+              ) : availabilitySlots.length > 0 ? (
+                <>
+                  <p className="font-medium text-foreground mb-2">Horarios disponibles</p>
+                  <div className="flex flex-wrap gap-2">
+                    {availabilitySlots.map((slot, index) => (
+                      <span key={`${slot.start}-${slot.end}-${index}`} className="rounded-full border px-3 py-1 text-xs">
+                        {slot.start} - {slot.end}
+                      </span>
+                    ))}
+                  </div>
+                  {!isSlotAvailable() && newReservation.startTime && newReservation.endTime && (
+                    <p className="text-xs text-red-600 mt-2">{t("reservations.error.notAvailable")}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-muted-foreground">No hay horarios disponibles para esta fecha</p>
+              )}
             </div>
             <div>
               <Label htmlFor="notes">{t('reservations.notes')}</Label>
@@ -530,7 +734,7 @@ const Reservas = () => {
             <Button variant="outline" onClick={() => setShowNewReservationDialog(false)}>
               {t('reservations.cancel')}
             </Button>
-            <Button onClick={handleCreateReservation} disabled={submitting}>
+            <Button onClick={handleCreateReservation} disabled={submitting || !canSubmit}>
               {submitting ? "Creando..." : t('reservations.submit')}
             </Button>
           </DialogFooter>

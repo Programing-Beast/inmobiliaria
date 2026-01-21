@@ -34,6 +34,7 @@ import {
 import { Calendar, Plus, Edit, Trash2, Search, Clock, User, CheckCircle, XCircle, AlertCircle, Dumbbell } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import Unauthorized from "@/components/Unauthorized";
 import {
   getAllReservations,
   updateReservation,
@@ -44,6 +45,14 @@ import {
 } from "@/lib/supabase";
 import { createReservationSynced } from "@/lib/portal-sync";
 import { toast } from "sonner";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 type ReservationStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
@@ -105,6 +114,9 @@ const ReservationsManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterAmenity, setFilterAmenity] = useState<string>("all");
+  const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -199,6 +211,7 @@ const ReservationsManagement = () => {
     }
 
     setFilteredReservations(filtered);
+    setPage(1);
   }, [searchTerm, filterStatus, filterAmenity, reservations]);
 
   // Reset form
@@ -442,13 +455,35 @@ const ReservationsManagement = () => {
     return timeStr.substring(0, 5); // HH:MM format
   };
 
-  if (!canAccess) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">{t("common.noAccess")}</p>
-      </div>
-    );
+  if (!profile) {
+    return null;
   }
+
+  if (!canAccess) {
+    return <Unauthorized />;
+  }
+
+  const getReservationDate = (reservation: Reservation) =>
+    reservation.reservation_date ? new Date(reservation.reservation_date).getTime() : 0;
+
+  const sortedReservations = [...filteredReservations].sort((a, b) => {
+    const diff = getReservationDate(a) - getReservationDate(b);
+    return dateSort === "newest" ? -diff : diff;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedReservations.length / pageSize));
+  const startIndex = (page - 1) * pageSize;
+  const pagedReservations = sortedReservations.slice(startIndex, startIndex + pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [dateSort]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   if (loading) {
     return (
@@ -526,6 +561,17 @@ const ReservationsManagement = () => {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Date Sort */}
+            <Select value={dateSort} onValueChange={(value) => setDateSort(value as "newest" | "oldest")}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sort by date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -539,7 +585,7 @@ const ReservationsManagement = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredReservations.length === 0 ? (
+          {pagedReservations.length === 0 ? (
             <div className="text-center py-12">
               <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">{t("reservationsManagement.noReservations")}</p>
@@ -558,7 +604,7 @@ const ReservationsManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredReservations.map((reservation) => (
+                  {pagedReservations.map((reservation) => (
                     <TableRow key={reservation.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -644,6 +690,27 @@ const ReservationsManagement = () => {
           )}
         </CardContent>
       </Card>
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                className={page === 1 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationLink isActive>{page}</PaginationLink>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                className={page === totalPages ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
 
       {/* Create Reservation Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

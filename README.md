@@ -13,6 +13,33 @@ Resident/admin portal for buildings, units, amenities, reservations, incidents, 
 - Pagination for portal catalog (page/limit headers)
 - i18n (Spanish/English)
 
+## Portal API Mapping
+- `auth/login` -> `portalLogin` (auto token + role sync in `src/lib/portal-api.ts`)
+- `dashboard/expensas` -> Dashboard stats (`src/pages/DashboardW3CRM.tsx`)
+- `dashboard/reservas` -> Dashboard upcoming reservations
+- `dashboard/incidencias` -> Incidents list (`src/pages/Incidencias.tsx`)
+- `dashboard/comunicados` -> Announcements list (`src/pages/Comunicados.tsx`)
+- `finanzas` -> Finance/invoices list (`src/pages/Finanzas.tsx`)
+- `finanzas/resumen` -> Financial summary (Owner only, Dashboard)
+- `approvals/reservations` -> Reservation approvals (`src/pages/Aprobaciones.tsx`)
+- `comunicados/:id` -> Announcement detail (`src/pages/Comunicados.tsx`)
+- `propiedades` -> Buildings sync (`src/pages/BuildingsManagement.tsx`)
+- `unidades/:propertyId` -> Units sync (`src/pages/UnitsManagement.tsx`)
+- `amenity/:propertyId` -> Amenities sync (`src/pages/AmenitiesManagement.tsx`)
+- `reservas/amenities/:id/info` -> Amenity info (Resident reservations)
+- `reservas/amenities/:id/availability` -> Availability slots (Resident reservations)
+
+## User Guide (Quick)
+1) Sign in with your email + password.
+2) Residents (Owner/Tenant/Regular):
+   - View announcements and incidents.
+   - Create reservations from `Reservations`.
+3) Owners:
+   - Access finances and financial summary.
+4) Admins (Super Admin):
+   - Manage users, roles, permissions.
+   - Sync buildings/units/amenities and approve reservations.
+
 ## Tech Stack
 - Vite + React + TypeScript
 - TanStack Query
@@ -67,6 +94,19 @@ npm run test
 
 ## Sync Queue
 Failed Portal API writes are stored in a local queue. Use the Sync Queue panel in the Admin screen to view and retry pending jobs.
+
+## Local Smoke Test Checklist
+- Login with each role (owner, tenant, super_admin, regular_user).
+- Dashboard loads and role-specific cards hide/show correctly.
+- Reservations (resident) create flow:
+  - Amenity availability shows slots.
+  - Unavailable slot blocks submission.
+- Reservations (admin) list loads and updates status.
+- Incidents create + update status.
+- Communications list + detail view.
+- Finance list and export (Owner only).
+- Approvals page (Super Admin) approves a pending reservation.
+- Build completes: `npm run build`.
 
 ## Turso Migration & Seeding
 1) Ensure `.env` has the Turso credentials:

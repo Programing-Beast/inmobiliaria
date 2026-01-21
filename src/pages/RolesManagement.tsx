@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Shield, Users, Lock, Search, Settings, Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import Unauthorized from "@/components/Unauthorized";
 import {
   getAllPermissions,
   getRolePermissions,
@@ -85,6 +86,7 @@ const ROLE_CONFIG: Record<UserRole, { label: string; description: string; color:
 const RolesManagement = () => {
   const { t } = useTranslation();
   const { profile } = useAuth();
+  const canAccess = profile?.role === "super_admin";
 
   // State
   const [roles, setRoles] = useState<RoleWithStats[]>([]);
@@ -331,6 +333,14 @@ const RolesManagement = () => {
   }
 
   // Loading state
+  if (!profile) {
+    return null;
+  }
+
+  if (!canAccess) {
+    return <Unauthorized />;
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import Unauthorized from "@/components/Unauthorized";
 import { approveReservationSynced, retrySyncQueue } from "@/lib/portal-sync";
 import { portalGetApprovalsReservations } from "@/lib/portal-api";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ const Aprobaciones = () => {
   const [reservations, setReservations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | number | null>(null);
 
   const fetchReservations = async () => {
     setLoading(true);
@@ -44,12 +46,14 @@ const Aprobaciones = () => {
       return;
     }
 
+    setApprovingId(reservationId);
     const { error } = await approveReservationSynced({
       email: profile?.email || undefined,
       reservationId,
       localReservationId: reservation?.local_id || undefined,
       localStatus: "approved",
     });
+    setApprovingId(null);
 
     if (error) {
       toast.error(error.message || t("approvals.errorApproving"));
@@ -59,6 +63,14 @@ const Aprobaciones = () => {
     toast.success(t("approvals.approved"));
     fetchReservations();
   };
+
+  if (!profile) {
+    return null;
+  }
+
+  if (profile.role !== "super_admin") {
+    return <Unauthorized />;
+  }
 
   return (
     <div className="grid gap-4">
@@ -126,8 +138,11 @@ const Aprobaciones = () => {
                             size="sm"
                             className="bg-primary hover:bg-primary/90 text-white h-8"
                             onClick={() => handleApproveReservation(reservation)}
+                            disabled={approvingId === reservation.idReserva || approvingId === reservation.id_reserva || approvingId === reservation.id}
                           >
-                            {t("approvals.approve")}
+                            {approvingId === reservation.idReserva || approvingId === reservation.id_reserva || approvingId === reservation.id
+                              ? "Aprobando..."
+                              : t("approvals.approve")}
                           </Button>
                         </div>
                       </TableCell>

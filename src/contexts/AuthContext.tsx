@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, getUserProfile, getUserUnits, getUserRoles, signIn, signUp as signUpUser, signOut as signOutUser } from '@/lib/supabase';
+import { clearPortalAuth, ensurePortalAuth } from "@/lib/portal-api";
 import type { UserRole } from '@/lib/database.types';
 
 interface UserUnit {
@@ -154,6 +155,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(currentUser);
       setSession({ user: currentUser });
       fetchProfile(userId);
+      ensurePortalAuth(userEmail).catch((error) => {
+        console.error("Error syncing portal auth:", error);
+      });
     }
 
     setLoading(false);
@@ -195,6 +199,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(newUser);
         setSession({ user: newUser });
         await fetchProfile(data.user.id);
+        await ensurePortalAuth(newUser.email || email);
       }
 
       return { error: null };
@@ -217,6 +222,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(newUser);
         setSession({ user: newUser });
         await fetchProfile(data.user.id);
+        await ensurePortalAuth(newUser.email || email);
       }
 
       return { error: null };
@@ -234,6 +240,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(null);
       setSession(null);
       setProfile(null);
+      clearPortalAuth();
 
       // Clear localStorage
       localStorage.removeItem('currentUserId');

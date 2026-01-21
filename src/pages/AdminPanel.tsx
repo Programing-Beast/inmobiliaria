@@ -24,6 +24,7 @@ import {
 import { UserPlus, Edit, Search, Shield, Key, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import Unauthorized from "@/components/Unauthorized";
 import {
   getAllBuildings,
   getBuildingUnits,
@@ -90,6 +91,7 @@ const AdminPanel = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const canAccess = profile?.role === "super_admin";
 
   // Form state for creating user
   const [newUser, setNewUser] = useState({
@@ -113,7 +115,7 @@ const AdminPanel = () => {
   // Fetch users and buildings
   useEffect(() => {
     const fetchData = async () => {
-      if (!profile) return;
+      if (!profile || !canAccess) return;
 
       setLoading(true);
       try {
@@ -146,7 +148,7 @@ const AdminPanel = () => {
     };
 
     fetchData();
-  }, [profile]);
+  }, [profile, canAccess]);
 
   // Filter users based on search and role
   useEffect(() => {
@@ -476,6 +478,14 @@ const AdminPanel = () => {
       day: '2-digit'
     });
   };
+
+  if (!profile) {
+    return null;
+  }
+
+  if (!canAccess) {
+    return <Unauthorized />;
+  }
 
   if (loading) {
     return (

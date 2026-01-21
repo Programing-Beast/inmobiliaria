@@ -3,6 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -16,6 +23,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { portalGetComunicado, portalGetDashboardComunicados } from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
 import { toast } from "sonner";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface Announcement {
   id: string;
@@ -36,6 +51,9 @@ const Comunicados = () => {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
 
   const toPortalList = (payload: any): any[] => {
     if (!payload) return [];
@@ -188,6 +206,29 @@ const Comunicados = () => {
     return content.length > 150 ? `${content.substring(0, 150)}...` : content;
   };
 
+  const getAnnouncementDate = (announcement: Announcement) => {
+    return announcement.published_at ? new Date(announcement.published_at).getTime() : 0;
+  };
+
+  const sortedAnnouncements = [...announcements].sort((a, b) => {
+    const diff = getAnnouncementDate(a) - getAnnouncementDate(b);
+    return dateSort === "newest" ? -diff : diff;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedAnnouncements.length / pageSize));
+  const startIndex = (page - 1) * pageSize;
+  const pagedAnnouncements = sortedAnnouncements.slice(startIndex, startIndex + pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [announcements.length, dateSort]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -204,10 +245,19 @@ const Comunicados = () => {
           <h1 className="text-3xl font-bold text-foreground">{t('announcements.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('announcements.subtitle')}</p>
         </div>
+        <Select value={dateSort} onValueChange={(value) => setDateSort(value as "newest" | "oldest")}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Sort by date" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest first</SelectItem>
+            <SelectItem value="oldest">Oldest first</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Announcements List */}
-      {announcements.length === 0 ? (
+      {pagedAnnouncements.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Bell className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
@@ -217,7 +267,7 @@ const Comunicados = () => {
         </Card>
       ) : (
         <div className="space-y-4">
-          {announcements.map((announcement) => (
+          {pagedAnnouncements.map((announcement) => (
             <Card
               key={announcement.id}
               className="cursor-pointer transition-all hover:shadow-lg hover:border-primary/50"
@@ -260,6 +310,27 @@ const Comunicados = () => {
             </Card>
           ))}
         </div>
+      )}
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                className={page === 1 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationLink isActive>{page}</PaginationLink>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                className={page === totalPages ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       )}
 
       {/* Announcement Detail Dialog */}

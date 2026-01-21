@@ -24,12 +24,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { portalGetDashboardIncidents } from "@/lib/portal-api";
 import { createIncidentSynced, retrySyncQueue, updateIncidentSynced } from "@/lib/portal-sync";
 import { getBuildingAmenities } from "@/lib/supabase";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const Incidencias = () => {
   const { profile } = useAuth();
   const [incidents, setIncidents] = useState<any[]>([]);
   const [amenities, setAmenities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
@@ -221,6 +232,34 @@ const Incidencias = () => {
     return <Badge variant="outline">{value}</Badge>;
   };
 
+  const getIncidentDate = (incident: any) => {
+    const value = incident?.fechaModificacion || incident?.fecha || incident?.created_at;
+    return value ? new Date(value).getTime() : 0;
+  };
+
+  const sortedIncidents = [...incidents].sort((a, b) => {
+    const diff = getIncidentDate(a) - getIncidentDate(b);
+    return dateSort === "newest" ? -diff : diff;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedIncidents.length / pageSize));
+  const startIndex = (page - 1) * pageSize;
+  const pagedIncidents = sortedIncidents.slice(startIndex, startIndex + pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [incidents.length, dateSort]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  if (!profile) {
+    return null;
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -228,6 +267,15 @@ const Incidencias = () => {
           <div className="flex items-center justify-between">
             <CardTitle>Incidencias / Sugerencias</CardTitle>
             <div className="flex gap-2">
+              <Select value={dateSort} onValueChange={(value) => setDateSort(value as "newest" | "oldest")}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Ordenar por fecha" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Mas recientes</SelectItem>
+                  <SelectItem value="oldest">Mas antiguas</SelectItem>
+                </SelectContent>
+              </Select>
               <Button variant="outline" onClick={handleRetryQueue}>
                 Reintentar cola
               </Button>
@@ -258,14 +306,14 @@ const Incidencias = () => {
                       Cargando...
                     </TableCell>
                   </TableRow>
-                ) : incidents.length === 0 ? (
+                ) : pagedIncidents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
                       Sin incidencias
                     </TableCell>
                   </TableRow>
                 ) : (
-                  incidents.map((incident, index) => (
+                  pagedIncidents.map((incident, index) => (
                     <TableRow key={incident.idIncidencia ?? incident.id ?? index}>
                       <TableCell>{incident.idIncidencia ?? incident.id}</TableCell>
                       <TableCell>{incident.titulo || "-"}</TableCell>
@@ -286,6 +334,27 @@ const Incidencias = () => {
           </div>
         </CardContent>
       </Card>
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                className={page === 1 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationLink isActive>{page}</PaginationLink>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                className={page === totalPages ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>

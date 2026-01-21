@@ -14,9 +14,18 @@ import {
 } from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import Unauthorized from "@/components/Unauthorized";
 import { portalGetFinanzasPagos } from "@/lib/portal-api";
 import { toast } from "sonner";
 import type { PaymentStatus } from "@/lib/database.types";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface Payment {
   id: string;
@@ -39,6 +48,9 @@ const Finanzas = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const toPortalList = (payload: any): any[] => {
     if (!payload) return [];
@@ -136,6 +148,7 @@ const Finanzas = () => {
     }
 
     setFilteredPayments(filtered);
+    setPage(1);
   }, [searchTerm, statusFilter, payments]);
 
   // Get status badge
@@ -171,6 +184,40 @@ const Finanzas = () => {
       day: '2-digit'
     });
   };
+
+  const isOwner = profile?.role === "owner";
+
+  const getPaymentDate = (payment: Payment) => {
+    const value = payment.recorded_at || payment.due_date;
+    return value ? new Date(value).getTime() : 0;
+  };
+
+  const sortedPayments = [...filteredPayments].sort((a, b) => {
+    const diff = getPaymentDate(a) - getPaymentDate(b);
+    return dateSort === "newest" ? -diff : diff;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedPayments.length / pageSize));
+  const startIndex = (page - 1) * pageSize;
+  const pagedPayments = sortedPayments.slice(startIndex, startIndex + pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [dateSort]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  if (!profile) {
+    return null;
+  }
+
+  if (!isOwner) {
+    return <Unauthorized />;
+  }
 
   // Export to CSV
   const handleExport = () => {
@@ -250,6 +297,17 @@ const Finanzas = () => {
                 <SelectItem value="overdue">{t('finance.overdue')}</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Date Sort */}
+            <Select value={dateSort} onValueChange={(value) => setDateSort(value as "newest" | "oldest")}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sort by date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -267,7 +325,7 @@ const Finanzas = () => {
             <div className="flex justify-center items-center py-12">
               <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : filteredPayments.length === 0 ? (
+          ) : pagedPayments.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">{searchTerm || statusFilter !== 'all' ? 'No se encontraron conceptos con los filtros aplicados' : 'No hay conceptos registrados'}</p>
             </div>
@@ -289,7 +347,7 @@ const Finanzas = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPayments.map((payment) => (
+                  {pagedPayments.map((payment) => (
                     <TableRow key={payment.id}>
                       <TableCell className="font-mono text-xs">{payment.id}</TableCell>
                       <TableCell className="font-semibold">{payment.invoice_number || "-"}</TableCell>
@@ -324,6 +382,27 @@ const Finanzas = () => {
           )}
         </CardContent>
       </Card>
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                className={page === 1 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationLink isActive>{page}</PaginationLink>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                className={page === totalPages ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
     </div>
   );
 };

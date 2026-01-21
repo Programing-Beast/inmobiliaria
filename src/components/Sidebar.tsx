@@ -81,10 +81,17 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
     },
     {
       key: "reservations",
-      label: t('nav.reservationsManagement'),
+      label: t('nav.reservations'),
       icon: Calendar,
       path: "/reservations",
-      roles: ["owner", "tenant", "super_admin"] // All except regular_user
+      roles: ["owner", "tenant", "regular_user"] // Resident reservations
+    },
+    {
+      key: "reservationsAdmin",
+      label: t('nav.reservationsAdmin'),
+      icon: Calendar,
+      path: "/reservations-management",
+      roles: ["owner", "super_admin"] // Admin reservations management
     },
     {
       key: "incidents",

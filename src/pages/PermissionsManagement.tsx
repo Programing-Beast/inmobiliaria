@@ -36,6 +36,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Shield, Plus, Edit, Trash2, Search, Users, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import Unauthorized from "@/components/Unauthorized";
 import {
   getAllPermissions,
   createPermission,
@@ -110,6 +111,7 @@ const ROLES: UserRole[] = ["super_admin", "owner", "tenant", "regular_user"];
 const PermissionsManagement = () => {
   const { t } = useTranslation();
   const { profile } = useAuth();
+  const canAccess = profile?.role === "super_admin";
 
   // Permissions state
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -485,6 +487,14 @@ const PermissionsManagement = () => {
   }
 
   // Loading state
+  if (!profile) {
+    return null;
+  }
+
+  if (!canAccess) {
+    return <Unauthorized />;
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
