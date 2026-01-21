@@ -63,6 +63,31 @@ const Comunicados = () => {
     return "";
   };
 
+  const getAnnouncementContent = (announcement: Announcement) =>
+    i18n.language === "en" && announcement.content_en
+      ? announcement.content_en
+      : announcement.content_es;
+
+  const stripHtml = (html: string) => html.replace(/<[^>]+>/g, " ");
+
+  const sanitizeAnnouncementHtml = (html: string) => {
+    if (!html) return "";
+    const hasTags = /<\/?[a-z][\s\S]*>/i.test(html);
+    if (!hasTags) {
+      return html
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\n/g, "<br />");
+    }
+    if (typeof window === "undefined") {
+      return html;
+    }
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("script, style, iframe, object, embed").forEach((node) => node.remove());
+    return doc.body.innerHTML;
+  };
+
   const mapAnnouncement = (record: Record<string, any>, index: number, fallback?: Announcement | null): Announcement => {
     const titleEs =
       readString(record, ["titulo_es", "titulo", "title", "asunto"]) ||
@@ -158,9 +183,7 @@ const Comunicados = () => {
 
   // Get announcement excerpt (first 150 chars)
   const getExcerpt = (announcement: Announcement) => {
-    const content = i18n.language === 'en' && announcement.content_en
-      ? announcement.content_en
-      : announcement.content_es;
+    const content = stripHtml(getAnnouncementContent(announcement));
 
     return content.length > 150 ? `${content.substring(0, 150)}...` : content;
   };
@@ -254,14 +277,16 @@ const Comunicados = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="prose prose-sm max-w-none py-4">
-            <div className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">
+            <div className="text-sm text-foreground leading-relaxed">
               {loadingDetail && (
                 <p className="text-muted-foreground">{loadingLabel}</p>
               )}
               {!loadingDetail && selectedAnnouncement && (
-                i18n.language === 'en' && selectedAnnouncement.content_en
-                  ? selectedAnnouncement.content_en
-                  : selectedAnnouncement.content_es
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeAnnouncementHtml(getAnnouncementContent(selectedAnnouncement)),
+                  }}
+                />
               )}
             </div>
           </div>
