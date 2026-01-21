@@ -91,7 +91,7 @@ const App = () => (
               <Route
                 path="/reservations"
                 element={
-                  <RoleGuard roles={["owner", "tenant", "regular_user"]}>
+                  <RoleGuard roles={["owner", "tenant", "regular_user", "super_admin"]}>
                     <Reservas />
                   </RoleGuard>
                 }
