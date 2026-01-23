@@ -5,9 +5,40 @@
     "login": "Sign in"
   },
   "roles": {
-    "owner": "Owner",
-    "tenant": "Tenant",
-    "superAdmin": "Super Admin"
+    "title": "Roles Management",
+    "subtitle": "Manage user roles and their permissions",
+    "searchPlaceholder": "Search roles...",
+    "rolesList": "Roles List",
+    "role": "role",
+    "rolesCount": "roles",
+    "roleName": "Role Name",
+    "description": "Description",
+    "users": "Users",
+    "permissions": "Permissions",
+    "perms": "perms",
+    "actions": "Actions",
+    "managePermissions": "Manage Permissions",
+    "permissionsFor": "Permissions for",
+    "permissionsDialogDescription": "Select which permissions this role should have",
+    "searchPermissions": "Search permissions...",
+    "selectAll": "Select All",
+    "removeAll": "Remove All",
+    "permissionsSelected": "permissions selected",
+    "done": "Done",
+    "unauthorized": "Unauthorized Access",
+    "unauthorizedMessage": "You need super admin privileges to access this page.",
+    "success": {
+      "permissionAssigned": "Permission assigned successfully",
+      "permissionRemoved": "Permission removed successfully",
+      "allPermissionsAssigned": "All permissions assigned",
+      "allPermissionsRemoved": "All permissions removed"
+    },
+    "error": {
+      "load": "Error loading roles",
+      "assignPermission": "Error assigning permission",
+      "removePermission": "Error removing permission",
+      "toggle": "Error toggling permission"
+    }
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -35,7 +66,12 @@
     "forgotPassword": "Forgot your password?",
     "loginButton": "Sign in",
     "noAccount": "Don't have an account?",
-    "signUp": "Sign up"
+    "signUp": "Sign up",
+    "heroTitle": "Welcome Back!",
+    "heroSubtitle": "Access your dashboard and manage everything in one place.",
+    "heroBullet1": "Track your metrics in real-time",
+    "heroBullet2": "Secure and encrypted data",
+    "heroBullet3": "Lightning fast performance"
   },
   "register": {
     "title": "Create account",
@@ -339,42 +375,6 @@
     "privacy": "Privacy policy",
     "support": "Support"
   },
-  "roles": {
-    "title": "Roles Management",
-    "subtitle": "Manage user roles and their permissions",
-    "searchPlaceholder": "Search roles...",
-    "rolesList": "Roles List",
-    "role": "role",
-    "rolesCount": "roles",
-    "roleName": "Role Name",
-    "description": "Description",
-    "users": "Users",
-    "permissions": "Permissions",
-    "perms": "perms",
-    "actions": "Actions",
-    "managePermissions": "Manage Permissions",
-    "permissionsFor": "Permissions for",
-    "permissionsDialogDescription": "Select which permissions this role should have",
-    "searchPermissions": "Search permissions...",
-    "selectAll": "Select All",
-    "removeAll": "Remove All",
-    "permissionsSelected": "permissions selected",
-    "done": "Done",
-    "unauthorized": "Unauthorized Access",
-    "unauthorizedMessage": "You need super admin privileges to access this page.",
-    "success": {
-      "permissionAssigned": "Permission assigned successfully",
-      "permissionRemoved": "Permission removed successfully",
-      "allPermissionsAssigned": "All permissions assigned",
-      "allPermissionsRemoved": "All permissions removed"
-    },
-    "error": {
-      "load": "Error loading roles",
-      "assignPermission": "Error assigning permission",
-      "removePermission": "Error removing permission",
-      "toggle": "Error toggling permission"
-    }
-  },
   "permissions": {
     "title": "Permissions Management",
     "subtitle": "Manage system permissions and role assignments",
@@ -651,6 +651,9 @@
     "creating": "Creating...",
     "updating": "Updating...",
     "deleting": "Deleting...",
-    "noAccess": "You don't have permission to access this page."
+    "noAccess": "You don't have permission to access this page.",
+    "sortByDate": "Sort by date",
+    "newestFirst": "Newest first",
+    "oldestFirst": "Oldest first"
   }
 }

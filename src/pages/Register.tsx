@@ -3,12 +3,11 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import logoOriginal from "@/assets/logo-original.png";
 import { useTranslation } from "react-i18next";
-import { Eye, EyeOff, Mail, Lock, User, UserCircle } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Register = () => {
@@ -20,7 +19,6 @@ const Register = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "Tenant",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -211,26 +209,6 @@ const Register = () => {
                   disabled={isLoading}
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="role" className="text-secondary font-medium">
-                {t('register.role')}
-              </Label>
-              <div className="relative">
-                <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-                <Select value={formData.role} onValueChange={(value) => handleChange("role", value)} disabled={isLoading}>
-                  <SelectTrigger className="h-12 pl-10 transition-all focus:shadow-md">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Tenant">{t('register.tenant')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Owner accounts are created by administrators only
-              </p>
             </div>
 
             <div className="space-y-2">

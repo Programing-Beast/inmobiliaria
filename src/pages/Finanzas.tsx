@@ -300,14 +300,14 @@ const Finanzas = () => {
 
             {/* Date Sort */}
             <Select value={dateSort} onValueChange={(value) => setDateSort(value as "newest" | "oldest")}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sort by date" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="newest">Newest first</SelectItem>
-                <SelectItem value="oldest">Oldest first</SelectItem>
-              </SelectContent>
-            </Select>
+            <SelectTrigger>
+              <SelectValue placeholder={t("common.sortByDate")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">{t("common.newestFirst")}</SelectItem>
+              <SelectItem value="oldest">{t("common.oldestFirst")}</SelectItem>
+            </SelectContent>
+          </Select>
           </div>
         </CardContent>
       </Card>

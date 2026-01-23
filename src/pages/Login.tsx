@@ -202,9 +202,9 @@ const Login = () => {
         <div className="absolute bottom-1/3 right-1/4 w-12 h-12 border-2 border-white/20 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
 
         <div className="relative z-10 text-center text-white max-w-md animate-in fade-in slide-in-from-right-6 duration-1000">
-          <h2 className="text-5xl font-bold mb-6 leading-tight">Welcome Back!</h2>
+          <h2 className="text-5xl font-bold mb-6 leading-tight">{t("login.heroTitle")}</h2>
           <p className="text-lg text-white/95 mb-12 leading-relaxed">
-            Access your dashboard and manage everything in one place.
+            {t("login.heroSubtitle")}
           </p>
           <div className="space-y-6">
             <div className="flex items-center gap-4 group">
@@ -213,7 +213,7 @@ const Login = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <p className="text-left text-lg font-medium">Track your metrics in real-time</p>
+              <p className="text-left text-lg font-medium">{t("login.heroBullet1")}</p>
             </div>
             <div className="flex items-center gap-4 group">
               <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
@@ -221,7 +221,7 @@ const Login = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <p className="text-left text-lg font-medium">Secure and encrypted data</p>
+              <p className="text-left text-lg font-medium">{t("login.heroBullet2")}</p>
             </div>
             <div className="flex items-center gap-4 group">
               <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
@@ -229,7 +229,7 @@ const Login = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <p className="text-left text-lg font-medium">Lightning fast performance</p>
+              <p className="text-left text-lg font-medium">{t("login.heroBullet3")}</p>
             </div>
           </div>
         </div>

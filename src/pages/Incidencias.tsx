@@ -272,8 +272,8 @@ const Incidencias = () => {
                   <SelectValue placeholder="Ordenar por fecha" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="newest">Mas recientes</SelectItem>
-                  <SelectItem value="oldest">Mas antiguas</SelectItem>
+                  <SelectItem value="newest">Más recientes</SelectItem>
+                  <SelectItem value="oldest">Más antiguas</SelectItem>
                 </SelectContent>
               </Select>
               <Button variant="outline" onClick={handleRetryQueue}>

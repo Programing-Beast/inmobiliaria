@@ -247,11 +247,11 @@ const Comunicados = () => {
         </div>
         <Select value={dateSort} onValueChange={(value) => setDateSort(value as "newest" | "oldest")}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Sort by date" />
+            <SelectValue placeholder={t("common.sortByDate")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="newest">Newest first</SelectItem>
-            <SelectItem value="oldest">Oldest first</SelectItem>
+            <SelectItem value="newest">{t("common.newestFirst")}</SelectItem>
+            <SelectItem value="oldest">{t("common.oldestFirst")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
