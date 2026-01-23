@@ -29,6 +29,12 @@ Resident/admin portal for buildings, units, amenities, reservations, incidents, 
 - `reservas/amenities/:id/info` -> Amenity info (Resident reservations)
 - `reservas/amenities/:id/availability` -> Availability slots (Resident reservations)
 
+## Owner Data Context
+Owner data (expenses, reservations, finances, announcements) is scoped to the owner/company tied to the signed-in credentials.
+
+- If you need to validate a different owner/company, create credentials for that owner and sign in with those credentials.
+- The UI provides an Owner Context selector when the owner user has access to multiple buildings; it switches the local building/unit context.
+
 ## User Guide (Quick)
 1) Sign in with your email + password.
 2) Residents (Owner/Tenant/Regular):
