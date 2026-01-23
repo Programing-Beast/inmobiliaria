@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { UnitSwitcher } from "@/components/UnitSwitcher";
+import { OwnerContextSwitcher } from "@/components/OwnerContextSwitcher";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -109,6 +110,9 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
         {/* Right side - Actions */}
         <div className="flex items-center gap-2">
+          {/* Owner context selector (owner role only) */}
+          <OwnerContextSwitcher />
+
           {/* Unit Switcher for users with multiple units */}
           <UnitSwitcher variant="dropdown" className="hidden lg:flex" />
 

@@ -655,5 +655,12 @@
     "sortByDate": "Ordenar por fecha",
     "newestFirst": "M?s recientes primero",
     "oldestFirst": "M?s antiguas primero"
+  },
+  "ownerContext": {
+    "title": "Contexto de propietario",
+    "select": "Seleccionar contexto de propietario",
+    "unnamedBuilding": "Edificio sin nombre",
+    "note": "Los datos del propietario se muestran seg?n las credenciales con las que iniciaste sesi?n.",
+    "noteAction": "Para ver otro propietario/empresa, inicia sesi?n con las credenciales de ese propietario."
   }
 }

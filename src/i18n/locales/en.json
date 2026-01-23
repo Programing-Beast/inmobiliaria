@@ -655,5 +655,12 @@
     "sortByDate": "Sort by date",
     "newestFirst": "Newest first",
     "oldestFirst": "Oldest first"
+  },
+  "ownerContext": {
+    "title": "Owner context",
+    "select": "Select owner context",
+    "unnamedBuilding": "Unnamed building",
+    "note": "Owner data is scoped to the credentials you signed in with.",
+    "noteAction": "To view another owner/company, sign in with that owner's credentials."
   }
 }

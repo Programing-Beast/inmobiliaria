@@ -223,8 +223,14 @@ const Profile = () => {
 
         {/* Building & Unit Information Card - Show simple card for single unit, UnitSwitcher for multiple */}
         {profile.units && profile.units.length > 1 ? (
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 space-y-3">
             <UnitSwitcher variant="card" />
+            {profile.role === "owner" && (
+              <div className="text-xs text-muted-foreground">
+                <p>{t("ownerContext.note")}</p>
+                <p>{t("ownerContext.noteAction")}</p>
+              </div>
+            )}
           </div>
         ) : (
           <Card>
@@ -261,6 +267,12 @@ const Profile = () => {
                 <p className="text-xs text-muted-foreground">
                   Contact your building administrator if this information is incorrect.
                 </p>
+                {profile.role === "owner" && (
+                  <>
+                    <p className="text-xs text-muted-foreground mt-2">{t("ownerContext.note")}</p>
+                    <p className="text-xs text-muted-foreground">{t("ownerContext.noteAction")}</p>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
