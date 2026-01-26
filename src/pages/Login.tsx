@@ -75,7 +75,7 @@ const Login = () => {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 relative overflow-hidden">
         {/* Decorative background elements */}
         <div className="absolute top-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-info/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-success/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
 
         <div className="w-full max-w-md relative z-10">
           {/* Logo */}
@@ -167,7 +167,7 @@ const Login = () => {
 
             <Button
               type="submit"
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]"
+              className="w-full h-12 bg-success hover:bg-success/90 text-success-foreground font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -192,7 +192,7 @@ const Login = () => {
       </div>
 
       {/* Right Side - Image/Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary to-primary/80 items-center justify-center p-12 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-success via-success to-success/80 items-center justify-center p-12 relative overflow-hidden">
         {/* Animated decorative circles */}
         <div className="absolute top-20 right-20 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse-subtle" />
         <div className="absolute bottom-20 left-20 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '1s' }} />
