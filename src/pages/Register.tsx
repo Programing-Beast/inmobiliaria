@@ -34,24 +34,24 @@ const Register = () => {
 
     // Validation
     if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
-      toast.error("Please complete all fields");
+      toast.error(t("register.validationRequired"));
       return;
     }
 
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      toast.error("Please enter a valid email address");
+      toast.error(t("register.validationEmail"));
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error(t("register.validationPasswordsMismatch"));
       return;
     }
 
     if (formData.password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      toast.error(t("register.validationPasswordLength"));
       return;
     }
 
@@ -60,12 +60,12 @@ const Register = () => {
     const hasLowerCase = /[a-z]/.test(formData.password);
     const hasNumber = /[0-9]/.test(formData.password);
     if (!hasUpperCase || !hasLowerCase || !hasNumber) {
-      toast.error("Password must contain uppercase, lowercase, and number");
+      toast.error(t("register.validationPasswordStrength"));
       return;
     }
 
     if (!agreeTerms) {
-      toast.error("Please accept the terms and conditions");
+      toast.error(t("register.validationAcceptTerms"));
       return;
     }
 
@@ -78,21 +78,18 @@ const Register = () => {
       if (error) {
         // Handle specific error messages
         if (error.message.includes('already registered')) {
-          toast.error("User with this email already exists");
+          toast.error(t("register.errorUserExists"));
         } else if (error.message.includes('Password')) {
-          toast.error("Password must be at least 6 characters");
+          toast.error(t("register.errorPasswordMin"));
         } else {
-          toast.error(error.message || "Error during registration");
+          toast.error(error.message || t("register.errorGeneric"));
         }
         setIsLoading(false);
         return;
       }
 
       // Success
-      toast.success(
-        "Registration successful! Please check your email to confirm your account before logging in.",
-        { duration: 5000 }
-      );
+      toast.success(t("register.successMessage"), { duration: 5000 });
 
       // Redirect to login after a short delay
       setTimeout(() => {
@@ -100,7 +97,7 @@ const Register = () => {
       }, 2000);
     } catch (error: any) {
       console.error('Registration error:', error);
-      toast.error("Unexpected error during registration");
+      toast.error(t("register.unexpectedError"));
       setIsLoading(false);
     }
   };
@@ -118,9 +115,9 @@ const Register = () => {
         <div className="absolute bottom-1/4 right-1/3 w-16 h-16 border-2 border-white/20 rounded-full animate-pulse" style={{ animationDelay: '0.7s' }} />
 
         <div className="relative z-10 text-center text-white max-w-md animate-in fade-in slide-in-from-left-6 duration-1000">
-          <h2 className="text-5xl font-bold mb-6 leading-tight">Join Us Today!</h2>
+          <h2 className="text-5xl font-bold mb-6 leading-tight">{t("register.heroTitle")}</h2>
           <p className="text-lg text-white/95 mb-12 leading-relaxed">
-            Create an account and start managing your properties efficiently.
+            {t("register.heroSubtitle")}
           </p>
           <div className="space-y-6">
             <div className="flex items-center gap-4 group">
@@ -129,7 +126,7 @@ const Register = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <p className="text-left text-lg font-medium">Easy registration process</p>
+              <p className="text-left text-lg font-medium">{t("register.heroBullet1")}</p>
             </div>
             <div className="flex items-center gap-4 group">
               <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
@@ -137,7 +134,7 @@ const Register = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
-              <p className="text-left text-lg font-medium">Join thousands of users</p>
+              <p className="text-left text-lg font-medium">{t("register.heroBullet2")}</p>
             </div>
             <div className="flex items-center gap-4 group">
               <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
@@ -145,7 +142,7 @@ const Register = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
-              <p className="text-left text-lg font-medium">24/7 support available</p>
+              <p className="text-left text-lg font-medium">{t("register.heroBullet3")}</p>
             </div>
           </div>
         </div>
@@ -184,7 +181,7 @@ const Register = () => {
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder={t("register.fullNamePlaceholder")}
                   value={formData.fullName}
                   onChange={(e) => handleChange("fullName", e.target.value)}
                   className="h-12 pl-10 transition-all focus:shadow-md"
@@ -202,7 +199,7 @@ const Register = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="hello@example.com"
+                  placeholder={t("register.emailPlaceholder")}
                   value={formData.email}
                   onChange={(e) => handleChange("email", e.target.value)}
                   className="h-12 pl-10 transition-all focus:shadow-md"
@@ -220,7 +217,7 @@ const Register = () => {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder={t("register.passwordPlaceholder")}
                   value={formData.password}
                   onChange={(e) => handleChange("password", e.target.value)}
                   className="h-12 pl-10 pr-10 transition-all focus:shadow-md"
@@ -235,7 +232,7 @@ const Register = () => {
                 </button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Must be 8+ characters with uppercase, lowercase, and number
+                {t("register.passwordHint")}
               </p>
             </div>
 
@@ -248,7 +245,7 @@ const Register = () => {
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder={t("register.confirmPasswordPlaceholder")}
                   value={formData.confirmPassword}
                   onChange={(e) => handleChange("confirmPassword", e.target.value)}
                   className="h-12 pl-10 pr-10 transition-all focus:shadow-md"
@@ -273,13 +270,13 @@ const Register = () => {
                 className="mt-1"
               />
               <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer select-none leading-tight hover:text-foreground transition-colors">
-                I agree to the{" "}
+                {t("register.termsPrefix")}{" "}
                 <Link to="/terms" className="text-success hover:underline font-medium">
-                  Terms of Service
+                  {t("register.termsOfService")}
                 </Link>{" "}
-                and{" "}
+                {t("register.termsAnd")}{" "}
                 <Link to="/privacy" className="text-success hover:underline font-medium">
-                  Privacy Policy
+                  {t("register.privacyPolicy")}
                 </Link>
               </label>
             </div>
@@ -292,7 +289,7 @@ const Register = () => {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Creating account...
+                  {t("register.loading")}
                 </span>
               ) : (
                 t('register.registerButton')

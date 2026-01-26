@@ -26,14 +26,14 @@ const Login = () => {
 
     // Validation
     if (!email || !password) {
-      toast.error("Please complete all fields");
+      toast.error(t("login.validationRequired"));
       return;
     }
 
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      toast.error("Please enter a valid email address");
+      toast.error(t("login.validationEmail"));
       return;
     }
 
@@ -46,25 +46,25 @@ const Login = () => {
       if (error) {
         // Handle specific error messages
         if (error.message.includes('Invalid login credentials')) {
-          toast.error("Email o contraseña incorrectos");
+          toast.error(t("login.errorInvalidCredentials"));
         } else if (error.message.includes('Email not confirmed')) {
-          toast.error("Por favor confirma tu email antes de iniciar sesión");
+          toast.error(t("login.errorEmailNotConfirmed"));
         } else {
-          toast.error(error.message || "Error al iniciar sesión");
+          toast.error(error.message || t("login.errorGeneric"));
         }
         setIsLoading(false);
         return;
       }
 
       // Success - auth context will handle profile loading
-      toast.success("¡Sesión iniciada exitosamente!");
+      toast.success(t("login.success"));
 
       // Redirect to intended page or dashboard
       const from = (location.state as any)?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     } catch (error: any) {
       console.error('Login error:', error);
-      toast.error("Error inesperado al iniciar sesión");
+      toast.error(t("login.unexpectedError"));
       setIsLoading(false);
     }
   };
@@ -104,7 +104,7 @@ const Login = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="hello@example.com"
+                  placeholder={t("login.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-12 pl-10 transition-all focus:shadow-md"
@@ -122,7 +122,7 @@ const Login = () => {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder={t("login.passwordPlaceholder")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-12 pl-10 pr-10 transition-all focus:shadow-md"
@@ -173,7 +173,7 @@ const Login = () => {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Signing in...
+                  {t("login.loading")}
                 </span>
               ) : (
                 t('login.loginButton')
