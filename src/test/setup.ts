@@ -5,7 +5,7 @@ import { vi } from "vitest";
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
-    i18n: { language: "en" },
+    i18n: { language: "es" },
   }),
 }));
 
