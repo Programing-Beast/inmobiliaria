@@ -62,7 +62,6 @@ const DashboardW3CRM = () => {
   const [upcomingReservations, setUpcomingReservations] = useState<DashboardReservation[]>([]);
   const [recentActivity, setRecentActivity] = useState<DashboardActivity[]>([]);
   const [financialSummary, setFinancialSummary] = useState<{
-    total?: string;
     paid?: string;
     pending?: string;
     overdue?: string;
@@ -70,7 +69,6 @@ const DashboardW3CRM = () => {
   const [stats, setStats] = useState({
     totalUnits: "-",
     activeReservations: "-",
-    monthlyPayments: "-",
     openIncidents: "-",
   });
 
@@ -179,14 +177,9 @@ const DashboardW3CRM = () => {
           readNumber(expensasSummary, ["total_unidades", "totalUnits", "cant_unidades", "cantidadUnidades"]) ??
           readNumber(finanzasSummary, ["total_unidades", "totalUnits"]);
 
-        const monthlyPaymentsValue =
-          readNumber(finanzasSummary, ["total", "monto_total", "totalPagos", "total_pagos", "montoTotal"]) ??
-          readNumber(expensasSummary, ["total", "monto_total", "totalExpensas", "montoTotal"]);
-
         setStats({
           totalUnits: totalUnitsValue !== null ? String(totalUnitsValue) : "-",
           activeReservations: String(reservas.length || 0),
-          monthlyPayments: isOwner ? formatCurrency(monthlyPaymentsValue) : "-",
           openIncidents: String(openIncidentsCount || 0),
         });
 
@@ -213,7 +206,6 @@ const DashboardW3CRM = () => {
         setFinancialSummary(
           isOwner
             ? {
-                total: formatCurrency(readNumber(finanzasSummary, ["total", "monto_total", "montoTotal"]) ?? null),
                 paid: formatCurrency(readNumber(finanzasSummary, ["pagado", "paid", "total_pagado", "monto_pagado"]) ?? null),
                 pending: formatCurrency(
                   readNumber(finanzasSummary, ["pendiente", "pending", "total_pendiente", "monto_pendiente"]) ?? null
@@ -292,7 +284,7 @@ const DashboardW3CRM = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title={t('dashboard.totalUnits')}
           value={stats.totalUnits}
@@ -306,13 +298,6 @@ const DashboardW3CRM = () => {
           icon={Calendar}
           iconColor="success"
           trend={{ value: 8, positive: true }}
-        />
-        <StatCard
-          title={t('dashboard.monthlyPayments')}
-          value={stats.monthlyPayments}
-          icon={DollarSign}
-          iconColor="warning"
-          trend={{ value: 15, positive: true }}
         />
         <StatCard
           title={t('dashboard.openIncidents')}
@@ -426,10 +411,6 @@ const DashboardW3CRM = () => {
                 <p className="text-sm text-muted-foreground">Cargando...</p>
               ) : financialSummary ? (
                 <>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{t('dashboard.monthlyPayments')}</span>
-                    <span className="font-medium text-secondary">{financialSummary.total || "-"}</span>
-                  </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">{t('dashboard.paid')}</span>
                     <span className="font-medium text-secondary">{financialSummary.paid || "-"}</span>
