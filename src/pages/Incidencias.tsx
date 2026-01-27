@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { portalGetDashboardIncidents } from "@/lib/portal-api";
 import { createIncidentSynced, retrySyncQueue, updateIncidentSynced } from "@/lib/portal-sync";
-import { getBuildingAmenities } from "@/lib/supabase";
+import { getAllBuildings, getBuildingUnits } from "@/lib/supabase";
 import {
   Pagination,
   PaginationContent,
@@ -36,7 +36,8 @@ import {
 const Incidencias = () => {
   const { profile } = useAuth();
   const [incidents, setIncidents] = useState<any[]>([]);
-  const [amenities, setAmenities] = useState<any[]>([]);
+  const [buildings, setBuildings] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
@@ -51,7 +52,8 @@ const Incidencias = () => {
     descripcion: "",
     prioridad: "MEDIA",
     tipoLocal: "maintenance",
-    amenityId: "",
+    buildingId: "",
+    unitId: "",
   });
 
   const [updateIncident, setUpdateIncident] = useState({
@@ -84,31 +86,53 @@ const Incidencias = () => {
   }, []);
 
   useEffect(() => {
-    const fetchAmenities = async () => {
-      if (!profile?.building_id) return;
-      const { amenities: fetchedAmenities, error } = await getBuildingAmenities(profile.building_id);
-      if (error) {
-        console.error("Error fetching amenities:", error);
+    const fetchBuildings = async () => {
+      if (profile?.building_id) {
+        const profileBuildingName = (profile as any)?.building?.name;
+        setBuildings([{ id: profile.building_id, name: profileBuildingName || "Propiedad" }]);
+        setNewIncident((prev) => ({ ...prev, buildingId: profile.building_id }));
         return;
       }
-      setAmenities(fetchedAmenities || []);
+      const { buildings: fetchedBuildings, error } = await getAllBuildings();
+      if (error) {
+        console.error("Error fetching buildings:", error);
+        return;
+      }
+      setBuildings(fetchedBuildings || []);
     };
 
-    fetchAmenities();
-  }, [profile]);
+    fetchBuildings();
+  }, [profile?.building_id, profile?.building?.name]);
+
+  useEffect(() => {
+    const fetchUnits = async () => {
+      if (!newIncident.buildingId) {
+        setUnits([]);
+        return;
+      }
+      const { units: fetchedUnits, error } = await getBuildingUnits(newIncident.buildingId);
+      if (error) {
+        console.error("Error fetching units:", error);
+        return;
+      }
+      setUnits(fetchedUnits || []);
+    };
+
+    fetchUnits();
+  }, [newIncident.buildingId]);
 
   const handleCreateIncident = async () => {
-    if (!newIncident.titulo || !newIncident.descripcion) {
+    if (!newIncident.titulo || !newIncident.descripcion || !newIncident.buildingId) {
       toast.error("Completa los campos requeridos");
       return;
     }
 
     setSubmitting(true);
     try {
-      const buildingId = profile?.building_id;
-      const unitId = profile?.currentUnit?.unit_id || profile?.unit_id;
-      if (!buildingId || !unitId) {
-        toast.error("No hay unidad o edificio asignado");
+      const buildingId = newIncident.buildingId || profile?.building_id;
+      const unitId = newIncident.unitId || undefined;
+      if (!buildingId) {
+        toast.error("No hay edificio asignado");
         setSubmitting(false);
         return;
       }
@@ -124,7 +148,6 @@ const Incidencias = () => {
           userId: profile?.id || "",
           buildingId,
           unitId,
-          amenityId: newIncident.amenityId || undefined,
           type: newIncident.tipoLocal as "maintenance" | "complaint" | "suggestion",
           title: newIncident.titulo,
           description: newIncident.descripcion,
@@ -144,7 +167,8 @@ const Incidencias = () => {
         descripcion: "",
         prioridad: "MEDIA",
         tipoLocal: "maintenance",
-        amenityId: "",
+        buildingId: profile?.building_id || "",
+        unitId: "",
       });
       fetchIncidents();
     } catch (error) {
@@ -295,7 +319,7 @@ const Incidencias = () => {
                   <TableHead>Estado</TableHead>
                   <TableHead>Actualizado</TableHead>
                   <TableHead>Unidad</TableHead>
-                  <TableHead>Amenity</TableHead>
+                  <TableHead>Propiedad</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -320,7 +344,7 @@ const Incidencias = () => {
                       <TableCell>{getStatusBadge(incident.estado)}</TableCell>
                       <TableCell>{incident.fechaModificacion || "-"}</TableCell>
                       <TableCell>{incident.unidad || "-"}</TableCell>
-                      <TableCell>{incident.amenity || "-"}</TableCell>
+                      <TableCell>{incident.propiedad || incident.propiedadNombre || incident.edificio || "-"}</TableCell>
                       <TableCell>
                         <Button size="sm" variant="outline" onClick={() => openUpdateDialog(incident)}>
                           Actualizar
@@ -363,21 +387,44 @@ const Incidencias = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Amenity</label>
+              <label className="text-sm font-medium">Propiedad *</label>
               <Select
-                value={newIncident.amenityId || "none"}
+                value={newIncident.buildingId || "none"}
                 onValueChange={(value) =>
-                  setNewIncident({ ...newIncident, amenityId: value === "none" ? "" : value })
+                  setNewIncident({ ...newIncident, buildingId: value === "none" ? "" : value, unitId: "" })
                 }
+                disabled={!!profile?.building_id}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un amenity" />
+                  <SelectValue placeholder="Selecciona una propiedad" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sin amenity</SelectItem>
-                  {amenities.map((amenity) => (
-                    <SelectItem key={amenity.id} value={amenity.id}>
-                      {amenity.display_name_es || amenity.name_es || amenity.name}
+                  <SelectItem value="none">Selecciona una propiedad</SelectItem>
+                  {buildings.map((building) => (
+                    <SelectItem key={building.id} value={building.id}>
+                      {building.name || building.nombre || building.razonSocial || building.razon_social || building.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Unidad (opcional)</label>
+              <Select
+                value={newIncident.unitId || "none"}
+                onValueChange={(value) =>
+                  setNewIncident({ ...newIncident, unitId: value === "none" ? "" : value })
+                }
+                disabled={!newIncident.buildingId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una unidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin unidad</SelectItem>
+                  {units.map((unit) => (
+                    <SelectItem key={unit.id} value={unit.id}>
+                      {unit.unit_number || unit.numero || unit.unidad || unit.id}
                     </SelectItem>
                   ))}
                 </SelectContent>

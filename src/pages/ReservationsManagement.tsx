@@ -99,6 +99,11 @@ interface User {
   id: string;
   full_name: string;
   email: string;
+  unit?: {
+    id: string;
+    unit_number?: string;
+    portal_id?: number | null;
+  } | null;
 }
 
 const ReservationsManagement = () => {
@@ -137,12 +142,17 @@ const ReservationsManagement = () => {
     celular: "",
     cantidadPersonas: "",
     abonado: "",
+    idUnidad: "",
   });
 
   const [reservationForm, setReservationForm] = useState(getDefaultReservationForm);
 
   // Check if user can access this page
-  const canAccess = profile?.role === "super_admin" || profile?.role === "owner";
+  const canAccess = profile?.role === "super_admin";
+  const isOwner = profile?.role === "owner" || profile?.roles?.includes("owner");
+  const ownerBuildingId = profile?.currentUnit?.building_id || profile?.building_id || null;
+  const selectableAmenities =
+    isOwner && ownerBuildingId ? amenities.filter((amenity) => amenity.building_id === ownerBuildingId) : amenities;
 
   // Fetch data
   useEffect(() => {
@@ -173,6 +183,24 @@ const ReservationsManagement = () => {
 
         if (usersResult.error) {
           console.error("Error fetching users:", usersResult.error);
+        } else if (isOwner && profile) {
+          const ownerUnit = profile.currentUnit
+            ? {
+                id: profile.currentUnit.unit_id,
+                unit_number: profile.currentUnit.unit_number,
+                portal_id: profile.currentUnit.portal_id ?? null,
+              }
+            : profile.unit_id
+              ? { id: profile.unit_id }
+              : null;
+          setUsers([
+            {
+              id: profile.id,
+              full_name: profile.full_name,
+              email: profile.email,
+              unit: ownerUnit,
+            },
+          ]);
         } else {
           setUsers(usersResult.users || []);
         }
@@ -215,8 +243,8 @@ const ReservationsManagement = () => {
   }, [searchTerm, filterStatus, filterAmenity, reservations]);
 
   // Reset form
-  const resetForm = () => {
-    setReservationForm(getDefaultReservationForm());
+  const resetForm = (overrides: Partial<typeof reservationForm> = {}) => {
+    setReservationForm({ ...getDefaultReservationForm(), ...overrides });
   };
 
   useEffect(() => {
@@ -231,11 +259,17 @@ const ReservationsManagement = () => {
     }));
   }, [reservationForm.user_id, users]);
 
+  useEffect(() => {
+    if (!showCreateDialog || !isOwner || !profile?.id) return;
+    setReservationForm((prev) => ({ ...prev, user_id: profile.id }));
+  }, [isOwner, profile?.id, showCreateDialog]);
+
 
   // Handle create reservation
   const handleCreateReservation = async () => {
+    const userIdToUse = isOwner && profile?.id ? profile.id : reservationForm.user_id;
     if (
-      !reservationForm.user_id ||
+      !userIdToUse ||
       !reservationForm.amenity_id ||
       !reservationForm.reservation_date ||
       !reservationForm.start_time ||
@@ -251,12 +285,20 @@ const ReservationsManagement = () => {
 
     setSubmitting(true);
     try {
-      const selectedUser = users.find((user) => user.id === reservationForm.user_id);
+      const selectedUser = users.find((user) => user.id === userIdToUse);
       const unitId = selectedUser?.unit?.id;
       if (!unitId) {
         toast.error("Selected user has no unit mapping");
         setSubmitting(false);
         return;
+      }
+      if (isOwner && ownerBuildingId) {
+        const selectedAmenity = amenities.find((amenity) => amenity.id === reservationForm.amenity_id);
+        if (!selectedAmenity || selectedAmenity.building_id !== ownerBuildingId) {
+          toast.error(t("reservationsManagement.selectAmenity"));
+          setSubmitting(false);
+          return;
+        }
       }
 
       const { reservation, error } = await createReservationSynced({
@@ -270,7 +312,7 @@ const ReservationsManagement = () => {
           abonado: reservationForm.abonado || undefined,
         },
         localPayload: {
-          userId: reservationForm.user_id,
+          userId: userIdToUse,
           amenityId: reservationForm.amenity_id,
           unitId,
           reservationDate: reservationForm.reservation_date,
@@ -506,7 +548,10 @@ const ReservationsManagement = () => {
         </div>
         <Button
           onClick={() => {
-            resetForm();
+            const ownerDefaults = isOwner && profile ? { user_id: profile.id } : {};
+            const amenityDefaults =
+              isOwner && selectableAmenities.length === 1 ? { amenity_id: selectableAmenities[0].id } : {};
+            resetForm({ ...ownerDefaults, ...amenityDefaults });
             setShowCreateDialog(true);
           }}
           className="bg-primary hover:bg-primary/90 gap-2"
@@ -726,6 +771,7 @@ const ReservationsManagement = () => {
               <Select
                 value={reservationForm.user_id}
                 onValueChange={(value) => setReservationForm({ ...reservationForm, user_id: value })}
+                disabled={isOwner}
               >
                 <SelectTrigger id="user_id">
                   <SelectValue placeholder={t("reservationsManagement.selectUser")} />
@@ -751,7 +797,7 @@ const ReservationsManagement = () => {
                   <SelectValue placeholder={t("reservationsManagement.selectAmenity")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {amenities.map((amenity) => (
+                  {selectableAmenities.map((amenity) => (
                     <SelectItem key={amenity.id} value={amenity.id}>
                       {getAmenityName(amenity)} {amenity.building ? `(${amenity.building.name})` : ""}
                     </SelectItem>

@@ -775,7 +775,7 @@ export const createIncidentSynced = async (params: {
   localPayload: {
     userId: string;
     buildingId: string;
-    unitId: string;
+    unitId?: string;
     amenityId?: string;
     type: "maintenance" | "complaint" | "suggestion";
     title: string;
@@ -786,21 +786,24 @@ export const createIncidentSynced = async (params: {
 }) => {
   const { email, portalFields, localPayload } = params;
 
-  if (!userHasAnyRole(["tenant"])) {
+  if (!userHasAnyRole(["tenant", "owner"])) {
     return { incident: null, error: { message: "User role not permitted to create incidents" }, queued: false };
   }
 
   const buildingPortalId = await getBuildingPortalId(localPayload.buildingId);
-  const unitPortalId = await getUnitPortalId(localPayload.unitId);
+  const unitPortalId = localPayload.unitId ? await getUnitPortalId(localPayload.unitId) : null;
   const amenityPortalId = localPayload.amenityId ? await getAmenityPortalId(localPayload.amenityId) : null;
 
-  if (!buildingPortalId || !unitPortalId) {
-    return { incident: null, error: { message: "Missing portal mapping for building or unit" }, queued: false };
+  if (!buildingPortalId) {
+    return { incident: null, error: { message: "Missing portal mapping for building" }, queued: false };
+  }
+  if (localPayload.unitId && !unitPortalId) {
+    return { incident: null, error: { message: "Missing portal mapping for unit" }, queued: false };
   }
 
   const portalPayload = {
     idPropiedad: buildingPortalId,
-    idUnidad: unitPortalId,
+    idUnidad: unitPortalId || undefined,
     titulo: portalFields.titulo,
     descripcion: portalFields.descripcion,
     prioridad: portalFields.prioridad,
