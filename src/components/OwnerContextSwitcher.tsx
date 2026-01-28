@@ -22,11 +22,7 @@ export const OwnerContextSwitcher = ({ className }: OwnerContextSwitcherProps) =
   const { profile, setCurrentUnit } = useAuth();
   const [open, setOpen] = useState(false);
 
-  if (!profile || profile.role !== "owner") {
-    return null;
-  }
-
-  const units = profile.units || [];
+  const units = profile?.units || [];
   const buildings = useMemo(() => {
     const map = new Map<
       string,
@@ -45,6 +41,10 @@ export const OwnerContextSwitcher = ({ className }: OwnerContextSwitcherProps) =
     });
     return Array.from(map.values());
   }, [units, t]);
+
+  if (!profile || profile.role !== "owner") {
+    return null;
+  }
 
   if (buildings.length === 0) {
     return null;
