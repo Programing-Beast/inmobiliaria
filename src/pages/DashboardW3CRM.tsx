@@ -11,6 +11,7 @@ import {
   Download,
   MoreVertical,
   Users,
+  DollarSign,
 } from "lucide-react";
 import {
   portalGetDashboardComunicados,
