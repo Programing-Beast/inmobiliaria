@@ -17,9 +17,14 @@ import { Calendar, Clock, Plus, Info, CheckCircle2, XCircle, AlertCircle, FileTe
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { getBuildingAmenities, getUserReservations } from "@/lib/supabase";
-import { createReservationSynced } from "@/lib/portal-sync";
-import { portalGetAmenityAvailability, portalGetAmenityInfo } from "@/lib/portal-api";
+import { getBuildingAmenities, getBuildingByPortalId, getBuilding, getUserReservations } from "@/lib/supabase";
+import { createReservationSynced, syncPortalAmenitiesForBuilding, syncPortalCatalog } from "@/lib/portal-sync";
+import {
+  portalGetAmenities,
+  portalGetAmenityAvailability,
+  portalGetAmenityInfo,
+  portalGetProperties,
+} from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
 import { toast } from "sonner";
 import type { ReservationStatus } from "@/lib/database.types";
@@ -62,10 +67,20 @@ interface Reservation {
   amenity: Amenity;
 }
 
+type PortalProperty = {
+  portalId: number;
+  name: string;
+  raw: Record<string, any>;
+};
+
 const Reservas = () => {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
   const getLocalizedField = useLocalizedField();
+  const [properties, setProperties] = useState<PortalProperty[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
+  const [propertiesLoading, setPropertiesLoading] = useState(false);
+  const [amenitiesLoading, setAmenitiesLoading] = useState(false);
   const [amenities, setAmenities] = useState<Amenity[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selectedAmenity, setSelectedAmenity] = useState<Amenity | null>(null);
@@ -96,23 +111,125 @@ const Reservas = () => {
 
   const [newReservation, setNewReservation] = useState(getDefaultReservation);
 
-  // Fetch amenities
+  // Fetch properties
   useEffect(() => {
-    const fetchAmenities = async () => {
+    const fetchProperties = async () => {
       if (!profile) return;
 
-      if (!profile.building_id) {
+      setLoading(true);
+      setPropertiesLoading(true);
+      try {
+        const propertiesResult = await portalGetProperties({ page: 1, limit: 200 });
+        if (propertiesResult.error) {
+          console.error("Error fetching portal properties:", propertiesResult.error);
+          toast.error(t("reservations.error.load"));
+          setProperties([]);
+          setSelectedPropertyId("");
+          return;
+        }
+
+        const portalProperties = toPortalList(propertiesResult.data);
+        const mappedProperties = portalProperties
+          .map((property) => {
+            const portalId = readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"]);
+            if (!portalId) return null;
+            const name =
+              readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"]) ||
+              `Propiedad ${portalId}`;
+            return { portalId, name, raw: property };
+          })
+          .filter((item): item is PortalProperty => item !== null);
+
+        setProperties(mappedProperties);
+
+        if (!selectedPropertyId) {
+          let defaultPortalId: string | null = null;
+          if (profile.building_id) {
+            const { building } = await getBuilding(profile.building_id);
+            if (building?.portal_id) {
+              defaultPortalId = String(building.portal_id);
+            }
+          }
+          setSelectedPropertyId(defaultPortalId || (mappedProperties[0] ? String(mappedProperties[0].portalId) : ""));
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        toast.error(t("reservations.error.load"));
+      } finally {
+        setPropertiesLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, [profile, t]);
+
+  // Fetch amenities for selected property
+  useEffect(() => {
+    const fetchAmenitiesForProperty = async () => {
+      if (!selectedPropertyId) {
+        setAmenities([]);
+        setSelectedAmenity(null);
         setLoading(false);
         return;
       }
 
       setLoading(true);
-      try {
-        const { amenities: fetchedAmenities, error } = await getBuildingAmenities(profile.building_id);
+      setAmenitiesLoading(true);
+      setSelectedAmenity(null);
+      setAmenityInfo(null);
+      setAvailabilitySlots([]);
+      setAvailabilityError(null);
 
+      try {
+        const amenitiesResult = await portalGetAmenities(selectedPropertyId, { page: 1, limit: 200 });
+        if (amenitiesResult.error) {
+          console.error("Error fetching portal amenities:", amenitiesResult.error);
+          toast.error(t("reservations.error.load"));
+          setAmenities([]);
+          return;
+        }
+
+        let buildingId: string | null = null;
+        const existingBuilding = await getBuildingByPortalId(Number(selectedPropertyId));
+        if (existingBuilding.building?.id) {
+          buildingId = existingBuilding.building.id;
+        } else {
+          const propertyRecord = properties.find((property) => String(property.portalId) === selectedPropertyId);
+          const syncResult = await syncPortalCatalog({
+            email: profile?.email || undefined,
+            properties: propertyRecord ? [propertyRecord.raw] : undefined,
+            includeUnits: false,
+            includeAmenities: false,
+          });
+          if (syncResult.error) {
+            toast.error(syncResult.error.message || "No se pudo sincronizar la propiedad");
+          }
+          const syncedBuilding = await getBuildingByPortalId(Number(selectedPropertyId));
+          if (syncedBuilding.building?.id) {
+            buildingId = syncedBuilding.building.id;
+          }
+        }
+
+        if (!buildingId) {
+          toast.error("No hay mapeo de edificio para esta propiedad");
+          setAmenities([]);
+          return;
+        }
+
+        const syncAmenitiesResult = await syncPortalAmenitiesForBuilding({
+          buildingId,
+          amenitiesPayload: amenitiesResult.data,
+        });
+        if (syncAmenitiesResult.error) {
+          console.error("Error syncing amenities:", syncAmenitiesResult.error);
+          toast.error(t("reservations.error.load"));
+        }
+
+        const { amenities: fetchedAmenities, error } = await getBuildingAmenities(buildingId);
         if (error) {
-          console.error('Error fetching amenities:', error);
-          toast.error(t('reservations.error.load'));
+          console.error("Error fetching amenities:", error);
+          toast.error(t("reservations.error.load"));
+          setAmenities([]);
           return;
         }
 
@@ -121,15 +238,16 @@ const Reservas = () => {
           setSelectedAmenity(fetchedAmenities[0]);
         }
       } catch (error) {
-        console.error('Error:', error);
-        toast.error(t('reservations.error.load'));
+        console.error("Error:", error);
+        toast.error(t("reservations.error.load"));
       } finally {
+        setAmenitiesLoading(false);
         setLoading(false);
       }
     };
 
-    fetchAmenities();
-  }, [profile, t]);
+    fetchAmenitiesForProperty();
+  }, [profile?.email, properties, selectedPropertyId, t]);
 
   useEffect(() => {
     if (!profile) return;
@@ -156,6 +274,15 @@ const Reservas = () => {
       if (typeof value === "number") return String(value);
     }
     return "";
+  };
+
+  const readNumber = (record: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record?.[key];
+      const asNumber = Number(value);
+      if (Number.isFinite(asNumber)) return asNumber;
+    }
+    return null;
   };
 
   useEffect(() => {
@@ -447,8 +574,47 @@ const Reservas = () => {
         </Button>
       </div>
 
+      {/* Property Selector */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="property_id">{t("reservations.property")} *</Label>
+              <Select
+                value={selectedPropertyId}
+                onValueChange={(value) => {
+                  setSelectedPropertyId(value);
+                  setSelectedAmenity(null);
+                  setAmenityInfo(null);
+                  setAvailabilitySlots([]);
+                  setAvailabilityError(null);
+                }}
+                disabled={propertiesLoading || properties.length === 0}
+              >
+                <SelectTrigger id="property_id">
+                  <SelectValue placeholder={t("reservations.selectProperty")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map((property) => (
+                    <SelectItem key={property.portalId} value={String(property.portalId)}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Amenity Selector Cards */}
-      {amenities.length > 0 ? (
+      {amenitiesLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          </CardContent>
+        </Card>
+      ) : amenities.length > 0 ? (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {amenities.map((amenity) => (

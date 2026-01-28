@@ -32,6 +32,7 @@ interface Payment {
   invoice_number: string | null;
   ruc: string | null;
   timbrado: string | null;
+  document_type: string | null;
   total_amount: number;
   balance: number;
   status: PaymentStatus;
@@ -48,6 +49,7 @@ const Finanzas = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -79,6 +81,23 @@ const Finanzas = () => {
     return null;
   };
 
+  const normalizeText = (value?: string | null) =>
+    (value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const normalizeDocumentType = (type?: string | null) => {
+    const value = normalizeText(type);
+    if (!value) return null;
+    if (value.includes("factura")) return "factura";
+    if (value.includes("nota") && value.includes("credito")) return "nota_credito";
+    if (value.includes("informe") && value.includes("financ")) return "informe_financiero";
+    if (value.includes("recibo") && value.includes("dinero")) return "recibo_dinero";
+    return null;
+  };
+
   const normalizePaymentStatus = (status?: string): PaymentStatus => {
     const value = (status || "").toLowerCase();
     if (["pagado", "paid"].includes(value)) return "paid";
@@ -107,6 +126,9 @@ const Finanzas = () => {
           invoice_number: readString(payment, ["numFactura", "numero", "invoice_number"]) || null,
           ruc: readString(payment, ["ruc"]) || null,
           timbrado: readString(payment, ["timbrado"]) || null,
+          document_type: normalizeDocumentType(
+            readString(payment, ["tipoDocumento", "tipo_documento", "tipo", "document_type", "tipoComprobante"])
+          ),
           total_amount: readNumber(payment, ["montoTotal", "total", "monto_total"]) ?? 0,
           balance: readNumber(payment, ["saldo", "balance"]) ?? 0,
           status: normalizePaymentStatus(readString(payment, ["estado", "status"])),
@@ -147,9 +169,14 @@ const Finanzas = () => {
       filtered = filtered.filter(payment => payment.status === statusFilter);
     }
 
+    // Type filter
+    if (typeFilter !== "all") {
+      filtered = filtered.filter(payment => payment.document_type === typeFilter);
+    }
+
     setFilteredPayments(filtered);
     setPage(1);
-  }, [searchTerm, statusFilter, payments]);
+  }, [searchTerm, statusFilter, typeFilter, payments]);
 
   // Get status badge
   const getStatusBadge = (status: PaymentStatus) => {
@@ -169,10 +196,11 @@ const Finanzas = () => {
 
   // Format currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: 'CLP'
+    const formatted = new Intl.NumberFormat("es-PY", {
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
     }).format(amount);
+    return `Gs. ${formatted}`;
   };
 
   // Format date
@@ -222,7 +250,7 @@ const Finanzas = () => {
   // Export to CSV
   const handleExport = () => {
     const csv = [
-      ["ID", "Factura", "RUC", "Timbrado", "Monto Total", "Saldo", "Estado", "Fecha grabado", "Fecha vencimiento", "PDF"].join(','),
+      ["ID", "Factura", "RUC", "Timbrado", "Monto Total", "Saldo", "Estado", "Fecha de emisión", "Fecha vencimiento", "PDF"].join(','),
       ...filteredPayments.map(payment =>
         [
           payment.id,
@@ -248,6 +276,13 @@ const Finanzas = () => {
     toast.success('Archivo exportado exitosamente');
   };
 
+  const documentTypeOptions = [
+    { value: "factura", label: "Factura" },
+    { value: "nota_credito", label: "Nota de crédito" },
+    { value: "informe_financiero", label: "Informe financiero" },
+    { value: "recibo_dinero", label: "Recibo de dinero" },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -271,7 +306,7 @@ const Finanzas = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Search */}
             <div className="md:col-span-2">
               <div className="relative">
@@ -285,6 +320,21 @@ const Finanzas = () => {
               </div>
             </div>
 
+            {/* Type Filter */}
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('finance.filterByType')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('finance.allTypes')}</SelectItem>
+                {documentTypeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             {/* Status Filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
@@ -292,8 +342,8 @@ const Finanzas = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('finance.allStatuses')}</SelectItem>
-                <SelectItem value="paid">{t('finance.paid')}</SelectItem>
                 <SelectItem value="pending">{t('finance.pending')}</SelectItem>
+                <SelectItem value="paid">{t('finance.paid')}</SelectItem>
                 <SelectItem value="overdue">{t('finance.overdue')}</SelectItem>
               </SelectContent>
             </Select>
@@ -341,7 +391,7 @@ const Finanzas = () => {
                     <TableHead>Monto Total</TableHead>
                     <TableHead>Saldo</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead>Fecha grabado</TableHead>
+                    <TableHead>Fecha de emisión</TableHead>
                     <TableHead>Fecha vencimiento</TableHead>
                     <TableHead>PDF</TableHead>
                   </TableRow>
