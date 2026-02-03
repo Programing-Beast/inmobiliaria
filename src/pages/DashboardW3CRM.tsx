@@ -18,6 +18,7 @@ import {
   portalGetDashboardExpensas,
   portalGetDashboardIncidents,
   portalGetDashboardReservations,
+  portalGetMyProperties,
 } from "@/lib/portal-api";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,6 +46,7 @@ const DashboardW3CRM = () => {
     activeReservations: "-",
     openIncidents: "-",
   });
+  const isSuperAdmin = profile?.role === "super_admin";
 
   const toPortalList = (payload: any): any[] => {
     if (!payload) return [];
@@ -80,12 +82,56 @@ const DashboardW3CRM = () => {
     return "pending";
   };
 
+  const getRecordPropertyId = (record: Record<string, any>) =>
+    readNumber(record, [
+      "idPropiedad",
+      "id_propiedad",
+      "propiedadId",
+      "propiedad_id",
+      "idEdificio",
+      "edificioId",
+      "building_id",
+    ]);
+
+  const getRecordPropertyName = (record: Record<string, any>) =>
+    readString(record, [
+      "propiedad",
+      "propiedadNombre",
+      "propiedad_nombre",
+      "edificio",
+      "edificioNombre",
+      "building",
+      "building_name",
+      "razonSocial",
+      "razon_social",
+    ]);
+
   useEffect(() => {
     let active = true;
 
     const fetchDashboard = async () => {
       setLoading(true);
       try {
+        let allowedPropertyIds: number[] = [];
+        let allowedPropertyNames: string[] = [];
+        if (!isSuperAdmin) {
+          const propertiesResult = await portalGetMyProperties({ page: 1, limit: 200 });
+          if (!propertiesResult.error) {
+            const portalProperties = toPortalList(propertiesResult.data);
+            allowedPropertyIds = portalProperties
+              .map((property) =>
+                readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"])
+              )
+              .filter((value): value is number => value !== null);
+            allowedPropertyNames = portalProperties
+              .map((property) =>
+                readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"])
+              )
+              .filter(Boolean);
+            console.log("[portal] allowed property IDs", allowedPropertyIds);
+          }
+        }
+
         const [
           expensasResult,
           reservasResult,
@@ -100,8 +146,30 @@ const DashboardW3CRM = () => {
 
         if (!active) return;
 
-        const reservas = toPortalList(reservasResult.data);
-        const incidencias = toPortalList(incidenciasResult.data);
+        const allowedIds = new Set(allowedPropertyIds);
+        const allowedNames = new Set(allowedPropertyNames.map((name) => name.toLowerCase()));
+        const shouldFilter = !isSuperAdmin && (allowedIds.size || allowedNames.size);
+
+        const reservasRaw = toPortalList(reservasResult.data);
+        const incidenciasRaw = toPortalList(incidenciasResult.data);
+        const reservas = shouldFilter
+          ? reservasRaw.filter((record: any) => {
+              const propertyId = getRecordPropertyId(record);
+              if (propertyId !== null && allowedIds.has(propertyId)) return true;
+              const propertyName = getRecordPropertyName(record);
+              if (propertyName && allowedNames.has(propertyName.toLowerCase())) return true;
+              return false;
+            })
+          : reservasRaw;
+        const incidencias = shouldFilter
+          ? incidenciasRaw.filter((record: any) => {
+              const propertyId = getRecordPropertyId(record);
+              if (propertyId !== null && allowedIds.has(propertyId)) return true;
+              const propertyName = getRecordPropertyName(record);
+              if (propertyName && allowedNames.has(propertyName.toLowerCase())) return true;
+              return false;
+            })
+          : incidenciasRaw;
         const comunicados = toPortalList(comunicadosResult.data);
         const expensasSummary = toPortalList(expensasResult.data)[0] || expensasResult.data || {};
 
@@ -148,7 +216,7 @@ const DashboardW3CRM = () => {
     return () => {
       active = false;
     };
-  }, [t]);
+  }, [t, isSuperAdmin]);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "success" | "warning" | "info"> = {

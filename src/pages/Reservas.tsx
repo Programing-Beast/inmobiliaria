@@ -23,6 +23,7 @@ import {
   portalGetAmenities,
   portalGetAmenityAvailability,
   portalGetAmenityInfo,
+  portalGetMyProperties,
   portalGetProperties,
 } from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
@@ -119,7 +120,9 @@ const Reservas = () => {
       setLoading(true);
       setPropertiesLoading(true);
       try {
-        const propertiesResult = await portalGetProperties({ page: 1, limit: 200 });
+        const propertiesResult = await (profile?.role === "super_admin"
+          ? portalGetProperties({ page: 1, limit: 200 })
+          : portalGetMyProperties({ page: 1, limit: 200 }));
         if (propertiesResult.error) {
           console.error("Error fetching portal properties:", propertiesResult.error);
           toast.error(t("reservations.error.load"));

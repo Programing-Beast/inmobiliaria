@@ -20,7 +20,7 @@ import {
 import { Bell, Calendar, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { portalGetComunicado, portalGetDashboardComunicados } from "@/lib/portal-api";
+import { portalGetComunicado, portalGetDashboardComunicados, portalGetMyProperties } from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
 import { toast } from "sonner";
 import {
@@ -54,6 +54,9 @@ const Comunicados = () => {
   const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
   const pageSize = 8;
+  const [allowedPropertyIds, setAllowedPropertyIds] = useState<number[]>([]);
+  const [allowedPropertyNames, setAllowedPropertyNames] = useState<string[]>([]);
+  const isSuperAdmin = profile?.role === "super_admin";
 
   const toPortalList = (payload: any): any[] => {
     if (!payload) return [];
@@ -80,6 +83,39 @@ const Comunicados = () => {
     }
     return "";
   };
+
+  const readNumber = (record: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record?.[key];
+      const asNumber = Number(value);
+      if (Number.isFinite(asNumber)) return asNumber;
+    }
+    return null;
+  };
+
+  const getAnnouncementPropertyId = (record: Record<string, any>) =>
+    readNumber(record, [
+      "idPropiedad",
+      "id_propiedad",
+      "propiedadId",
+      "propiedad_id",
+      "idEdificio",
+      "edificioId",
+      "building_id",
+    ]);
+
+  const getAnnouncementPropertyName = (record: Record<string, any>) =>
+    readString(record, [
+      "propiedad",
+      "propiedadNombre",
+      "propiedad_nombre",
+      "edificio",
+      "edificioNombre",
+      "building",
+      "building_name",
+      "razonSocial",
+      "razon_social",
+    ]);
 
   const getAnnouncementContent = (announcement: Announcement) =>
     i18n.language === "en" && announcement.content_en
@@ -133,6 +169,42 @@ const Comunicados = () => {
 
   // Fetch announcements
   useEffect(() => {
+    const fetchAllowedProperties = async () => {
+      if (!profile || isSuperAdmin) {
+        setAllowedPropertyIds([]);
+        setAllowedPropertyNames([]);
+        return;
+      }
+
+      const result = await portalGetMyProperties({ page: 1, limit: 200 });
+      if (result.error) {
+        console.error("Error fetching portal properties:", result.error);
+        setAllowedPropertyIds([]);
+        setAllowedPropertyNames([]);
+        return;
+      }
+
+      const portalProperties = toPortalList(result.data);
+      const ids = portalProperties
+        .map((property) =>
+          readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"])
+        )
+        .filter((value): value is number => value !== null);
+      const names = portalProperties
+        .map((property) =>
+          readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"])
+        )
+        .filter(Boolean);
+
+      console.log("[portal] allowed property IDs", ids);
+      setAllowedPropertyIds(ids);
+      setAllowedPropertyNames(names);
+    };
+
+    fetchAllowedProperties();
+  }, [isSuperAdmin, profile]);
+
+  useEffect(() => {
     const fetchAnnouncements = async () => {
       if (!profile) {
         setLoading(false);
@@ -149,7 +221,20 @@ const Comunicados = () => {
         }
 
         const portalAnnouncements = toPortalList(result.data);
-        const mappedAnnouncements = portalAnnouncements.map((announcement, index) =>
+        const allowedIds = new Set(allowedPropertyIds);
+        const allowedNames = new Set(allowedPropertyNames.map((name) => name.toLowerCase()));
+        const filteredAnnouncements =
+          !isSuperAdmin && (allowedIds.size || allowedNames.size)
+            ? portalAnnouncements.filter((announcement: any) => {
+                const propertyId = getAnnouncementPropertyId(announcement);
+                if (propertyId !== null && allowedIds.has(propertyId)) return true;
+                const propertyName = getAnnouncementPropertyName(announcement);
+                if (propertyName && allowedNames.has(propertyName.toLowerCase())) return true;
+                return false;
+              })
+            : portalAnnouncements;
+
+        const mappedAnnouncements = filteredAnnouncements.map((announcement, index) =>
           mapAnnouncement(announcement, index)
         );
         setAnnouncements(mappedAnnouncements);
@@ -162,7 +247,7 @@ const Comunicados = () => {
     };
 
     fetchAnnouncements();
-  }, [profile, t]);
+  }, [profile, t, allowedPropertyIds, allowedPropertyNames, isSuperAdmin]);
 
   // Format date
   const formatDate = (dateString: string | null) => {

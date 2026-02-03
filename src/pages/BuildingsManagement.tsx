@@ -42,7 +42,7 @@ import {
   deleteBuilding,
 } from "@/lib/supabase";
 import { syncPortalCatalog } from "@/lib/portal-sync";
-import { portalGetProperties } from "@/lib/portal-api";
+import { portalGetMyProperties, portalGetProperties } from "@/lib/portal-api";
 import { toast } from "sonner";
 
 // Building interface matching actual database schema
@@ -117,7 +117,9 @@ const BuildingsManagement = () => {
       setLoading(true);
       setHasNextPage(false);
       try {
-        const propertiesResult = await portalGetProperties({ page, limit });
+        const propertiesResult = await (isSuperAdmin
+          ? portalGetProperties({ page, limit })
+          : portalGetMyProperties({ page, limit }));
         const portalProperties = propertiesResult.error?.status === 404 ? [] : toPortalList(propertiesResult.data);
         let portalIds: number[] = [];
         if (propertiesResult.error && propertiesResult.error.status !== 404) {
@@ -157,7 +159,7 @@ const BuildingsManagement = () => {
           .filter((b) => (portalIds.length ? portalIds.includes(b.portal_id as number) : false));
 
         // If owner, filter to only show their assigned building
-        if (profile.role === "owner" && profile.building_id) {
+        if (profile.role === "owner" && profile.building_id && portalIds.length === 0) {
           buildingsToShow = buildingsToShow.filter((b) => b.id === profile.building_id);
         }
 

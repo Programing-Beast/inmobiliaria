@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { portalGetDashboardIncidents } from "@/lib/portal-api";
+import { portalGetDashboardIncidents, portalGetMyProperties } from "@/lib/portal-api";
 import { createIncidentSynced, retrySyncQueue, updateIncidentSynced } from "@/lib/portal-sync";
 import { getAllBuildings, getBuildingUnits } from "@/lib/supabase";
 import {
@@ -46,6 +46,8 @@ const Incidencias = () => {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [allowedPropertyIds, setAllowedPropertyIds] = useState<number[]>([]);
+  const [allowedPropertyNames, setAllowedPropertyNames] = useState<string[]>([]);
 
   const [newIncident, setNewIncident] = useState({
     titulo: "",
@@ -63,6 +65,56 @@ const Incidencias = () => {
     prioridad: "",
   });
 
+  const isSuperAdmin = profile?.role === "super_admin";
+
+  const toPortalList = (payload: any): any[] => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.result)) return payload.result;
+    return [];
+  };
+
+  const readNumber = (record: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record?.[key];
+      const asNumber = Number(value);
+      if (Number.isFinite(asNumber)) return asNumber;
+    }
+    return null;
+  };
+
+  const readString = (record: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record?.[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+      if (typeof value === "number") return String(value);
+    }
+    return "";
+  };
+
+  const getIncidentPropertyId = (incident: Record<string, any>) =>
+    readNumber(incident, [
+      "idPropiedad",
+      "id_propiedad",
+      "propiedadId",
+      "propiedad_id",
+      "propiedadIdPortal",
+      "idPropiedadPortal",
+    ]);
+
+  const getIncidentPropertyName = (incident: Record<string, any>) =>
+    readString(incident, [
+      "propiedad",
+      "propiedadNombre",
+      "propiedad_nombre",
+      "edificio",
+      "edificioNombre",
+      "building",
+      "building_name",
+    ]);
+
   const fetchIncidents = async () => {
     setLoading(true);
     try {
@@ -72,7 +124,21 @@ const Incidencias = () => {
         toast.error("No se pudieron cargar las incidencias");
         return;
       }
-      setIncidents((data as any)?.data || []);
+      const rawIncidents = (data as any)?.data || [];
+      if (!isSuperAdmin && (allowedPropertyIds.length || allowedPropertyNames.length)) {
+        const allowedIds = new Set(allowedPropertyIds);
+        const allowedNames = new Set(allowedPropertyNames.map((name) => name.toLowerCase()));
+        const filtered = rawIncidents.filter((incident: any) => {
+          const propertyId = getIncidentPropertyId(incident);
+          if (propertyId !== null && allowedIds.has(propertyId)) return true;
+          const propertyName = getIncidentPropertyName(incident);
+          if (propertyName && allowedNames.has(propertyName.toLowerCase())) return true;
+          return false;
+        });
+        setIncidents(filtered);
+      } else {
+        setIncidents(rawIncidents);
+      }
     } catch (error) {
       console.error("Error:", error);
       toast.error("No se pudieron cargar las incidencias");
@@ -83,11 +149,47 @@ const Incidencias = () => {
 
   useEffect(() => {
     fetchIncidents();
-  }, []);
+  }, [allowedPropertyIds, allowedPropertyNames, isSuperAdmin]);
+
+  useEffect(() => {
+    const fetchAllowedProperties = async () => {
+      if (!profile || isSuperAdmin) {
+        setAllowedPropertyIds([]);
+        setAllowedPropertyNames([]);
+        return;
+      }
+
+      const result = await portalGetMyProperties({ page: 1, limit: 200 });
+      if (result.error) {
+        console.error("Error fetching portal properties:", result.error);
+        setAllowedPropertyIds([]);
+        setAllowedPropertyNames([]);
+        return;
+      }
+
+      const portalProperties = toPortalList(result.data);
+      const ids = portalProperties
+        .map((property) =>
+          readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"])
+        )
+        .filter((value): value is number => value !== null);
+      const names = portalProperties
+        .map((property) =>
+          readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"])
+        )
+        .filter(Boolean);
+
+      console.log("[portal] allowed property IDs", ids);
+      setAllowedPropertyIds(ids);
+      setAllowedPropertyNames(names);
+    };
+
+    fetchAllowedProperties();
+  }, [isSuperAdmin, profile]);
 
   useEffect(() => {
     const fetchBuildings = async () => {
-      if (profile?.building_id) {
+      if (profile?.building_id && allowedPropertyIds.length === 0) {
         const profileBuildingName = (profile as any)?.building?.name;
         setBuildings([{ id: profile.building_id, name: profileBuildingName || "Propiedad" }]);
         setNewIncident((prev) => ({ ...prev, buildingId: profile.building_id }));
@@ -98,11 +200,18 @@ const Incidencias = () => {
         console.error("Error fetching buildings:", error);
         return;
       }
-      setBuildings(fetchedBuildings || []);
+      let buildingsToShow = fetchedBuildings || [];
+      if (!isSuperAdmin && allowedPropertyIds.length > 0) {
+        const allowedIds = new Set(allowedPropertyIds);
+        buildingsToShow = buildingsToShow.filter((building) =>
+          building?.portal_id !== null && allowedIds.has(building.portal_id)
+        );
+      }
+      setBuildings(buildingsToShow);
     };
 
     fetchBuildings();
-  }, [profile?.building_id, profile?.building?.name]);
+  }, [profile?.building_id, profile?.building?.name, allowedPropertyIds, isSuperAdmin]);
 
   useEffect(() => {
     const fetchUnits = async () => {

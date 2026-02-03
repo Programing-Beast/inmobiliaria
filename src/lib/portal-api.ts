@@ -212,6 +212,9 @@ export const ensurePortalAuth = async (email?: string) => {
 export const portalGetProperties = (params?: { page?: number; limit?: number }) =>
   portalRequest("propiedades", { headers: buildPaginationHeaders(params) });
 
+export const portalGetMyProperties = (params?: { page?: number; limit?: number }) =>
+  portalRequest("mis-propiedades", { headers: buildPaginationHeaders(params) });
+
 export const portalGetUnits = (propertyId: number | string, params?: { page?: number; limit?: number }) =>
   portalRequest(`unidades/${propertyId}`, { headers: buildPaginationHeaders(params) });
 

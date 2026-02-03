@@ -49,7 +49,7 @@ import {
 import { createReservationSynced } from "@/lib/portal-sync";
 import { syncPortalAmenitiesForBuilding, syncPortalCatalog } from "@/lib/portal-sync";
 import { toast } from "sonner";
-import { portalGetAmenities, portalGetProperties } from "@/lib/portal-api";
+import { portalGetAmenities, portalGetMyProperties, portalGetProperties } from "@/lib/portal-api";
 import {
   Pagination,
   PaginationContent,
@@ -248,7 +248,9 @@ const ReservationsManagement = () => {
         }
 
         setPropertiesLoading(true);
-        const propertiesResult = await portalGetProperties({ page: 1, limit: 200 });
+        const propertiesResult = await (isOwner
+          ? portalGetMyProperties({ page: 1, limit: 200 })
+          : portalGetProperties({ page: 1, limit: 200 }));
         if (propertiesResult.error) {
           console.error("Error fetching portal properties:", propertiesResult.error);
           toast.error("No se pudieron cargar las propiedades");
