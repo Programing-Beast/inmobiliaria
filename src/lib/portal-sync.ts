@@ -657,14 +657,13 @@ export const syncPortalAmenitiesForBuilding = async (params: {
 
 export const createReservationSynced = async (params: {
   email?: string;
-  portalFields: {
-    razonSocial: string;
-    cantidadPersonas: number;
-    correo: string;
-    celular: string;
-    observacion?: string;
-    abonado?: string;
-  };
+    portalFields: {
+      razonSocial: string;
+      cantidadPersonas: number;
+      correo: string;
+      celular: string;
+      observacion?: string;
+    };
   localPayload: {
     userId: string;
     amenityId: string;
@@ -681,8 +680,6 @@ export const createReservationSynced = async (params: {
   const celular = (portalFields.celular || "").trim();
   const cantidadPersonas = Number(portalFields.cantidadPersonas);
   const observacion = (portalFields.observacion || "").trim();
-  const abonado = (portalFields.abonado || "").trim() || "NO";
-
   if (!razonSocial || !correo || !celular || !Number.isFinite(cantidadPersonas) || cantidadPersonas <= 0) {
     return { reservation: null, error: { message: "Missing or invalid reservation fields" }, queued: false };
   }
@@ -724,7 +721,6 @@ export const createReservationSynced = async (params: {
     correo,
     celular,
     observacion,
-    abonado,
   };
 
   const authResult = await ensurePortalAuth(email);

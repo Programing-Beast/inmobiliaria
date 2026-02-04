@@ -84,7 +84,7 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
       label: t('nav.reservations'),
       icon: Calendar,
       path: "/reservations",
-      roles: ["owner", "tenant", "regular_user", "super_admin"] // Resident reservations
+      roles: ["owner", "tenant", "regular_user"] // Resident reservations
     },
     {
       key: "reservationsAdmin",

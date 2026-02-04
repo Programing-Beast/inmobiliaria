@@ -106,7 +106,6 @@ const Reservas = () => {
     correo: profile?.email || "",
     celular: "",
     cantidadPersonas: "",
-    abonado: "",
   });
 
   const [newReservation, setNewReservation] = useState(getDefaultReservation);
@@ -403,7 +402,6 @@ const Reservas = () => {
           correo: newReservation.correo,
           celular: newReservation.celular,
           observacion: newReservation.notes || undefined,
-          abonado: newReservation.abonado || undefined,
         },
         localPayload: {
           userId: profile.id,
@@ -885,15 +883,6 @@ const Reservas = () => {
                   onChange={(e) => setNewReservation({ ...newReservation, cantidadPersonas: e.target.value })}
                 />
               </div>
-            </div>
-            <div>
-              <Label htmlFor="abonado">Abonado</Label>
-              <Input
-                id="abonado"
-                placeholder="SI/NO"
-                value={newReservation.abonado}
-                onChange={(e) => setNewReservation({ ...newReservation, abonado: e.target.value })}
-              />
             </div>
           </div>
           <DialogFooter>

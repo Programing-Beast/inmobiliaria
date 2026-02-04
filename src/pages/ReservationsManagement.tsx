@@ -157,7 +157,6 @@ const ReservationsManagement = () => {
     correo: "",
     celular: "",
     cantidadPersonas: "",
-    abonado: "",
     idUnidad: "",
     property_id: "",
   });
@@ -457,7 +456,6 @@ const ReservationsManagement = () => {
           correo: reservationForm.correo,
           celular: reservationForm.celular,
           observacion: reservationForm.notes || undefined,
-          abonado: reservationForm.abonado || undefined,
         },
         localPayload: {
           userId: userIdToUse,
@@ -913,26 +911,26 @@ const ReservationsManagement = () => {
             <DialogDescription>{t("reservationsManagement.addDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {/* User */}
-            <div>
-              <Label htmlFor="user_id">{t("reservationsManagement.user")} *</Label>
-              <Select
-                value={reservationForm.user_id}
-                onValueChange={(value) => setReservationForm({ ...reservationForm, user_id: value })}
-                disabled={isOwner}
-              >
-                <SelectTrigger id="user_id">
-                  <SelectValue placeholder={t("reservationsManagement.selectUser")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.full_name} ({user.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!isOwner && (
+              <div>
+                <Label htmlFor="user_id">{t("reservationsManagement.user")} *</Label>
+                <Select
+                  value={reservationForm.user_id}
+                  onValueChange={(value) => setReservationForm({ ...reservationForm, user_id: value })}
+                >
+                  <SelectTrigger id="user_id">
+                    <SelectValue placeholder={t("reservationsManagement.selectUser")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.full_name} ({user.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Property */}
             <div>
@@ -1060,15 +1058,6 @@ const ReservationsManagement = () => {
                   onChange={(e) => setReservationForm({ ...reservationForm, cantidadPersonas: e.target.value })}
                 />
               </div>
-            </div>
-            <div>
-              <Label htmlFor="abonado">Abonado</Label>
-              <Input
-                id="abonado"
-                placeholder="SI/NO"
-                value={reservationForm.abonado}
-                onChange={(e) => setReservationForm({ ...reservationForm, abonado: e.target.value })}
-              />
             </div>
           </div>
           <DialogFooter>

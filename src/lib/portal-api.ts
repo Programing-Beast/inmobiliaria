@@ -298,7 +298,6 @@ export const portalCreateReservation = (payload: {
   correo: string;
   celular: string;
   observacion?: string;
-  abonado?: string;
 }) => portalRequest("reservas", { method: "POST", body: payload });
 
 export const portalCreateIncident = (payload: {

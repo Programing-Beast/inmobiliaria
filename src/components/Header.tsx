@@ -1,4 +1,4 @@
-import { Search, Bell, Mail, Maximize2, Minimize2, ChevronDown, Globe, LogOut, User } from "lucide-react";
+import { Search, Mail, Maximize2, Minimize2, ChevronDown, Globe, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -76,12 +76,6 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     }
   };
 
-  const notifications = [
-    { id: 1, user: "Dr sultads", message: "Send you Photo", time: "29 July 2020 - 02:26 PM", avatar: "/avatars/1.jpg" },
-    { id: 2, user: "KG", message: "Report created successfully", time: "29 July 2020 - 02:26 PM", badge: true },
-    { id: 3, user: "System", message: "Reminder: Treatment Time!", time: "29 July 2020 - 02:26 PM", icon: "home" },
-  ];
-
   return (
     <header className="header-sticky w-full bg-white border-b border-border shadow-header z-50">
       <div className="flex items-center justify-between px-4 h-16">
@@ -130,57 +124,6 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               <DropdownMenuItem onClick={() => changeLanguage("es")}>
                 🇪🇸 Español
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-10 w-10 relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 h-2 w-2 bg-danger rounded-full"></span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 p-0">
-              <div className="max-h-96 overflow-y-auto p-2">
-                {notifications.map((notif) => (
-                  <div
-                    key={notif.id}
-                    className="flex items-start gap-3 p-2 rounded hover:bg-muted/50 cursor-pointer mb-1"
-                  >
-                    {notif.avatar ? (
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={notif.avatar} />
-                        <AvatarFallback>{notif.user[0]}</AvatarFallback>
-                      </Avatar>
-                    ) : notif.badge ? (
-                      <div className="h-8 w-8 rounded-full bg-success flex items-center justify-center text-white text-xs font-semibold">
-                        {notif.user}
-                      </div>
-                    ) : (
-                      <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                        <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                        </svg>
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">
-                        {notif.message}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {notif.time}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <DropdownMenuSeparator className="my-0" />
-              <div className="p-3 text-center">
-                <a href="#" className="text-sm text-primary hover:underline">
-                  See all notifications →
-                </a>
-              </div>
             </DropdownMenuContent>
           </DropdownMenu>
 
