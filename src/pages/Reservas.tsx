@@ -20,11 +20,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getBuildingAmenities, getBuildingByPortalId, getBuilding, getUserReservations } from "@/lib/supabase";
 import { createReservationSynced, syncPortalAmenitiesForBuilding, syncPortalCatalog } from "@/lib/portal-sync";
 import {
-  portalGetAmenities,
+  portalGetAllAmenities,
+  portalGetAllMyProperties,
   portalGetAmenityAvailability,
   portalGetAmenityInfo,
-  portalGetMyProperties,
-  portalGetProperties,
 } from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
 import { toast } from "sonner";
@@ -120,9 +119,7 @@ const Reservas = () => {
       setLoading(true);
       setPropertiesLoading(true);
       try {
-        const propertiesResult = await (profile?.role === "super_admin"
-          ? portalGetProperties({ page: 1, limit: 200 })
-          : portalGetMyProperties({ page: 1, limit: 200 }));
+        const propertiesResult = await portalGetAllMyProperties();
         if (propertiesResult.error) {
           console.error("Error fetching portal properties:", propertiesResult.error);
           toast.error(t("reservations.error.load"));
@@ -184,7 +181,7 @@ const Reservas = () => {
       setAvailabilityError(null);
 
       try {
-        const amenitiesResult = await portalGetAmenities(selectedPropertyId, { page: 1, limit: 200 });
+        const amenitiesResult = await portalGetAllAmenities(selectedPropertyId);
         if (amenitiesResult.error) {
           console.error("Error fetching portal amenities:", amenitiesResult.error);
           toast.error(t("reservations.error.load"));

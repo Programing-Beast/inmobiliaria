@@ -18,7 +18,7 @@ import {
   portalGetDashboardExpensas,
   portalGetDashboardIncidents,
   portalGetDashboardReservations,
-  portalGetMyProperties,
+  portalGetAllMyProperties,
 } from "@/lib/portal-api";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -115,7 +115,7 @@ const DashboardW3CRM = () => {
         let allowedPropertyIds: number[] = [];
         let allowedPropertyNames: string[] = [];
         if (!isSuperAdmin) {
-          const propertiesResult = await portalGetMyProperties({ page: 1, limit: 200 });
+          const propertiesResult = await portalGetAllMyProperties();
           if (!propertiesResult.error) {
             const portalProperties = toPortalList(propertiesResult.data);
             allowedPropertyIds = portalProperties

@@ -49,7 +49,7 @@ import {
 import { createReservationSynced } from "@/lib/portal-sync";
 import { syncPortalAmenitiesForBuilding, syncPortalCatalog } from "@/lib/portal-sync";
 import { toast } from "sonner";
-import { portalGetAmenities, portalGetMyProperties, portalGetProperties } from "@/lib/portal-api";
+import { portalGetAllAmenities, portalGetAllMyProperties } from "@/lib/portal-api";
 import {
   Pagination,
   PaginationContent,
@@ -248,9 +248,7 @@ const ReservationsManagement = () => {
         }
 
         setPropertiesLoading(true);
-        const propertiesResult = await (isOwner
-          ? portalGetMyProperties({ page: 1, limit: 200 })
-          : portalGetProperties({ page: 1, limit: 200 }));
+        const propertiesResult = await portalGetAllMyProperties();
         if (propertiesResult.error) {
           console.error("Error fetching portal properties:", propertiesResult.error);
           toast.error("No se pudieron cargar las propiedades");
@@ -303,7 +301,7 @@ const ReservationsManagement = () => {
       setAmenitiesLoading(true);
       setFormAmenities([]);
       try {
-        const amenitiesResult = await portalGetAmenities(selectedPropertyId, { page: 1, limit: 200 });
+        const amenitiesResult = await portalGetAllAmenities(selectedPropertyId);
         if (amenitiesResult.error) {
           console.error("Error fetching portal amenities:", amenitiesResult.error);
           toast.error(t("reservationsManagement.errorLoading"));

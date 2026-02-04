@@ -57,6 +57,15 @@ const buildPaginationHeaders = (params?: { page?: number; limit?: number }) => {
   return Object.keys(headers).length > 0 ? headers : undefined;
 };
 
+const normalizePortalList = (payload: any): any[] => {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.result)) return payload.result;
+  return [];
+};
+
 const getPortalAuth = () => {
   const token = localStorage.getItem(portalTokenKey);
   const tokenType = localStorage.getItem(portalTokenTypeKey) || "Bearer";
@@ -210,7 +219,7 @@ export const ensurePortalAuth = async (email?: string) => {
 };
 
 export const portalGetProperties = (params?: { page?: number; limit?: number }) =>
-  portalRequest("propiedades", { headers: buildPaginationHeaders(params) });
+  portalRequest("mis-propiedades", { headers: buildPaginationHeaders(params) });
 
 export const portalGetMyProperties = (params?: { page?: number; limit?: number }) =>
   portalRequest("mis-propiedades", { headers: buildPaginationHeaders(params) });
@@ -220,6 +229,55 @@ export const portalGetUnits = (propertyId: number | string, params?: { page?: nu
 
 export const portalGetAmenities = (propertyId: number | string, params?: { page?: number; limit?: number }) =>
   portalRequest(`amenity/${propertyId}`, { headers: buildPaginationHeaders(params) });
+
+export const portalGetAllPages = async <T>(
+  path: string,
+  options?: {
+    params?: Record<string, string | number | undefined>;
+    headers?: Record<string, string>;
+    limit?: number;
+    maxPages?: number;
+  }
+): Promise<PortalResponse<T[]>> => {
+  const limit = options?.limit ?? 200;
+  const maxPages = options?.maxPages ?? 50;
+  const collected: T[] = [];
+
+  for (let page = 1; page <= maxPages; page += 1) {
+    const result = await portalRequest<any>(path, {
+      params: options?.params,
+      headers: {
+        ...options?.headers,
+        ...buildPaginationHeaders({ page, limit }),
+      },
+    });
+
+    if (result.error) {
+      return { data: null, error: result.error };
+    }
+
+    const items = normalizePortalList(result.data) as T[];
+    if (items.length === 0) break;
+    collected.push(...items);
+
+    if (items.length < limit) break;
+  }
+
+  return { data: collected, error: null };
+};
+
+export const portalGetAllMyProperties = (params?: { limit?: number; maxPages?: number }) =>
+  portalGetAllPages("mis-propiedades", { limit: params?.limit, maxPages: params?.maxPages });
+
+export const portalGetAllUnits = (
+  propertyId: number | string,
+  params?: { limit?: number; maxPages?: number }
+) => portalGetAllPages(`unidades/${propertyId}`, { limit: params?.limit, maxPages: params?.maxPages });
+
+export const portalGetAllAmenities = (
+  propertyId: number | string,
+  params?: { limit?: number; maxPages?: number }
+) => portalGetAllPages(`amenity/${propertyId}`, { limit: params?.limit, maxPages: params?.maxPages });
 
 export const portalGetAmenityInfo = (amenityId: number | string) =>
   portalRequest(`reservas/amenities/${amenityId}/info`);

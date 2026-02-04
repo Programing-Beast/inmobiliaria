@@ -20,7 +20,7 @@ import {
 import { Bell, Calendar, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { portalGetComunicado, portalGetDashboardComunicados, portalGetMyProperties } from "@/lib/portal-api";
+import { portalGetAllMyProperties, portalGetComunicado, portalGetDashboardComunicados } from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
 import { toast } from "sonner";
 import {
@@ -176,7 +176,7 @@ const Comunicados = () => {
         return;
       }
 
-      const result = await portalGetMyProperties({ page: 1, limit: 200 });
+      const result = await portalGetAllMyProperties();
       if (result.error) {
         console.error("Error fetching portal properties:", result.error);
         setAllowedPropertyIds([]);
