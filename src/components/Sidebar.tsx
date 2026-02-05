@@ -91,7 +91,7 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
       label: t('nav.reservationsAdmin'),
       icon: Calendar,
       path: "/reservations-management",
-      roles: ["super_admin"] // Admin reservations management
+      roles: ["super_admin", "owner"] // Admin reservations management
     },
     {
       key: "incidents",
