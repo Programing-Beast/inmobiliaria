@@ -9,20 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Bell, Calendar, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { portalGetAllMyProperties, portalGetComunicado, portalGetDashboardComunicados } from "@/lib/portal-api";
+import { portalGetAllMyProperties, portalGetDashboardComunicados } from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import {
   Pagination,
   PaginationContent,
@@ -46,11 +39,9 @@ const Comunicados = () => {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
   const getLocalizedField = useLocalizedField();
+  const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
-  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
   const pageSize = 8;
@@ -65,14 +56,6 @@ const Comunicados = () => {
     if (Array.isArray(payload?.items)) return payload.items;
     if (Array.isArray(payload?.result)) return payload.result;
     return [];
-  };
-
-  const getPortalRecord = (payload: any): any | null => {
-    if (!payload) return null;
-    if (Array.isArray(payload)) return payload[0] || null;
-    if (Array.isArray(payload?.data)) return payload.data[0] || null;
-    if (payload?.data) return payload.data;
-    return payload;
   };
 
   const readString = (record: Record<string, any>, keys: string[]) => {
@@ -123,24 +106,6 @@ const Comunicados = () => {
       : announcement.content_es;
 
   const stripHtml = (html: string) => html.replace(/<[^>]+>/g, " ");
-
-  const sanitizeAnnouncementHtml = (html: string) => {
-    if (!html) return "";
-    const hasTags = /<\/?[a-z][\s\S]*>/i.test(html);
-    if (!hasTags) {
-      return html
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\n/g, "<br />");
-    }
-    if (typeof window === "undefined") {
-      return html;
-    }
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    doc.querySelectorAll("script, style, iframe, object, embed").forEach((node) => node.remove());
-    return doc.body.innerHTML;
-  };
 
   const mapAnnouncement = (record: Record<string, any>, index: number, fallback?: Announcement | null): Announcement => {
     const titleEs =
@@ -259,29 +224,13 @@ const Comunicados = () => {
     });
   };
 
-  const loadingLabel = i18n.language === "en" ? "Loading..." : "Cargando...";
-
   // Handle view announcement
-  const handleViewAnnouncement = async (announcement: Announcement) => {
-    setSelectedAnnouncement(announcement);
-    setShowDetailDialog(true);
-
-    if (announcement.id.startsWith("COM-")) return;
-
-    setLoadingDetail(true);
-    try {
-      const result = await portalGetComunicado(announcement.id);
-      if (result.error) {
-        console.error("Error fetching announcement detail:", result.error);
-        return;
-      }
-      const record = getPortalRecord(result.data);
-      if (record) {
-        setSelectedAnnouncement(mapAnnouncement(record, 0, announcement));
-      }
-    } finally {
-      setLoadingDetail(false);
+  const handleViewAnnouncement = (announcement: Announcement) => {
+    if (announcement.id.startsWith("COM-")) {
+      toast.error(t("announcements.noAnnouncementsMessage"));
+      return;
     }
+    navigate(`/announcements/${announcement.id}`);
   };
 
   // Get announcement excerpt (first 150 chars)
@@ -418,41 +367,6 @@ const Comunicados = () => {
         </Pagination>
       )}
 
-      {/* Announcement Detail Dialog */}
-      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">
-              {selectedAnnouncement && getLocalizedField(selectedAnnouncement, 'title')}
-            </DialogTitle>
-            <DialogDescription>
-              <div className="flex items-center gap-2 mt-2">
-                <Calendar className="w-4 h-4" />
-                <span>{selectedAnnouncement && formatDate(selectedAnnouncement.published_at)}</span>
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="prose prose-sm max-w-none py-4">
-            <div className="text-sm text-foreground leading-relaxed">
-              {loadingDetail && (
-                <p className="text-muted-foreground">{loadingLabel}</p>
-              )}
-              {!loadingDetail && selectedAnnouncement && (
-                <div
-                  dangerouslySetInnerHTML={{
-                    __html: sanitizeAnnouncementHtml(getAnnouncementContent(selectedAnnouncement)),
-                  }}
-                />
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setShowDetailDialog(false)}>
-              {t('announcements.backToList')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

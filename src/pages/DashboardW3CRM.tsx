@@ -19,6 +19,7 @@ import {
   portalGetDashboardIncidents,
   portalGetDashboardReservations,
   portalGetAllMyProperties,
+  portalGetFinanzasResumen,
 } from "@/lib/portal-api";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,12 +43,18 @@ const DashboardW3CRM = () => {
   const [loading, setLoading] = useState(true);
   const [upcomingReservations, setUpcomingReservations] = useState<DashboardReservation[]>([]);
   const [recentActivity, setRecentActivity] = useState<DashboardActivity[]>([]);
+  const [financeSummary, setFinanceSummary] = useState<{
+    totalFacturas?: number;
+    totalPagado?: number;
+    totalPendiente?: number;
+  } | null>(null);
   const [stats, setStats] = useState({
     totalUnits: "-",
     activeReservations: "-",
     openIncidents: "-",
   });
   const isSuperAdmin = profile?.role === "super_admin";
+  const isOwner = profile?.role === "owner";
 
   const toPortalList = (payload: any): any[] => {
     if (!payload) return [];
@@ -148,11 +155,13 @@ const DashboardW3CRM = () => {
           reservasResult,
           incidenciasResult,
           comunicadosResult,
+          finanzasResumenResult,
         ] = await Promise.all([
           portalGetDashboardExpensas(),
           portalGetDashboardReservations(),
           portalGetDashboardIncidents(),
           portalGetDashboardComunicados(),
+          isOwner ? portalGetFinanzasResumen() : Promise.resolve({ data: null, error: null }),
         ]);
 
         if (!active) return;
@@ -183,6 +192,7 @@ const DashboardW3CRM = () => {
           : incidenciasRaw;
         const comunicados = toPortalList(comunicadosResult.data);
         const expensasSummary = toPortalList(expensasResult.data)[0] || expensasResult.data || {};
+        const resumen = toPortalList(finanzasResumenResult.data)[0] || finanzasResumenResult.data || null;
 
         const openIncidentsCount = incidencias.filter((incident: any) => {
           const estado = String(incident?.estado || incident?.status || "").toUpperCase();
@@ -208,6 +218,15 @@ const DashboardW3CRM = () => {
 
         setUpcomingReservations(mappedReservations.slice(0, 6));
 
+        if (isOwner) {
+          setFinanceSummary({
+            totalFacturas: readNumber(resumen || {}, ["totalFacturas", "total_facturas", "total_facturas_count"]),
+            totalPagado: readNumber(resumen || {}, ["totalPagado", "total_pagado", "pagado", "total_paid"]),
+            totalPendiente: readNumber(resumen || {}, ["totalPendiente", "total_pendiente", "pendiente", "total_pending"]),
+          });
+        } else {
+          setFinanceSummary(null);
+        }
 
         const mappedActivity = comunicados.map((comunicado: any) => ({
           title: readString(comunicado, ["titulo", "title", "asunto"]) || t("dashboard.recentActivity"),
@@ -227,7 +246,16 @@ const DashboardW3CRM = () => {
     return () => {
       active = false;
     };
-  }, [t, isSuperAdmin, profile?.building_id]);
+  }, [t, isSuperAdmin, isOwner, profile?.building_id]);
+
+  const formatCurrency = (amount?: number | null) => {
+    if (amount === null || amount === undefined || !Number.isFinite(amount)) return "-";
+    const formatted = new Intl.NumberFormat("es-PY", {
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    }).format(amount);
+    return `Gs. ${formatted}`;
+  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "success" | "warning" | "info"> = {
@@ -335,6 +363,39 @@ const DashboardW3CRM = () => {
 
       {/* Additional Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {isOwner && (
+          <DataCard
+            title={t("dashboard.financialSummary")}
+            description={t("dashboard.financialSummaryDesc")}
+          >
+            <div className="space-y-3">
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Cargando...</p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Total facturas</span>
+                    <span className="font-semibold text-secondary">
+                      {financeSummary?.totalFacturas ?? "-"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Total pagado</span>
+                    <span className="font-semibold text-secondary">
+                      {formatCurrency(financeSummary?.totalPagado)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Total pendiente</span>
+                    <span className="font-semibold text-secondary">
+                      {formatCurrency(financeSummary?.totalPendiente)}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          </DataCard>
+        )}
         <DataCard
           title={t('dashboard.recentActivity')}
           description={t('dashboard.recentActivityDesc')}

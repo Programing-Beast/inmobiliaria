@@ -195,6 +195,13 @@ const ReservationsManagement = () => {
     return null;
   };
 
+  const normalizeText = (value?: string | null) =>
+    (value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
   // Fetch data
   useEffect(() => {
     const fetchData = async () => {
@@ -265,7 +272,19 @@ const ReservationsManagement = () => {
               return { portalId, name, raw: property };
             })
             .filter((item): item is PortalProperty => item !== null);
-          setProperties(mappedProperties);
+          let filteredProperties = mappedProperties;
+          if (isOwner && ownerBuildingId) {
+            const { building } = await getBuilding(ownerBuildingId);
+            const ownerPortalId = building?.portal_id ?? null;
+            const ownerName = normalizeText(building?.name || "");
+            filteredProperties = mappedProperties.filter((property) => {
+              if (ownerPortalId && property.portalId === ownerPortalId) return true;
+              if (ownerName && normalizeText(property.name) === ownerName) return true;
+              return false;
+            });
+          }
+
+          setProperties(filteredProperties);
 
           if (!selectedPropertyId) {
             let defaultPortalId: string | null = null;
@@ -273,9 +292,19 @@ const ReservationsManagement = () => {
               const { building } = await getBuilding(ownerBuildingId);
               if (building?.portal_id) {
                 defaultPortalId = String(building.portal_id);
+              } else if (building?.name) {
+                const match = filteredProperties.find(
+                  (property) => normalizeText(property.name) === normalizeText(building.name)
+                );
+                if (match) {
+                  defaultPortalId = String(match.portalId);
+                }
               }
             }
-            setSelectedPropertyId(defaultPortalId || (mappedProperties[0] ? String(mappedProperties[0].portalId) : ""));
+            setSelectedPropertyId(defaultPortalId || (filteredProperties[0] ? String(filteredProperties[0].portalId) : ""));
+          }
+          if (isOwner && ownerBuildingId && filteredProperties.length === 0) {
+            toast.error("No hay propiedades asignadas para este propietario");
           }
         }
       } catch (error) {
@@ -941,7 +970,7 @@ const ReservationsManagement = () => {
                   setSelectedPropertyId(value);
                   setReservationForm((prev) => ({ ...prev, amenity_id: "", property_id: value }));
                 }}
-                disabled={propertiesLoading || properties.length === 0}
+                disabled={propertiesLoading || properties.length === 0 || isOwner}
               >
                 <SelectTrigger id="property_id">
                   <SelectValue placeholder={t("reservationsManagement.selectProperty")} />

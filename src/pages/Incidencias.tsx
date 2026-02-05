@@ -62,7 +62,6 @@ const Incidencias = () => {
     estado: "",
     titulo: "",
     descripcion: "",
-    prioridad: "",
   });
 
   const isSuperAdmin = profile?.role === "super_admin";
@@ -355,14 +354,13 @@ const Incidencias = () => {
       estado: "",
       titulo: incident?.titulo || "",
       descripcion: "",
-      prioridad: "",
     });
     setShowUpdateDialog(true);
   };
 
   const handleUpdateIncident = async () => {
     if (!selectedIncident) return;
-    if (!updateIncident.estado && !updateIncident.titulo && !updateIncident.descripcion && !updateIncident.prioridad) {
+    if (!updateIncident.estado && !updateIncident.titulo && !updateIncident.descripcion) {
       toast.error("Ingresa al menos un campo para actualizar");
       return;
     }
@@ -373,8 +371,6 @@ const Incidencias = () => {
       if (updateIncident.estado) portalPayload.estado = updateIncident.estado;
       if (updateIncident.titulo) portalPayload.titulo = updateIncident.titulo;
       if (updateIncident.descripcion) portalPayload.descripcion = updateIncident.descripcion;
-      if (updateIncident.prioridad) portalPayload.prioridad = updateIncident.prioridad;
-
       const incidentId = selectedIncident?.idIncidencia ?? selectedIncident?.id;
       const { error } = await updateIncidentSynced({
         email: profile?.email || undefined,
@@ -617,35 +613,11 @@ const Incidencias = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Prioridad</label>
-                <Select
-                  value={newIncident.prioridad}
-                  onValueChange={(value) => setNewIncident({ ...newIncident, prioridad: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona prioridad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALTA">ALTA</SelectItem>
-                    <SelectItem value="MEDIA">MEDIA</SelectItem>
-                    <SelectItem value="BAJA">BAJA</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input value="MEDIA" disabled />
               </div>
               <div>
                 <label className="text-sm font-medium">Tipo local</label>
-                <Select
-                  value={newIncident.tipoLocal}
-                  onValueChange={(value) => setNewIncident({ ...newIncident, tipoLocal: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="maintenance">Mantenimiento</SelectItem>
-                    <SelectItem value="complaint">Reclamo</SelectItem>
-                    <SelectItem value="suggestion">Sugerencia</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input value="Mantenimiento" disabled />
               </div>
             </div>
           </div>
@@ -697,22 +669,6 @@ const Incidencias = () => {
                 value={updateIncident.descripcion}
                 onChange={(e) => setUpdateIncident({ ...updateIncident, descripcion: e.target.value })}
               />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Prioridad</label>
-              <Select
-                value={updateIncident.prioridad}
-                onValueChange={(value) => setUpdateIncident({ ...updateIncident, prioridad: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona prioridad" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALTA">ALTA</SelectItem>
-                  <SelectItem value="MEDIA">MEDIA</SelectItem>
-                  <SelectItem value="BAJA">BAJA</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>

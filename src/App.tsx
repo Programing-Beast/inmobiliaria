@@ -16,6 +16,7 @@ import DashboardW3CRM from "./pages/DashboardW3CRM";
 import Finanzas from "./pages/Finanzas";
 import Documentos from "./pages/Documentos";
 import Comunicados from "./pages/Comunicados";
+import ComunicadoDetalle from "./pages/ComunicadoDetalle";
 import Reservas from "./pages/Reservas";
 import Incidencias from "./pages/Incidencias";
 import Aprobaciones from "./pages/Aprobaciones";
@@ -85,6 +86,14 @@ const App = () => (
                 element={
                   <RoleGuard roles={["owner", "tenant", "super_admin"]}>
                     <Comunicados />
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="/announcements/:id"
+                element={
+                  <RoleGuard roles={["owner", "tenant", "super_admin"]}>
+                    <ComunicadoDetalle />
                   </RoleGuard>
                 }
               />
