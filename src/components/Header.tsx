@@ -116,9 +116,23 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Notificaciones">
-            <Bell className="h-5 w-5" />
+          {/* Messages */}
+          <Button variant="ghost" size="icon" className="h-10 w-10 hidden sm:flex">
+            <Mail className="h-5 w-5" />
+          </Button>
+
+          {/* Fullscreen */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 hidden md:flex"
+            onClick={toggleFullscreen}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="h-5 w-5" />
+            ) : (
+              <Maximize2 className="h-5 w-5" />
+            )}
           </Button>
 
           {/* Profile Dropdown */}
