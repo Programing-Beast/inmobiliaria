@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { portalGetAllMyProperties, portalGetDashboardIncidents } from "@/lib/portal-api";
 import { createIncidentSynced, retrySyncQueue, updateIncidentSynced } from "@/lib/portal-sync";
-import { getAllBuildings, getBuildingUnits } from "@/lib/supabase";
+import { getAllBuildings, getBuilding, getBuildingUnits, updateBuilding } from "@/lib/supabase";
 import {
   Pagination,
   PaginationContent,
@@ -94,6 +94,13 @@ const Incidencias = () => {
     return "";
   };
 
+  const normalizeText = (value?: string | null) =>
+    (value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
   const getIncidentPropertyId = (incident: Record<string, any>) =>
     readNumber(incident, [
       "idPropiedad",
@@ -159,6 +166,15 @@ const Incidencias = () => {
         return;
       }
 
+      if (profile.building_id) {
+        const { building } = await getBuilding(profile.building_id);
+        const portalId = building?.portal_id ?? null;
+        const name = building?.name || "";
+        setAllowedPropertyIds(portalId ? [portalId] : []);
+        setAllowedPropertyNames(name ? [name] : []);
+        return;
+      }
+
       const result = await portalGetAllMyProperties();
       if (result.error) {
         console.error("Error fetching portal properties:", result.error);
@@ -189,9 +205,10 @@ const Incidencias = () => {
 
   useEffect(() => {
     const fetchBuildings = async () => {
-      if (profile?.building_id && allowedPropertyIds.length === 0) {
-        const profileBuildingName = (profile as any)?.building?.name;
-        setBuildings([{ id: profile.building_id, name: profileBuildingName || "Propiedad" }]);
+      if (profile?.building_id && !isSuperAdmin) {
+        const { building } = await getBuilding(profile.building_id);
+        const fallbackName = (profile as any)?.building?.name || "Propiedad";
+        setBuildings([{ id: profile.building_id, name: building?.name || fallbackName }]);
         setNewIncident((prev) => ({ ...prev, buildingId: profile.building_id }));
         return;
       }
@@ -212,6 +229,44 @@ const Incidencias = () => {
 
     fetchBuildings();
   }, [profile?.building_id, profile?.building?.name, allowedPropertyIds, isSuperAdmin]);
+
+  const ensureBuildingPortalMapping = async (buildingId: string) => {
+    const { building } = await getBuilding(buildingId);
+    if (!building) {
+      return { portalId: null, error: { message: "No se encontró el edificio" } };
+    }
+    if (building.portal_id) {
+      return { portalId: building.portal_id, error: null };
+    }
+
+    const result = await portalGetAllMyProperties();
+    if (result.error) {
+      return { portalId: null, error: result.error };
+    }
+
+    const portalProperties = toPortalList(result.data);
+    const buildingName = normalizeText(building.name || "");
+    const match = portalProperties.find((property) => {
+      const propertyName = normalizeText(
+        readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"])
+      );
+      return buildingName && propertyName === buildingName;
+    });
+    const portalId = match
+      ? readNumber(match, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"])
+      : null;
+
+    if (!portalId) {
+      return { portalId: null, error: { message: "No hay mapeo de portal para este edificio" } };
+    }
+
+    const updateResult = await updateBuilding(buildingId, { portal_id: portalId });
+    if (updateResult.error) {
+      return { portalId: null, error: updateResult.error };
+    }
+
+    return { portalId, error: null };
+  };
 
   useEffect(() => {
     const fetchUnits = async () => {
@@ -242,6 +297,12 @@ const Incidencias = () => {
       const unitId = newIncident.unitId || undefined;
       if (!buildingId) {
         toast.error("No hay edificio asignado");
+        setSubmitting(false);
+        return;
+      }
+      const mappingResult = await ensureBuildingPortalMapping(buildingId);
+      if (mappingResult.error) {
+        toast.error(mappingResult.error.message || "No hay mapeo de portal para este edificio");
         setSubmitting(false);
         return;
       }

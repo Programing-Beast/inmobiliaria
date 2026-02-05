@@ -22,6 +22,7 @@ import {
 } from "@/lib/portal-api";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import { getBuilding } from "@/lib/supabase";
 
 type DashboardReservation = {
   amenity: string;
@@ -115,20 +116,30 @@ const DashboardW3CRM = () => {
         let allowedPropertyIds: number[] = [];
         let allowedPropertyNames: string[] = [];
         if (!isSuperAdmin) {
-          const propertiesResult = await portalGetAllMyProperties();
-          if (!propertiesResult.error) {
-            const portalProperties = toPortalList(propertiesResult.data);
-            allowedPropertyIds = portalProperties
-              .map((property) =>
-                readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"])
-              )
-              .filter((value): value is number => value !== null);
-            allowedPropertyNames = portalProperties
-              .map((property) =>
-                readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"])
-              )
-              .filter(Boolean);
-            console.log("[portal] allowed property IDs", allowedPropertyIds);
+          if (profile?.building_id) {
+            const { building } = await getBuilding(profile.building_id);
+            if (building?.portal_id) {
+              allowedPropertyIds = [building.portal_id];
+            }
+            if (building?.name) {
+              allowedPropertyNames = [building.name];
+            }
+          } else {
+            const propertiesResult = await portalGetAllMyProperties();
+            if (!propertiesResult.error) {
+              const portalProperties = toPortalList(propertiesResult.data);
+              allowedPropertyIds = portalProperties
+                .map((property) =>
+                  readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"])
+                )
+                .filter((value): value is number => value !== null);
+              allowedPropertyNames = portalProperties
+                .map((property) =>
+                  readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"])
+                )
+                .filter(Boolean);
+              console.log("[portal] allowed property IDs", allowedPropertyIds);
+            }
           }
         }
 
@@ -216,7 +227,7 @@ const DashboardW3CRM = () => {
     return () => {
       active = false;
     };
-  }, [t, isSuperAdmin]);
+  }, [t, isSuperAdmin, profile?.building_id]);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "success" | "warning" | "info"> = {

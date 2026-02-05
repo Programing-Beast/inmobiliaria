@@ -684,7 +684,7 @@ export const createReservationSynced = async (params: {
     return { reservation: null, error: { message: "Missing or invalid reservation fields" }, queued: false };
   }
 
-  if (!userHasAnyRole(["tenant", "owner"])) {
+  if (!userHasAnyRole(["tenant", "owner", "regular_user"])) {
     return { reservation: null, error: { message: "User role not permitted to create reservations" }, queued: false };
   }
 
@@ -782,7 +782,7 @@ export const createIncidentSynced = async (params: {
 }) => {
   const { email, portalFields, localPayload } = params;
 
-  if (!userHasAnyRole(["tenant", "owner"])) {
+  if (!userHasAnyRole(["tenant", "owner", "regular_user"])) {
     return { incident: null, error: { message: "User role not permitted to create incidents" }, queued: false };
   }
 

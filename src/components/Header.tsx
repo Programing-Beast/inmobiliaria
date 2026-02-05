@@ -1,4 +1,4 @@
-import { Search, Mail, Maximize2, Minimize2, ChevronDown, Globe, LogOut, User } from "lucide-react";
+import { Search, Bell, ChevronDown, Globe, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Menu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -26,7 +26,6 @@ const Header = ({ onMenuClick }: HeaderProps) => {
   const { i18n } = useTranslation();
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Get user info from auth context or localStorage (fallback)
   const userName = profile?.full_name || localStorage.getItem("userName") || "Usuario";
@@ -63,16 +62,6 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     } catch (error) {
       console.error('Logout error:', error);
       toast.error("Error inesperado al cerrar sesión");
-    }
-  };
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
     }
   };
 
@@ -127,23 +116,9 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Messages */}
-          <Button variant="ghost" size="icon" className="h-10 w-10 hidden sm:flex">
-            <Mail className="h-5 w-5" />
-          </Button>
-
-          {/* Fullscreen */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 hidden md:flex"
-            onClick={toggleFullscreen}
-          >
-            {isFullscreen ? (
-              <Minimize2 className="h-5 w-5" />
-            ) : (
-              <Maximize2 className="h-5 w-5" />
-            )}
+          {/* Notifications */}
+          <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Notificaciones">
+            <Bell className="h-5 w-5" />
           </Button>
 
           {/* Profile Dropdown */}

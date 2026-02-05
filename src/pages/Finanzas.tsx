@@ -31,10 +31,8 @@ interface Payment {
   id: string;
   invoice_number: string | null;
   ruc: string | null;
-  timbrado: string | null;
   document_type: string | null;
   total_amount: number;
-  balance: number;
   status: PaymentStatus;
   recorded_at: string | null;
   due_date: string | null;
@@ -125,12 +123,10 @@ const Finanzas = () => {
           id: readString(payment, ["idFactura", "id", "codigo", "numero"]) || `FAC-${index + 1}`,
           invoice_number: readString(payment, ["numFactura", "numero", "invoice_number"]) || null,
           ruc: readString(payment, ["ruc"]) || null,
-          timbrado: readString(payment, ["timbrado"]) || null,
           document_type: normalizeDocumentType(
             readString(payment, ["tipoDocumento", "tipo_documento", "tipo", "document_type", "tipoComprobante"])
           ),
           total_amount: readNumber(payment, ["montoTotal", "total", "monto_total"]) ?? 0,
-          balance: readNumber(payment, ["saldo", "balance"]) ?? 0,
           status: normalizePaymentStatus(readString(payment, ["estado", "status"])),
           recorded_at: readString(payment, ["fechaGrabado", "created_at", "fecha"]) || null,
           due_date: readString(payment, ["fechaVencimiento", "fecha_vencimiento", "due_date"]) || null,
@@ -156,12 +152,17 @@ const Finanzas = () => {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(payment =>
-        payment.invoice_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.ruc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.timbrado?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const normalizedTerm = normalizeText(searchTerm);
+      filtered = filtered.filter(payment => {
+        const typeLabel = normalizeText(getDocumentTypeLabel(payment.document_type));
+        return (
+          normalizeText(payment.invoice_number || "").includes(normalizedTerm) ||
+          normalizeText(payment.ruc || "").includes(normalizedTerm) ||
+          normalizeText(payment.id).includes(normalizedTerm) ||
+          normalizeText(payment.document_type || "").includes(normalizedTerm) ||
+          typeLabel.includes(normalizedTerm)
+        );
+      });
     }
 
     // Status filter
@@ -215,6 +216,17 @@ const Finanzas = () => {
 
   const isOwner = profile?.role === "owner";
 
+  const getDocumentTypeLabel = (type?: string | null) => {
+    const labels: Record<string, string> = {
+      factura: t("finance.documentTypeFactura"),
+      nota_credito: t("finance.documentTypeCreditNote"),
+      informe_financiero: t("finance.documentTypeFinancialReport"),
+      recibo_dinero: t("finance.documentTypeReceipt"),
+    };
+    if (!type) return "-";
+    return labels[type] || type;
+  };
+
   const getPaymentDate = (payment: Payment) => {
     const value = payment.recorded_at || payment.due_date;
     return value ? new Date(value).getTime() : 0;
@@ -250,15 +262,14 @@ const Finanzas = () => {
   // Export to CSV
   const handleExport = () => {
     const csv = [
-      ["ID", "Factura", "RUC", "Timbrado", "Monto Total", "Saldo", "Estado", "Fecha de emisión", "Fecha vencimiento", "PDF"].join(','),
+      ["ID", "Factura", "RUC", "Tipo", "Monto Total", "Estado", "Fecha de emisión", "Fecha vencimiento", "PDF"].join(','),
       ...filteredPayments.map(payment =>
         [
           payment.id,
           payment.invoice_number || '-',
           payment.ruc || '-',
-          payment.timbrado || '-',
+          getDocumentTypeLabel(payment.document_type),
           payment.total_amount,
-          payment.balance,
           payment.status,
           formatDate(payment.recorded_at),
           formatDate(payment.due_date),
@@ -277,10 +288,10 @@ const Finanzas = () => {
   };
 
   const documentTypeOptions = [
-    { value: "factura", label: "Factura" },
-    { value: "nota_credito", label: "Nota de crédito" },
-    { value: "informe_financiero", label: "Informe financiero" },
-    { value: "recibo_dinero", label: "Recibo de dinero" },
+    { value: "factura", label: t("finance.documentTypeFactura") },
+    { value: "nota_credito", label: t("finance.documentTypeCreditNote") },
+    { value: "informe_financiero", label: t("finance.documentTypeFinancialReport") },
+    { value: "recibo_dinero", label: t("finance.documentTypeReceipt") },
   ];
 
   return (
@@ -387,9 +398,8 @@ const Finanzas = () => {
                     <TableHead>ID</TableHead>
                     <TableHead>Factura</TableHead>
                     <TableHead>RUC</TableHead>
-                    <TableHead>Timbrado</TableHead>
+                    <TableHead>{t("finance.type")}</TableHead>
                     <TableHead>Monto Total</TableHead>
-                    <TableHead>Saldo</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Fecha de emisión</TableHead>
                     <TableHead>Fecha vencimiento</TableHead>
@@ -402,9 +412,8 @@ const Finanzas = () => {
                       <TableCell className="font-mono text-xs">{payment.id}</TableCell>
                       <TableCell className="font-semibold">{payment.invoice_number || "-"}</TableCell>
                       <TableCell>{payment.ruc || "-"}</TableCell>
-                      <TableCell>{payment.timbrado || "-"}</TableCell>
+                      <TableCell>{getDocumentTypeLabel(payment.document_type)}</TableCell>
                       <TableCell className="font-semibold">{formatCurrency(payment.total_amount)}</TableCell>
-                      <TableCell className="font-semibold">{formatCurrency(payment.balance)}</TableCell>
                       <TableCell>{getStatusBadge(payment.status)}</TableCell>
                       <TableCell>{formatDate(payment.recorded_at)}</TableCell>
                       <TableCell>{formatDate(payment.due_date)}</TableCell>

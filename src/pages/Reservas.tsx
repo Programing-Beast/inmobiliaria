@@ -95,6 +95,12 @@ const Reservas = () => {
   const [reservationsSort, setReservationsSort] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
   const pageSize = 5;
+  const normalizeText = (value?: string | null) =>
+    (value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
 
   // New reservation form
   const getDefaultReservation = () => ({
@@ -139,7 +145,25 @@ const Reservas = () => {
           })
           .filter((item): item is PortalProperty => item !== null);
 
-        setProperties(mappedProperties);
+        let filteredProperties = mappedProperties;
+        let assignedPortalId: number | null = null;
+        let assignedName = "";
+        if (profile.building_id) {
+          const { building } = await getBuilding(profile.building_id);
+          assignedPortalId = building?.portal_id ?? null;
+          assignedName = normalizeText(building?.name || "");
+          if (assignedPortalId || assignedName) {
+            filteredProperties = mappedProperties.filter((property) => {
+              if (assignedPortalId && property.portalId === assignedPortalId) return true;
+              if (assignedName && normalizeText(property.name) === assignedName) return true;
+              return false;
+            });
+          } else {
+            filteredProperties = [];
+          }
+        }
+
+        setProperties(filteredProperties);
 
         if (!selectedPropertyId) {
           let defaultPortalId: string | null = null;
@@ -147,9 +171,19 @@ const Reservas = () => {
             const { building } = await getBuilding(profile.building_id);
             if (building?.portal_id) {
               defaultPortalId = String(building.portal_id);
+            } else if (building?.name) {
+              const match = filteredProperties.find(
+                (property) => normalizeText(property.name) === normalizeText(building.name)
+              );
+              if (match) {
+                defaultPortalId = String(match.portalId);
+              }
             }
           }
-          setSelectedPropertyId(defaultPortalId || (mappedProperties[0] ? String(mappedProperties[0].portalId) : ""));
+          setSelectedPropertyId(defaultPortalId || (filteredProperties[0] ? String(filteredProperties[0].portalId) : ""));
+        }
+        if (profile.building_id && filteredProperties.length === 0) {
+          toast.error("No hay propiedades asignadas para este usuario");
         }
       } catch (error) {
         console.error("Error:", error);
