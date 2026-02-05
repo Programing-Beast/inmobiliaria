@@ -573,9 +573,15 @@ const Reservas = () => {
   if (!profile?.building_id) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">{t('reservations.title')}</h1>
-          <p className="text-muted-foreground mt-1">{t('reservations.subtitle')}</p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">{t('reservations.title')}</h1>
+            <p className="text-muted-foreground mt-1">{t('reservations.subtitle')}</p>
+          </div>
+          <Button className="bg-primary hover:bg-primary/90 shadow-lg gap-2" disabled>
+            <Plus className="h-5 w-5" />
+            {t('reservations.newReservation')}
+          </Button>
         </div>
         <Card>
           <CardContent className="py-12 text-center">
