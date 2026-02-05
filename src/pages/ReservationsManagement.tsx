@@ -164,7 +164,7 @@ const ReservationsManagement = () => {
   const [reservationForm, setReservationForm] = useState(getDefaultReservationForm);
 
   // Check if user can access this page
-  const canAccess = profile?.role === "super_admin" || isOwner;
+  const canAccess = profile?.role === "super_admin";
   const isOwner = profile?.role === "owner" || profile?.roles?.includes("owner");
   const ownerBuildingId = profile?.currentUnit?.building_id || profile?.building_id || null;
 
