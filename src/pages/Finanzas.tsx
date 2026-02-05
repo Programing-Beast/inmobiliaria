@@ -387,9 +387,9 @@ const Finanzas = () => {
                     <TableHead>ID</TableHead>
                     <TableHead>Factura</TableHead>
                     <TableHead>RUC</TableHead>
-                    <TableHead>Timbrado</TableHead>
+                    {/* <TableHead>Timbrado</TableHead> */}
                     <TableHead>Monto Total</TableHead>
-                    <TableHead>Saldo</TableHead>
+                    {/* <TableHead>Saldo</TableHead> */}
                     <TableHead>Estado</TableHead>
                     <TableHead>Fecha de emisión</TableHead>
                     <TableHead>Fecha vencimiento</TableHead>
@@ -402,9 +402,9 @@ const Finanzas = () => {
                       <TableCell className="font-mono text-xs">{payment.id}</TableCell>
                       <TableCell className="font-semibold">{payment.invoice_number || "-"}</TableCell>
                       <TableCell>{payment.ruc || "-"}</TableCell>
-                      <TableCell>{payment.timbrado || "-"}</TableCell>
+                      {/* <TableCell>{payment.timbrado || "-"}</TableCell> */}
                       <TableCell className="font-semibold">{formatCurrency(payment.total_amount)}</TableCell>
-                      <TableCell className="font-semibold">{formatCurrency(payment.balance)}</TableCell>
+                      {/* <TableCell className="font-semibold">{formatCurrency(payment.balance)}</TableCell> */}
                       <TableCell>{getStatusBadge(payment.status)}</TableCell>
                       <TableCell>{formatDate(payment.recorded_at)}</TableCell>
                       <TableCell>{formatDate(payment.due_date)}</TableCell>

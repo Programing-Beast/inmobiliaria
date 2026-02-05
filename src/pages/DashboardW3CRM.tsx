@@ -249,14 +249,14 @@ const DashboardW3CRM = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          {/* <Button variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
             {t('dashboard.export')}
           </Button>
           <Button size="sm">
             <Eye className="h-4 w-4 mr-2" />
             {t('dashboard.viewReports')}
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -267,21 +267,21 @@ const DashboardW3CRM = () => {
           value={stats.totalUnits}
           icon={Home}
           iconColor="primary"
-          trend={{ value: 2, positive: true }}
+          // trend={{ value: 2, positive: true }}
         />
         <StatCard
           title={t('dashboard.activeReservations')}
           value={stats.activeReservations}
           icon={Calendar}
           iconColor="success"
-          trend={{ value: 8, positive: true }}
+          // trend={{ value: 8, positive: true }}
         />
         <StatCard
           title={t('dashboard.openIncidents')}
           value={stats.openIncidents}
           icon={AlertCircle}
           iconColor="info"
-          trend={{ value: 2, positive: false }}
+          // trend={{ value: 2, positive: false }}
         />
       </div>
 

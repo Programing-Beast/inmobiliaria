@@ -242,30 +242,6 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
             ))}
           </div>
 
-          {/* Feature Section */}
-          {!collapsed && (
-            <>
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-6 mb-3 px-3">
-                Our Features
-              </div>
-
-              <div className="space-y-1">
-                <NavLink
-                  to="#"
-                  className={({ isActive }) => cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
-                    "hover:bg-muted/80",
-                    isActive
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <CheckSquare className="h-5 w-5 shrink-0" />
-                  <span className="text-sm">Tasks</span>
-                </NavLink>
-              </div>
-            </>
-          )}
         </nav>
 
         {/* User Section at Bottom */}

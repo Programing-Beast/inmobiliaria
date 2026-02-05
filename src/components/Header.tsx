@@ -128,9 +128,9 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           </DropdownMenu>
 
           {/* Messages */}
-          <Button variant="ghost" size="icon" className="h-10 w-10 hidden sm:flex">
+          {/* <Button variant="ghost" size="icon" className="h-10 w-10 hidden sm:flex">
             <Mail className="h-5 w-5" />
-          </Button>
+          </Button> */}
 
           {/* Fullscreen */}
           <Button
