@@ -117,9 +117,9 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           </DropdownMenu>
 
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Notificaciones">
+          {/* <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Notificaciones">
             <Bell className="h-5 w-5" />
-          </Button>
+          </Button> */}
 
           {/* Profile Dropdown */}
           <DropdownMenu>

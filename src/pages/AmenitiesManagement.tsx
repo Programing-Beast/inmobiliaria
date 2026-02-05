@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dumbbell, Plus, Edit, Trash2, Search, Building2, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getAllAmenities,
@@ -84,6 +84,7 @@ const AmenitiesManagement = () => {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // State
   const [amenities, setAmenities] = useState<Amenity[]>([]);
@@ -173,6 +174,8 @@ const AmenitiesManagement = () => {
                 if (syncResult.error) {
                   console.error("Error syncing portal data:", syncResult.error);
                   toast.error(t("amenities.errorLoading"));
+                } else {
+                  toast.success(`${portalAmenities.length} amenidades sincronizadas desde Portal`);
                 }
               }
             }
@@ -242,6 +245,19 @@ const AmenitiesManagement = () => {
 
     setFilteredAmenities(filtered);
   }, [searchTerm, filterBuildingId, amenities]);
+
+  // Handle building dropdown change - update URL to trigger data fetch
+  const handleBuildingChange = (buildingId: string) => {
+    if (buildingId === "all") {
+      // Remove buildingId parameter from URL
+      navigate("/amenities");
+      setFilterBuildingId("all");
+    } else {
+      // Add/update buildingId parameter in URL
+      navigate(`/amenities?buildingId=${buildingId}`);
+      setFilterBuildingId(buildingId);
+    }
+  };
 
   // Reset form
   const resetForm = () => {
@@ -470,7 +486,7 @@ const AmenitiesManagement = () => {
             </div>
 
             {/* Building Filter */}
-            <Select value={filterBuildingId} onValueChange={setFilterBuildingId}>
+            <Select value={filterBuildingId} onValueChange={handleBuildingChange}>
               <SelectTrigger>
                 <SelectValue placeholder={t("amenities.filterByBuilding")} />
               </SelectTrigger>

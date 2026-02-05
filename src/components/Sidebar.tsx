@@ -128,13 +128,13 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
       path: "/roles",
       roles: ["super_admin"] // Only Super Admin
     },
-    {
-      key: "buildings",
-      label: t('nav.buildings'),
-      icon: Building2,
-      path: "/buildings",
-      roles: ["super_admin", "owner"] // Super Admin and Owner
-    },
+    // {
+    //   key: "buildings",
+    //   label: t('nav.buildings'),
+    //   icon: Building2,
+    //   path: "/buildings",
+    //   roles: ["super_admin", "owner"] // Super Admin and Owner
+    // },
     {
       key: "units",
       label: t('nav.units'),

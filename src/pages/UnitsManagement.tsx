@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Home, Plus, Edit, Trash2, Search, Building2, Layers, Ruler, Bed, Bath, DollarSign } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getAllUnits,
@@ -82,6 +82,7 @@ const UnitsManagement = () => {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // State
   const [units, setUnits] = useState<Unit[]>([]);
@@ -171,6 +172,8 @@ const UnitsManagement = () => {
                 if (syncResult.error) {
                   console.error("Error syncing portal data:", syncResult.error);
                   toast.error(t("units.error.load"));
+                } else {
+                  toast.success(`${portalUnits.length} unidades sincronizadas desde Portal`);
                 }
               }
             }
@@ -246,6 +249,19 @@ const UnitsManagement = () => {
 
     setFilteredUnits(filtered);
   }, [searchTerm, filterBuildingId, units]);
+
+  // Handle building dropdown change - update URL to trigger data fetch
+  const handleBuildingChange = (buildingId: string) => {
+    if (buildingId === "all") {
+      // Remove buildingId parameter from URL
+      navigate("/units");
+      setFilterBuildingId("all");
+    } else {
+      // Add/update buildingId parameter in URL
+      navigate(`/units?buildingId=${buildingId}`);
+      setFilterBuildingId(buildingId);
+    }
+  };
 
   // Check if user can modify a unit
   const canModifyUnit = (unit: Unit): boolean => {
@@ -512,7 +528,7 @@ const UnitsManagement = () => {
                 className="pl-10"
               />
             </div>
-            <Select value={filterBuildingId} onValueChange={setFilterBuildingId}>
+            <Select value={filterBuildingId} onValueChange={handleBuildingChange}>
               <SelectTrigger className="w-full md:w-[250px]">
                 <SelectValue placeholder={t("units.filterByBuilding")} />
               </SelectTrigger>
