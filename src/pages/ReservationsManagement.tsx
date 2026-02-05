@@ -970,7 +970,7 @@ const ReservationsManagement = () => {
                   setSelectedPropertyId(value);
                   setReservationForm((prev) => ({ ...prev, amenity_id: "", property_id: value }));
                 }}
-                disabled={propertiesLoading || properties.length === 0 || isOwner}
+                disabled={propertiesLoading || isOwner}
               >
                 <SelectTrigger id="property_id">
                   <SelectValue placeholder={t("reservationsManagement.selectProperty")} />
