@@ -53,6 +53,7 @@ interface Amenity {
   display_name_en: string | null;
   rules_es: string | null;
   rules_en: string | null;
+  rules_pdf_url?: string | null;
   max_capacity: number | null;
   is_active: boolean;
 }
@@ -555,6 +556,34 @@ const Reservas = () => {
   const amenityStart = amenityInfo ? readString(amenityInfo, ["horaInicio", "hora_inicio", "start"]) : "";
   const amenityEnd = amenityInfo ? readString(amenityInfo, ["horaFin", "hora_fin", "end"]) : "";
   const amenityNotes = amenityInfo ? readString(amenityInfo, ["descripcion", "description", "detalle"]) : "";
+  const getPdfUrl = (record: Record<string, any> | null, keys: string[]) => {
+    if (!record) return "";
+    for (const key of keys) {
+      const raw = record?.[key];
+      if (typeof raw !== "string") continue;
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      const lower = trimmed.toLowerCase();
+      if (lower.endsWith(".pdf") || lower.startsWith("http://") || lower.startsWith("https://")) {
+        return trimmed;
+      }
+    }
+    return "";
+  };
+  const portalRulesPdfUrl = getPdfUrl(amenityInfo, [
+    "verreglamentos",
+    "ver_reglamentos",
+    "reglamento",
+    "reglamentos",
+    "reglamento_url",
+    "reglamentoUrl",
+    "url_reglamento",
+    "urlReglamento",
+    "pdfReglamento",
+    "pdf_reglamento",
+    "reglamento_pdf",
+  ]);
+  const rulesPdfUrl = selectedAmenity?.rules_pdf_url || portalRulesPdfUrl;
 
   useEffect(() => {
     if (page > totalPages) {
@@ -953,6 +982,17 @@ const Reservas = () => {
                   : selectedAmenity.rules_es || 'No hay reglamento disponible'
               )}
             </div>
+            {rulesPdfUrl && (
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(rulesPdfUrl, "_blank", "noopener,noreferrer")}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Ver reglamento (PDF)
+                </Button>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button onClick={() => setShowRulesDialog(false)}>

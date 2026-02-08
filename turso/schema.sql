@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS amenities (
     name_en TEXT,
     description_es TEXT,
     description_en TEXT,
+    rules_pdf_url TEXT,
     max_capacity INTEGER,
     requires_approval INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 1,

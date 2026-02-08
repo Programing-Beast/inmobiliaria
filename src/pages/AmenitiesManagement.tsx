@@ -52,6 +52,7 @@ import {
   getAllBuildings,
   getBuilding,
 } from "@/lib/supabase";
+import { uploadAmenityRulesPdf } from "@/lib/upload";
 import { syncPortalAmenitiesForBuilding } from "@/lib/portal-sync";
 import { portalGetAmenities } from "@/lib/portal-api";
 import { toast } from "sonner";
@@ -64,6 +65,7 @@ interface Amenity {
   name_en: string | null;
   description_es: string | null;
   description_en: string | null;
+  rules_pdf_url: string | null;
   max_capacity: number | null;
   requires_approval: boolean | null;
   is_active: boolean | null;
@@ -98,6 +100,8 @@ const AmenitiesManagement = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedAmenity, setSelectedAmenity] = useState<Amenity | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [rulesUploading, setRulesUploading] = useState(false);
+  const [rulesUploadError, setRulesUploadError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -110,14 +114,16 @@ const AmenitiesManagement = () => {
     name_en: "",
     description_es: "",
     description_en: "",
+    rules_pdf_url: "",
     max_capacity: "",
     requires_approval: false,
     is_active: true,
   });
 
   // Check if user can access this page
-  const canAccess = profile?.role === "super_admin" || profile?.role === "owner";
-  const isReadOnly = true;
+  const isSuperAdmin = profile?.role === "super_admin";
+  const canAccess = isSuperAdmin || profile?.role === "owner";
+  const isReadOnly = !isSuperAdmin;
 
   const toPortalList = (payload: any): any[] => {
     if (!payload) return [];
@@ -268,10 +274,26 @@ const AmenitiesManagement = () => {
       name_en: "",
       description_es: "",
       description_en: "",
+      rules_pdf_url: "",
       max_capacity: "",
       requires_approval: false,
       is_active: true,
     });
+    setRulesUploadError(null);
+  };
+
+  const handleRulesUpload = async (file: File) => {
+    setRulesUploading(true);
+    setRulesUploadError(null);
+    const result = await uploadAmenityRulesPdf(file);
+    if (result.error) {
+      setRulesUploadError(result.error);
+      toast.error(result.error);
+    } else if (result.url) {
+      setAmenityForm((prev) => ({ ...prev, rules_pdf_url: result.url || "" }));
+      toast.success("Reglamento subido");
+    }
+    setRulesUploading(false);
   };
 
   // Handle create amenity
@@ -290,6 +312,7 @@ const AmenitiesManagement = () => {
         name_en: amenityForm.name_en || null,
         description_es: amenityForm.description_es || null,
         description_en: amenityForm.description_en || null,
+        rules_pdf_url: amenityForm.rules_pdf_url || null,
         max_capacity: amenityForm.max_capacity ? parseInt(amenityForm.max_capacity) : null,
         requires_approval: amenityForm.requires_approval,
         is_active: amenityForm.is_active,
@@ -332,6 +355,7 @@ const AmenitiesManagement = () => {
         name_en: amenityForm.name_en || null,
         description_es: amenityForm.description_es || null,
         description_en: amenityForm.description_en || null,
+        rules_pdf_url: amenityForm.rules_pdf_url || null,
         max_capacity: amenityForm.max_capacity ? parseInt(amenityForm.max_capacity) : null,
         requires_approval: amenityForm.requires_approval,
         is_active: amenityForm.is_active,
@@ -398,6 +422,7 @@ const AmenitiesManagement = () => {
       name_en: amenity.name_en || "",
       description_es: amenity.description_es || "",
       description_en: amenity.description_en || "",
+      rules_pdf_url: amenity.rules_pdf_url || "",
       max_capacity: amenity.max_capacity?.toString() || "",
       requires_approval: amenity.requires_approval || false,
       is_active: amenity.is_active ?? true,
@@ -711,6 +736,52 @@ const AmenitiesManagement = () => {
               </div>
             </div>
 
+
+
+            {isSuperAdmin && (
+              <div>
+                <Label htmlFor="rules_pdf_upload">Reglamento (PDF)</Label>
+                <div className="flex flex-col gap-2">
+                  <Input
+                    id="rules_pdf_upload"
+                    type="file"
+                    accept="application/pdf"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleRulesUpload(file);
+                      }
+                      e.currentTarget.value = "";
+                    }}
+                    disabled={rulesUploading}
+                  />
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {amenityForm.rules_pdf_url ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(amenityForm.rules_pdf_url, "_blank", "noopener,noreferrer")}
+                        >
+                          Ver PDF
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setAmenityForm({ ...amenityForm, rules_pdf_url: "" })}
+                        >
+                          Quitar
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">No hay PDF cargado</span>
+                    )}
+                  </div>
+                  {rulesUploading && <span className="text-muted-foreground">Subiendo PDF...</span>}
+                  {rulesUploadError && <span className="text-red-600">{rulesUploadError}</span>}
+                </div>
+              </div>
+            )}
             {/* Max Capacity */}
             <div>
               <Label htmlFor="max_capacity">{t("amenities.maxCapacity")}</Label>
@@ -839,6 +910,52 @@ const AmenitiesManagement = () => {
               </div>
             </div>
 
+
+
+            {isSuperAdmin && (
+              <div>
+                <Label htmlFor="rules_pdf_upload_edit">Reglamento (PDF)</Label>
+                <div className="flex flex-col gap-2">
+                  <Input
+                    id="rules_pdf_upload_edit"
+                    type="file"
+                    accept="application/pdf"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleRulesUpload(file);
+                      }
+                      e.currentTarget.value = "";
+                    }}
+                    disabled={rulesUploading}
+                  />
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {amenityForm.rules_pdf_url ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(amenityForm.rules_pdf_url, "_blank", "noopener,noreferrer")}
+                        >
+                          Ver PDF
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setAmenityForm({ ...amenityForm, rules_pdf_url: "" })}
+                        >
+                          Quitar
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">No hay PDF cargado</span>
+                    )}
+                  </div>
+                  {rulesUploading && <span className="text-muted-foreground">Subiendo PDF...</span>}
+                  {rulesUploadError && <span className="text-red-600">{rulesUploadError}</span>}
+                </div>
+              </div>
+            )}
             {/* Max Capacity */}
             <div>
               <Label htmlFor="edit_max_capacity">{t("amenities.maxCapacity")}</Label>

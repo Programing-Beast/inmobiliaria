@@ -218,6 +218,7 @@ export interface Database {
           display_name_en: string | null;
           rules_es: string | null;
           rules_en: string | null;
+          rules_pdf_url: string | null;
           max_capacity: number | null;
           is_active: boolean;
           requires_deposit: boolean;
@@ -236,6 +237,7 @@ export interface Database {
           display_name_en?: string | null;
           rules_es?: string | null;
           rules_en?: string | null;
+          rules_pdf_url?: string | null;
           max_capacity?: number | null;
           is_active?: boolean;
           requires_deposit?: boolean;
@@ -254,6 +256,7 @@ export interface Database {
           display_name_en?: string | null;
           rules_es?: string | null;
           rules_en?: string | null;
+          rules_pdf_url?: string | null;
           max_capacity?: number | null;
           is_active?: boolean;
           requires_deposit?: boolean;

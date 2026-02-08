@@ -557,6 +557,7 @@ export const createAmenity = async (amenity: {
   name_en?: string | null;
   description_es?: string | null;
   description_en?: string | null;
+  rules_pdf_url?: string | null;
   max_capacity?: number | null;
   requires_approval?: boolean;
   is_active?: boolean;
@@ -567,8 +568,8 @@ export const createAmenity = async (amenity: {
     const timestamp = now();
 
     await db.execute({
-      sql: `INSERT INTO amenities (id, building_id, portal_id, name_es, name_en, description_es, description_en, max_capacity, requires_approval, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO amenities (id, building_id, portal_id, name_es, name_en, description_es, description_en, rules_pdf_url, max_capacity, requires_approval, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id,
         amenity.building_id,
@@ -577,6 +578,7 @@ export const createAmenity = async (amenity: {
         amenity.name_en || null,
         amenity.description_es || null,
         amenity.description_en || null,
+        amenity.rules_pdf_url || null,
         amenity.max_capacity || null,
         amenity.requires_approval ? 1 : 0,
         amenity.is_active !== false ? 1 : 0,
@@ -603,6 +605,7 @@ export const updateAmenity = async (
     name_en?: string | null;
     description_es?: string | null;
     description_en?: string | null;
+    rules_pdf_url?: string | null;
     max_capacity?: number | null;
     requires_approval?: boolean;
     is_active?: boolean;

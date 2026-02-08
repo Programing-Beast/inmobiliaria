@@ -14,8 +14,6 @@ import {
   Settings,
   Lock,
   UserCog,
-  Building2,
-  Home,
   Dumbbell
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -135,13 +133,6 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
     //   path: "/buildings",
     //   roles: ["super_admin", "owner"] // Super Admin and Owner
     // },
-    {
-      key: "units",
-      label: t('nav.units'),
-      icon: Home,
-      path: "/units",
-      roles: ["super_admin", "owner"] // Super Admin and Owner
-    },
     {
       key: "amenities",
       label: t('nav.amenities'),

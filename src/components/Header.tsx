@@ -1,4 +1,4 @@
-import { Search, Bell, ChevronDown, Globe, LogOut, User } from "lucide-react";
+import { Search, ChevronDown, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,9 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useEffect } from "react";
 import { Menu } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,7 +21,6 @@ interface HeaderProps {
 }
 
 const Header = ({ onMenuClick }: HeaderProps) => {
-  const { i18n } = useTranslation();
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
 
@@ -38,11 +35,6 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     .join("")
     .toUpperCase()
     .slice(0, 2);
-
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
-    localStorage.setItem("language", lng);
-  };
 
   const handleLogout = async () => {
     try {
@@ -98,28 +90,6 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
           {/* Unit Switcher for users with multiple units */}
           <UnitSwitcher variant="dropdown" className="hidden lg:flex" />
-
-          {/* Language Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-10 w-10">
-                <Globe className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => changeLanguage("en")}>
-                🇬🇧 English
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => changeLanguage("es")}>
-                🇪🇸 Español
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Notifications */}
-          {/* <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Notificaciones">
-            <Bell className="h-5 w-5" />
-          </Button> */}
 
           {/* Profile Dropdown */}
           <DropdownMenu>
