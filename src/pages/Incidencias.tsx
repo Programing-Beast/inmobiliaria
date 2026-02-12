@@ -48,12 +48,12 @@ const Incidencias = () => {
   const [submitting, setSubmitting] = useState(false);
   const [allowedPropertyIds, setAllowedPropertyIds] = useState<number[]>([]);
   const [allowedPropertyNames, setAllowedPropertyNames] = useState<string[]>([]);
+  const defaultPriority = "MEDIA";
+  const defaultType = "maintenance";
 
   const [newIncident, setNewIncident] = useState({
     titulo: "",
     descripcion: "",
-    prioridad: "MEDIA",
-    tipoLocal: "maintenance",
     buildingId: "",
     unitId: "",
   });
@@ -311,16 +311,16 @@ const Incidencias = () => {
         portalFields: {
           titulo: newIncident.titulo,
           descripcion: newIncident.descripcion,
-          prioridad: newIncident.prioridad,
+          prioridad: defaultPriority,
         },
         localPayload: {
           userId: profile?.id || "",
           buildingId,
           unitId,
-          type: newIncident.tipoLocal as "maintenance" | "complaint" | "suggestion",
+          type: defaultType as "maintenance" | "complaint" | "suggestion",
           title: newIncident.titulo,
           description: newIncident.descripcion,
-          priority: newIncident.prioridad,
+          priority: defaultPriority,
         },
       });
 
@@ -334,8 +334,6 @@ const Incidencias = () => {
       setNewIncident({
         titulo: "",
         descripcion: "",
-        prioridad: "MEDIA",
-        tipoLocal: "maintenance",
         buildingId: profile?.building_id || "",
         unitId: "",
       });
@@ -609,16 +607,6 @@ const Incidencias = () => {
                 value={newIncident.descripcion}
                 onChange={(e) => setNewIncident({ ...newIncident, descripcion: e.target.value })}
               />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Prioridad</label>
-                <Input value="MEDIA" disabled />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Tipo local</label>
-                <Input value="Mantenimiento" disabled />
-              </div>
             </div>
           </div>
           <DialogFooter>

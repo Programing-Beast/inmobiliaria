@@ -32,6 +32,7 @@ interface Payment {
   invoice_number: string | null;
   ruc: string | null;
   document_type: string | null;
+  document_type_raw: string | null;
   total_amount: number;
   status: PaymentStatus;
   recorded_at: string | null;
@@ -86,14 +87,205 @@ const Finanzas = () => {
       .replace(/[\u0300-\u036f]/g, "")
       .trim();
 
+  const documentTypeCodeMap: Record<string, string> = {
+    "1": "factura",
+    "2": "nota_credito",
+    "3": "informe_financiero",
+    "4": "recibo_dinero",
+  };
+
   const normalizeDocumentType = (type?: string | null) => {
     const value = normalizeText(type);
     if (!value) return null;
-    if (value.includes("factura")) return "factura";
-    if (value.includes("nota") && value.includes("credito")) return "nota_credito";
-    if (value.includes("informe") && value.includes("financ")) return "informe_financiero";
-    if (value.includes("recibo") && value.includes("dinero")) return "recibo_dinero";
+
+    const numeric = value.replace(/^0+/, "");
+    if (numeric && documentTypeCodeMap[numeric]) return documentTypeCodeMap[numeric];
+
+    if (value.includes("factura") || value.includes("invoice")) return "factura";
+    if (
+      (value.includes("nota") && value.includes("credito")) ||
+      value.includes("credit note") ||
+      value.includes("creditnote")
+    )
+      return "nota_credito";
+    if (
+      (value.includes("informe") && value.includes("financ")) ||
+      value.includes("financial report") ||
+      value.includes("reporte financiero")
+    )
+      return "informe_financiero";
+    if (value.includes("recibo") || value.includes("receipt")) return "recibo_dinero";
+
+    const compact = value.replace(/[^a-z0-9]/g, "");
+    if (
+      ["fc", "fac", "fact", "factura", "invoice", "inv"].includes(compact) ||
+      ["fc", "fac", "fact", "inv"].some((prefix) => compact.startsWith(prefix))
+    )
+      return "factura";
+    if (
+      ["nc", "ncr", "notacredito", "creditnote", "cn"].includes(compact) ||
+      ["nc", "ncr"].some((prefix) => compact.startsWith(prefix))
+    )
+      return "nota_credito";
+    if (
+      [
+        "if",
+        "inf",
+        "informe",
+        "informefinanciero",
+        "financialreport",
+        "finreport",
+        "reportefinanciero",
+      ].includes(compact) ||
+      ["inf", "if"].some((prefix) => compact.startsWith(prefix))
+    )
+      return "informe_financiero";
+    if (
+      ["rd", "rc", "rec", "recibo", "recibodinero", "receipt", "moneyreceipt"].includes(compact) ||
+      ["rc", "rec", "rd"].some((prefix) => compact.startsWith(prefix))
+    )
+      return "recibo_dinero";
+
     return null;
+  };
+
+  const extractTextValue = (value: unknown) => {
+    if (typeof value === "string") return value.trim();
+    if (typeof value === "number") return String(value);
+    return "";
+  };
+
+  const pickDocumentTypeLabel = (value: unknown, allowLooseLabel: boolean) => {
+    const text = extractTextValue(value);
+    if (!text) return "";
+    if (normalizeDocumentType(text)) return text;
+    if (allowLooseLabel && /[a-zA-Z]/.test(text)) return text;
+    return "";
+  };
+
+  const scanValueForDocumentType = (value: unknown, depth = 0): string => {
+    if (depth > 3) return "";
+
+    const direct = pickDocumentTypeLabel(value, false);
+    if (direct) return direct;
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = scanValueForDocumentType(item, depth + 1);
+        if (found) return found;
+      }
+      return "";
+    }
+
+    if (value && typeof value === "object") {
+      const entries = Object.entries(value as Record<string, unknown>);
+      for (const [key, entryValue] of entries) {
+        const allowLoose = /(document|comprobante|tipo|doc)/i.test(key);
+        const keyed = pickDocumentTypeLabel(entryValue, allowLoose);
+        if (keyed) return keyed;
+        const found = scanValueForDocumentType(entryValue, depth + 1);
+        if (found) return found;
+      }
+    }
+
+    return "";
+  };
+
+  const readDocumentTypeRaw = (record: Record<string, any>) => {
+    const direct = pickDocumentTypeLabel(
+      readString(record, [
+        "tipoDocumento",
+        "tipo_documento",
+        "tipoComprobante",
+        "tipo_comprobante",
+        "document_type",
+        "documentType",
+        "tipoDoc",
+        "tipo_doc",
+        "tipo",
+      ]),
+      true
+    );
+    if (direct) return direct;
+
+    const nestedCandidates = [
+      record?.documento,
+      record?.document_type,
+      record?.documentType,
+      record?.tipoDocumento,
+      record?.tipo_documento,
+      record?.tipoComprobante,
+      record?.tipo_comprobante,
+      record?.tipoDoc,
+      record?.tipo_doc,
+      record?.tipo,
+      record?.comprobante,
+    ];
+
+    for (const candidate of nestedCandidates) {
+      if (!candidate) continue;
+      if (typeof candidate === "object") {
+        const nested = pickDocumentTypeLabel(
+          readString(candidate as Record<string, any>, [
+            "descripcion",
+            "description",
+            "nombre",
+            "name",
+            "label",
+            "tipo",
+            "value",
+            "codigo",
+            "code",
+            "sigla",
+            "abreviatura",
+            "abbr",
+          ]),
+          true
+        );
+        if (nested) return nested;
+        const deepNested = scanValueForDocumentType(candidate, 1);
+        if (deepNested) return deepNested;
+      } else {
+        const rawCandidate = pickDocumentTypeLabel(candidate, true);
+        if (rawCandidate) return rawCandidate;
+      }
+    }
+
+    const keyPattern =
+      /(tipo.*(document|comprobante)|document.*tipo|comprobante.*tipo|documenttype|doctype|tipodoc|tipodocumento|tipocomprobante)/i;
+
+    for (const [key, value] of Object.entries(record || {})) {
+      if (!keyPattern.test(key)) continue;
+      if (value && typeof value === "object") {
+        const nested = pickDocumentTypeLabel(
+          readString(value as Record<string, any>, [
+            "descripcion",
+            "description",
+            "nombre",
+            "name",
+            "label",
+            "tipo",
+            "value",
+            "codigo",
+            "code",
+            "sigla",
+            "abreviatura",
+            "abbr",
+          ]),
+          true
+        );
+        if (nested) return nested;
+        const deepNested = scanValueForDocumentType(value, 1);
+        if (deepNested) return deepNested;
+      }
+      const keyedValue = pickDocumentTypeLabel(value, true);
+      if (keyedValue) return keyedValue;
+    }
+
+    const deepScan = scanValueForDocumentType(record, 0);
+    if (deepScan) return deepScan;
+
+    return "";
   };
 
   const normalizePaymentStatus = (status?: string): PaymentStatus => {
@@ -119,19 +311,22 @@ const Finanzas = () => {
         }
 
         const portalPayments = toPortalList(result.data);
-        const mappedPayments: Payment[] = portalPayments.map((payment, index) => ({
-          id: readString(payment, ["idFactura", "id", "codigo", "numero"]) || `FAC-${index + 1}`,
-          invoice_number: readString(payment, ["numFactura", "numero", "invoice_number"]) || null,
-          ruc: readString(payment, ["ruc"]) || null,
-          document_type: normalizeDocumentType(
-            readString(payment, ["tipoDocumento", "tipo_documento", "tipo", "document_type", "tipoComprobante"])
-          ),
-          total_amount: readNumber(payment, ["montoTotal", "total", "monto_total"]) ?? 0,
-          status: normalizePaymentStatus(readString(payment, ["estado", "status"])),
-          recorded_at: readString(payment, ["fechaGrabado", "created_at", "fecha"]) || null,
-          due_date: readString(payment, ["fechaVencimiento", "fecha_vencimiento", "due_date"]) || null,
-          pdf_url: readString(payment, ["pdf", "pdf_url", "url"]) || null,
-        }));
+        const mappedPayments: Payment[] = portalPayments.map((payment, index) => {
+          const documentTypeRaw = readDocumentTypeRaw(payment) || null;
+
+          return {
+            id: readString(payment, ["idFactura", "id", "codigo", "numero"]) || `FAC-${index + 1}`,
+            invoice_number: readString(payment, ["numFactura", "numero", "invoice_number"]) || null,
+            ruc: readString(payment, ["ruc"]) || null,
+            document_type: normalizeDocumentType(documentTypeRaw),
+            document_type_raw: documentTypeRaw,
+            total_amount: readNumber(payment, ["montoTotal", "total", "monto_total"]) ?? 0,
+            status: normalizePaymentStatus(readString(payment, ["estado", "status"])),
+            recorded_at: readString(payment, ["fechaGrabado", "created_at", "fecha"]) || null,
+            due_date: readString(payment, ["fechaVencimiento", "fecha_vencimiento", "due_date"]) || null,
+            pdf_url: readString(payment, ["pdf", "pdf_url", "url"]) || null,
+          };
+        });
 
         setPayments(mappedPayments);
         setFilteredPayments(mappedPayments);
@@ -154,12 +349,15 @@ const Finanzas = () => {
     if (searchTerm) {
       const normalizedTerm = normalizeText(searchTerm);
       filtered = filtered.filter(payment => {
-        const typeLabel = normalizeText(getDocumentTypeLabel(payment.document_type));
+        const typeLabel = normalizeText(
+          getDocumentTypeLabel(payment.document_type, payment.document_type_raw)
+        );
         return (
           normalizeText(payment.invoice_number || "").includes(normalizedTerm) ||
           normalizeText(payment.ruc || "").includes(normalizedTerm) ||
           normalizeText(payment.id).includes(normalizedTerm) ||
           normalizeText(payment.document_type || "").includes(normalizedTerm) ||
+          normalizeText(payment.document_type_raw || "").includes(normalizedTerm) ||
           typeLabel.includes(normalizedTerm)
         );
       });
@@ -216,15 +414,37 @@ const Finanzas = () => {
 
   const isOwner = profile?.role === "owner";
 
-  const getDocumentTypeLabel = (type?: string | null) => {
+  const getDocumentTypeLabel = (type?: string | null, raw?: string | null) => {
     const labels: Record<string, string> = {
       factura: t("finance.documentTypeFactura"),
       nota_credito: t("finance.documentTypeCreditNote"),
       informe_financiero: t("finance.documentTypeFinancialReport"),
       recibo_dinero: t("finance.documentTypeReceipt"),
     };
-    if (!type) return "-";
-    return labels[type] || type;
+    if (type && labels[type]) return labels[type];
+    if (raw) return raw;
+    return "-";
+  };
+
+  const renderDocumentType = (type?: string | null, raw?: string | null) => {
+    const label = getDocumentTypeLabel(type, raw);
+    if (label === "-") return "-";
+
+    const typeConfig: Record<string, { className: string }> = {
+      factura: { className: "bg-blue-100 text-blue-700 border-blue-200" },
+      nota_credito: { className: "bg-purple-100 text-purple-700 border-purple-200" },
+      informe_financiero: { className: "bg-slate-100 text-slate-700 border-slate-200" },
+      recibo_dinero: { className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+    };
+
+    const config = type ? typeConfig[type] : undefined;
+    if (!config) return label;
+
+    return (
+      <Badge variant="outline" className={config.className}>
+        {label}
+      </Badge>
+    );
   };
 
   const getPaymentDate = (payment: Payment) => {
@@ -268,7 +488,7 @@ const Finanzas = () => {
           payment.id,
           payment.invoice_number || '-',
           payment.ruc || '-',
-          getDocumentTypeLabel(payment.document_type),
+          getDocumentTypeLabel(payment.document_type, payment.document_type_raw),
           payment.total_amount,
           payment.status,
           formatDate(payment.recorded_at),
@@ -414,7 +634,9 @@ const Finanzas = () => {
                       <TableCell className="font-mono text-xs">{payment.id}</TableCell>
                       <TableCell className="font-semibold">{payment.invoice_number || "-"}</TableCell>
                       <TableCell>{payment.ruc || "-"}</TableCell>
-                      <TableCell>{getDocumentTypeLabel(payment.document_type)}</TableCell>
+                      <TableCell>
+                        {renderDocumentType(payment.document_type, payment.document_type_raw)}
+                      </TableCell>
                       {/* <TableCell>{payment.timbrado || "-"}</TableCell> */}
                       <TableCell className="font-semibold">{formatCurrency(payment.total_amount)}</TableCell>
                       {/* <TableCell className="font-semibold">{formatCurrency(payment.balance)}</TableCell> */}
