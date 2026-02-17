@@ -247,7 +247,7 @@
   },
   "announcements": {
     "title": "Comunicados",
-    "subtitle": "?ltimas novedades y comunicados del edificio",
+    "subtitle": "Últimas novedades y comunicados del edificio",
     "lastAnnouncements": "Últimos Comunicados",
     "newAnnouncement": "Nuevo Comunicado",
     "editAnnouncement": "Editar Comunicado",
@@ -286,7 +286,7 @@
     "cancelDelete": "Cancelar",
     "noAnnouncements": "No hay comunicados disponibles",
     "noAnnouncementsMessage": "Cuando se publiquen comunicados, aparecerán aquí.",
-    "readMore": "Ver m?s",
+    "readMore": "Ver más",
     "readLess": "Leer menos",
     "success": {
       "created": "Comunicado creado exitosamente",
@@ -696,8 +696,8 @@
     "deleting": "Eliminando...",
     "noAccess": "No tiene permiso para acceder a esta página.",
     "sortByDate": "Ordenar por fecha",
-    "newestFirst": "M?s recientes primero",
-    "oldestFirst": "M?s antiguas primero"
+    "newestFirst": "Más recientes primero",
+    "oldestFirst": "Más antiguas primero"
   },
   "ownerContext": {
     "title": "Contexto de propietario",

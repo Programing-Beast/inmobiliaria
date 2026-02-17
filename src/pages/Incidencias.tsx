@@ -22,7 +22,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { portalGetAllMyProperties, portalGetDashboardIncidents } from "@/lib/portal-api";
-import { createIncidentSynced, retrySyncQueue, updateIncidentSynced } from "@/lib/portal-sync";
+import { createIncidentSynced, updateIncidentSynced } from "@/lib/portal-sync";
 import { getAllBuildings, getBuilding, getBuildingUnits, updateBuilding } from "@/lib/supabase";
 import {
   Pagination,
@@ -393,15 +393,6 @@ const Incidencias = () => {
     }
   };
 
-  const handleRetryQueue = async () => {
-    const result = await retrySyncQueue(profile?.email || undefined);
-    if (result.remaining > 0) {
-      toast.error("Quedaron elementos pendientes en cola");
-    } else {
-      toast.success("Cola de sincronizacion procesada");
-    }
-  };
-
   const getStatusBadge = (status?: string) => {
     const value = status || "-";
     const normalized = value.toUpperCase();
@@ -464,9 +455,6 @@ const Incidencias = () => {
                   <SelectItem value="oldest">Más antiguas</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" onClick={handleRetryQueue}>
-                Reintentar cola
-              </Button>
               <Button className="bg-accent hover:bg-accent/90" onClick={() => setShowCreateDialog(true)}>
                 Nueva incidencia
               </Button>
