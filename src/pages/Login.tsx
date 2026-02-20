@@ -192,15 +192,13 @@ const Login = () => {
       </div>
 
       {/* Right Side - Image/Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-success via-success to-success/80 items-center justify-center p-12 relative overflow-hidden">
-        {/* Animated decorative circles */}
-        <div className="absolute top-20 right-20 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse-subtle" />
-        <div className="absolute bottom-20 left-20 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '1s' }} />
-
-        {/* Floating geometric shapes */}
-        <div className="absolute top-1/4 left-1/4 w-16 h-16 border-2 border-white/20 rounded-lg rotate-12 animate-pulse" />
-        <div className="absolute bottom-1/3 right-1/4 w-12 h-12 border-2 border-white/20 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
-
+      <div
+        className="hidden lg:flex lg:w-1/2 items-center justify-center p-12 relative overflow-hidden bg-cover bg-center"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.25)), url('/Encabezado%20(1).jpg.jpeg')",
+        }}
+      >
         <div className="relative z-10 text-center text-white max-w-md animate-in fade-in slide-in-from-right-6 duration-1000">
           <h2 className="text-5xl font-bold mb-6 leading-tight">{t("login.heroTitle")}</h2>
           <p className="text-lg text-white/95 mb-12 leading-relaxed">

@@ -13,8 +13,7 @@ import {
   Bell,
   Settings,
   Lock,
-  UserCog,
-  Dumbbell
+  UserCog
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -133,13 +132,6 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
     //   path: "/buildings",
     //   roles: ["super_admin", "owner"] // Super Admin and Owner
     // },
-    {
-      key: "amenities",
-      label: t('nav.amenities'),
-      icon: Dumbbell,
-      path: "/amenities",
-      roles: ["super_admin", "owner"] // Super Admin and Owner
-    },
   ];
 
   // Filter menu items based on user role

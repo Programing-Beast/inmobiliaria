@@ -47,7 +47,6 @@ const Finanzas = () => {
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
@@ -341,7 +340,7 @@ const Finanzas = () => {
     fetchPayments();
   }, [profile, t]);
 
-  // Filter payments based on search, status, and type
+  // Filter payments based on search and type
   useEffect(() => {
     let filtered = [...payments];
 
@@ -363,11 +362,6 @@ const Finanzas = () => {
       });
     }
 
-    // Status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(payment => payment.status === statusFilter);
-    }
-
     // Type filter
     if (typeFilter !== "all") {
       filtered = filtered.filter(payment => payment.document_type === typeFilter);
@@ -375,23 +369,7 @@ const Finanzas = () => {
 
     setFilteredPayments(filtered);
     setPage(1);
-  }, [searchTerm, statusFilter, typeFilter, payments]);
-
-  // Get status badge
-  const getStatusBadge = (status: PaymentStatus) => {
-    const statusConfig = {
-      paid: { variant: "outline" as const, className: "bg-green-100 text-green-700 border-green-200", label: t('finance.paid') },
-      pending: { variant: "outline" as const, className: "bg-yellow-100 text-yellow-700 border-yellow-200", label: t('finance.pending') },
-      overdue: { variant: "outline" as const, className: "bg-red-100 text-red-700 border-red-200", label: t('finance.overdue') }
-    };
-
-    const config = statusConfig[status];
-    return (
-      <Badge variant={config.variant} className={config.className}>
-        {config.label}
-      </Badge>
-    );
-  };
+  }, [searchTerm, typeFilter, payments]);
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -537,7 +515,7 @@ const Finanzas = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Search */}
             <div className="md:col-span-2">
               <div className="relative">
@@ -566,29 +544,16 @@ const Finanzas = () => {
               </SelectContent>
             </Select>
 
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('finance.filterByStatus')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('finance.allStatuses')}</SelectItem>
-                <SelectItem value="pending">{t('finance.pending')}</SelectItem>
-                <SelectItem value="paid">{t('finance.paid')}</SelectItem>
-                <SelectItem value="overdue">{t('finance.overdue')}</SelectItem>
-              </SelectContent>
-            </Select>
-
             {/* Date Sort */}
             <Select value={dateSort} onValueChange={(value) => setDateSort(value as "newest" | "oldest")}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("common.sortByDate")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">{t("common.newestFirst")}</SelectItem>
-              <SelectItem value="oldest">{t("common.oldestFirst")}</SelectItem>
-            </SelectContent>
-          </Select>
+              <SelectTrigger>
+                <SelectValue placeholder={t("common.sortByDate")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">{t("common.newestFirst")}</SelectItem>
+                <SelectItem value="oldest">{t("common.oldestFirst")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -608,7 +573,7 @@ const Finanzas = () => {
             </div>
           ) : pagedPayments.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">{searchTerm || statusFilter !== 'all' ? 'No se encontraron conceptos con los filtros aplicados' : 'No hay conceptos registrados'}</p>
+              <p className="text-muted-foreground">{searchTerm || typeFilter !== 'all' ? 'No se encontraron conceptos con los filtros aplicados' : 'No hay conceptos registrados'}</p>
             </div>
           ) : (
             <div className="overflow-auto">
@@ -622,7 +587,6 @@ const Finanzas = () => {
                     {/* <TableHead>Timbrado</TableHead> */}
                     <TableHead>Monto Total</TableHead>
                     {/* <TableHead>Saldo</TableHead> */}
-                    <TableHead>Estado</TableHead>
                     <TableHead>Fecha de emisión</TableHead>
                     <TableHead>Fecha vencimiento</TableHead>
                     <TableHead>PDF</TableHead>
@@ -640,7 +604,6 @@ const Finanzas = () => {
                       {/* <TableCell>{payment.timbrado || "-"}</TableCell> */}
                       <TableCell className="font-semibold">{formatCurrency(payment.total_amount)}</TableCell>
                       {/* <TableCell className="font-semibold">{formatCurrency(payment.balance)}</TableCell> */}
-                      <TableCell>{getStatusBadge(payment.status)}</TableCell>
                       <TableCell>{formatDate(payment.recorded_at)}</TableCell>
                       <TableCell>{formatDate(payment.due_date)}</TableCell>
                       <TableCell>
