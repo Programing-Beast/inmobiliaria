@@ -150,6 +150,7 @@ const DashboardW3CRM = () => {
           }
         }
 
+        const correo = profile?.email?.trim() || undefined;
         const [
           expensasResult,
           reservasResult,
@@ -161,7 +162,7 @@ const DashboardW3CRM = () => {
           portalGetDashboardReservations(),
           portalGetDashboardIncidents(),
           portalGetDashboardComunicados(),
-          isOwner ? portalGetFinanzasResumen() : Promise.resolve({ data: null, error: null }),
+          isOwner ? portalGetFinanzasResumen({ correo }) : Promise.resolve({ data: null, error: null }),
         ]);
 
         if (!active) return;
@@ -246,7 +247,7 @@ const DashboardW3CRM = () => {
     return () => {
       active = false;
     };
-  }, [t, isSuperAdmin, isOwner, profile?.building_id]);
+  }, [t, isSuperAdmin, isOwner, profile?.building_id, profile?.email]);
 
   const formatCurrency = (amount?: number | null) => {
     if (amount === null || amount === undefined || !Number.isFinite(amount)) return "-";

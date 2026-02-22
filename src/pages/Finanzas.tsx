@@ -15,7 +15,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import Unauthorized from "@/components/Unauthorized";
-import { portalGetFinanzasPagos } from "@/lib/portal-api";
+import { portalGetFinanzasPagos, portalGetFinanzasPdfUrl } from "@/lib/portal-api";
 import { toast } from "sonner";
 import type { PaymentStatus } from "@/lib/database.types";
 import {
@@ -29,6 +29,8 @@ import {
 
 interface Payment {
   id: string;
+  company_id: number | null;
+  invoice_id: number | null;
   invoice_number: string | null;
   ruc: string | null;
   document_type: string | null;
@@ -37,7 +39,6 @@ interface Payment {
   status: PaymentStatus;
   recorded_at: string | null;
   due_date: string | null;
-  pdf_url: string | null;
 }
 
 const Finanzas = () => {
@@ -302,7 +303,8 @@ const Finanzas = () => {
 
       setLoading(true);
       try {
-        const result = await portalGetFinanzasPagos();
+        const correo = profile.email?.trim();
+        const result = await portalGetFinanzasPagos({ correo: correo || undefined });
         if (result.error) {
           console.error("Error fetching payments:", result.error);
           toast.error(t("finance.error.load"));
@@ -315,6 +317,8 @@ const Finanzas = () => {
 
           return {
             id: readString(payment, ["idFactura", "id", "codigo", "numero"]) || `FAC-${index + 1}`,
+            company_id: readNumber(payment, ["idEmpresa", "id_empresa", "empresaId", "empresa_id"]),
+            invoice_id: readNumber(payment, ["idFactura", "id_factura", "invoice_id", "id"]),
             invoice_number: readString(payment, ["numFactura", "numero", "invoice_number"]) || null,
             ruc: readString(payment, ["ruc"]) || null,
             document_type: normalizeDocumentType(documentTypeRaw),
@@ -323,7 +327,6 @@ const Finanzas = () => {
             status: normalizePaymentStatus(readString(payment, ["estado", "status"])),
             recorded_at: readString(payment, ["fechaGrabado", "created_at", "fecha"]) || null,
             due_date: readString(payment, ["fechaVencimiento", "fecha_vencimiento", "due_date"]) || null,
-            pdf_url: readString(payment, ["pdf", "pdf_url", "url"]) || null,
           };
         });
 
@@ -388,6 +391,11 @@ const Finanzas = () => {
       month: '2-digit',
       day: '2-digit'
     });
+  };
+
+  const getPdfUrl = (payment: Payment) => {
+    if (payment.company_id === null || payment.invoice_id === null) return null;
+    return portalGetFinanzasPdfUrl(payment.company_id, payment.invoice_id);
   };
 
   const isOwner = profile?.role === "owner";
@@ -460,7 +468,7 @@ const Finanzas = () => {
   // Export to CSV
   const handleExport = () => {
     const csv = [
-      ["ID", "Factura", "RUC", "Tipo", "Monto Total", "Estado", "Fecha de emisión", "Fecha vencimiento", "PDF"].join(','),
+      ["ID", "Factura", "RUC", "Tipo", "Monto Total", "Estado", "Fecha de emisión", "Fecha vencimiento"].join(','),
       ...filteredPayments.map(payment =>
         [
           payment.id,
@@ -470,8 +478,7 @@ const Finanzas = () => {
           payment.total_amount,
           payment.status,
           formatDate(payment.recorded_at),
-          formatDate(payment.due_date),
-          payment.pdf_url || '-'
+          formatDate(payment.due_date)
         ].join(',')
       )
     ].join('\n');
@@ -593,37 +600,40 @@ const Finanzas = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pagedPayments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell className="font-mono text-xs">{payment.id}</TableCell>
-                      <TableCell className="font-semibold">{payment.invoice_number || "-"}</TableCell>
-                      <TableCell>{payment.ruc || "-"}</TableCell>
-                      <TableCell>
-                        {renderDocumentType(payment.document_type, payment.document_type_raw)}
-                      </TableCell>
-                      {/* <TableCell>{payment.timbrado || "-"}</TableCell> */}
-                      <TableCell className="font-semibold">{formatCurrency(payment.total_amount)}</TableCell>
-                      {/* <TableCell className="font-semibold">{formatCurrency(payment.balance)}</TableCell> */}
-                      <TableCell>{formatDate(payment.recorded_at)}</TableCell>
-                      <TableCell>{formatDate(payment.due_date)}</TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8"
-                          onClick={() => {
-                            if (payment.pdf_url) {
-                              window.open(payment.pdf_url, "_blank", "noopener,noreferrer");
-                            }
-                          }}
-                          disabled={!payment.pdf_url}
-                        >
-                          <FileDown className="w-3 h-3 mr-1" />
-                          PDF
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {pagedPayments.map((payment) => {
+                    const pdfUrl = getPdfUrl(payment);
+                    return (
+                      <TableRow key={payment.id}>
+                        <TableCell className="font-mono text-xs">{payment.id}</TableCell>
+                        <TableCell className="font-semibold">{payment.invoice_number || "-"}</TableCell>
+                        <TableCell>{payment.ruc || "-"}</TableCell>
+                        <TableCell>
+                          {renderDocumentType(payment.document_type, payment.document_type_raw)}
+                        </TableCell>
+                        {/* <TableCell>{payment.timbrado || "-"}</TableCell> */}
+                        <TableCell className="font-semibold">{formatCurrency(payment.total_amount)}</TableCell>
+                        {/* <TableCell className="font-semibold">{formatCurrency(payment.balance)}</TableCell> */}
+                        <TableCell>{formatDate(payment.recorded_at)}</TableCell>
+                        <TableCell>{formatDate(payment.due_date)}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8"
+                            onClick={() => {
+                              if (pdfUrl) {
+                                window.open(pdfUrl, "_blank", "noopener,noreferrer");
+                              }
+                            }}
+                            disabled={!pdfUrl}
+                          >
+                            <FileDown className="w-3 h-3 mr-1" />
+                            PDF
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

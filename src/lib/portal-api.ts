@@ -18,6 +18,7 @@ const finanzasResumenPath =
   import.meta.env.VITE_PORTAL_FINANZAS_RESUMEN_PATH || "finanzas/resumen";
 const finanzasPagosPath =
   import.meta.env.VITE_PORTAL_FINANZAS_PAGOS_PATH || "finanzas";
+const finanzasPdfPath = import.meta.env.VITE_PORTAL_FINANZAS_PDF_PATH || "download/pdf";
 const portalAuthEmailKey = "currentUserEmail";
 const portalTokenKey = "token";
 const portalTokenTypeKey = "Bearer";
@@ -341,11 +342,22 @@ export const portalGetDashboardComunicados = (params?: { page?: number; limit?: 
 export const portalGetComunicado = (comunicadoId: number | string) =>
   portalRequest(`comunicados/${comunicadoId}`);
 
-export const portalGetFinanzasResumen = (params?: { page?: number; limit?: number }) =>
-  portalRequest(finanzasResumenPath, { params });
+export const portalGetFinanzasResumen = (params?: {
+  page?: number;
+  limit?: number;
+  correo?: string;
+}) => portalRequest(finanzasResumenPath, { params });
 
-export const portalGetFinanzasPagos = (params?: { page?: number; limit?: number }) =>
-  portalRequest(finanzasPagosPath, { params });
+export const portalGetFinanzasPagos = (params?: {
+  page?: number;
+  limit?: number;
+  correo?: string;
+}) => portalRequest(finanzasPagosPath, { params });
+
+export const portalGetFinanzasPdfUrl = (
+  companyId: number | string,
+  invoiceId: number | string
+) => buildUrl(`${finanzasPdfPath}/${companyId}/${invoiceId}`);
 
 export const portalGetApprovalsReservations = (params?: { page?: number; limit?: number }) =>
   portalRequest(approvalsReservationsPath, { params });
