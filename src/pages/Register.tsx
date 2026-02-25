@@ -104,49 +104,7 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left Side - Branding */}
-      <div
-        className="hidden lg:flex lg:w-1/2 items-center justify-center p-12 relative overflow-hidden bg-cover bg-center"
-        style={{
-          backgroundImage:
-            "linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.25)), url('/Encabezado%20(2).jpg.jpeg')",
-        }}
-      >
-        <div className="relative z-10 text-center text-white max-w-md animate-in fade-in slide-in-from-left-6 duration-1000">
-          <h2 className="text-5xl font-bold mb-6 leading-tight">{t("register.heroTitle")}</h2>
-          <p className="text-lg text-white/95 mb-12 leading-relaxed">
-            {t("register.heroSubtitle")}
-          </p>
-          <div className="space-y-6">
-            <div className="flex items-center gap-4 group">
-              <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
-                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="text-left text-lg font-medium">{t("register.heroBullet1")}</p>
-            </div>
-            <div className="flex items-center gap-4 group">
-              <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
-                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <p className="text-left text-lg font-medium">{t("register.heroBullet2")}</p>
-            </div>
-            <div className="flex items-center gap-4 group">
-              <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
-                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <p className="text-left text-lg font-medium">{t("register.heroBullet3")}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Side - Form */}
+      {/* Left Side - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 overflow-y-auto relative">
         {/* Decorative background elements */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-success/5 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
@@ -301,6 +259,48 @@ const Register = () => {
             <Link to="/login" className="text-success hover:underline font-semibold transition-colors">
               {t('register.signIn')}
             </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Branding */}
+      <div
+        className="hidden lg:flex lg:w-1/2 items-center justify-center p-12 relative overflow-hidden bg-cover bg-center"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.25)), url('/Encabezado%20(2).jpg.jpeg')",
+        }}
+      >
+        <div className="relative z-10 text-center text-white max-w-md animate-in fade-in slide-in-from-right-6 duration-1000">
+          <h2 className="text-5xl font-bold mb-6 leading-tight">{t("register.heroTitle")}</h2>
+          <p className="text-lg text-white/95 mb-12 leading-relaxed">
+            {t("register.heroSubtitle")}
+          </p>
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 group">
+              <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
+                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p className="text-left text-lg font-medium">{t("register.heroBullet1")}</p>
+            </div>
+            <div className="flex items-center gap-4 group">
+              <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
+                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <p className="text-left text-lg font-medium">{t("register.heroBullet2")}</p>
+            </div>
+            <div className="flex items-center gap-4 group">
+              <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3">
+                <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <p className="text-left text-lg font-medium">{t("register.heroBullet3")}</p>
+            </div>
           </div>
         </div>
       </div>

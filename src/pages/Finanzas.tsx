@@ -15,7 +15,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import Unauthorized from "@/components/Unauthorized";
-import { portalGetFinanzasPagos, portalGetFinanzasPdfUrl } from "@/lib/portal-api";
+import { portalDownloadFinanzasPdf, portalGetFinanzasPagos, portalGetFinanzasPdfUrl } from "@/lib/portal-api";
 import { toast } from "sonner";
 import type { PaymentStatus } from "@/lib/database.types";
 import {
@@ -51,6 +51,7 @@ const Finanzas = () => {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const pageSize = 10;
 
   const toPortalList = (payload: any): any[] => {
@@ -398,6 +399,38 @@ const Finanzas = () => {
     return portalGetFinanzasPdfUrl(payment.company_id, payment.invoice_id);
   };
 
+  const handlePdfDownload = async (payment: Payment) => {
+    if (payment.company_id === null || payment.invoice_id === null) return;
+    if (!profile?.email) {
+      toast.error(t("finance.error.load"));
+      return;
+    }
+
+    setDownloadingId(payment.id);
+    try {
+      const result = await portalDownloadFinanzasPdf(
+        payment.company_id,
+        payment.invoice_id,
+        profile.email
+      );
+      if (result.error || !result.blob) {
+        toast.error(result.error?.message || t("finance.error.load"));
+        return;
+      }
+
+      const safeId = payment.invoice_number || payment.invoice_id;
+      const filename = `factura-${safeId}.pdf`;
+      const blobUrl = window.URL.createObjectURL(result.blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(blobUrl);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const isOwner = profile?.role === "owner";
 
   const getDocumentTypeLabel = (type?: string | null, raw?: string | null) => {
@@ -602,6 +635,7 @@ const Finanzas = () => {
                 <TableBody>
                   {pagedPayments.map((payment) => {
                     const pdfUrl = getPdfUrl(payment);
+                    const isDownloading = downloadingId === payment.id;
                     return (
                       <TableRow key={payment.id}>
                         <TableCell className="font-mono text-xs">{payment.id}</TableCell>
@@ -622,13 +656,13 @@ const Finanzas = () => {
                             className="h-8"
                             onClick={() => {
                               if (pdfUrl) {
-                                window.open(pdfUrl, "_blank", "noopener,noreferrer");
+                                void handlePdfDownload(payment);
                               }
                             }}
-                            disabled={!pdfUrl}
+                            disabled={!pdfUrl || isDownloading}
                           >
                             <FileDown className="w-3 h-3 mr-1" />
-                            PDF
+                            {isDownloading ? t("common.loading") : "PDF"}
                           </Button>
                         </TableCell>
                       </TableRow>

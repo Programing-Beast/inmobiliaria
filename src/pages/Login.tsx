@@ -85,7 +85,7 @@ const Login = () => {
 
           {/* Title */}
           <div className="text-center mb-8 animate-in fade-in slide-in-from-top-6 duration-700 delay-100">
-            <h1 className="text-3xl font-bold text-secondary mb-2">
+            <h1 className="text-3xl font-bold text-white mb-2">
               {t('login.title')}
             </h1>
             <p className="text-sm text-muted-foreground">

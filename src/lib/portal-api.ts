@@ -359,6 +359,49 @@ export const portalGetFinanzasPdfUrl = (
   invoiceId: number | string
 ) => buildUrl(`${finanzasPdfPath}/${companyId}/${invoiceId}`);
 
+export const portalDownloadFinanzasPdf = async (
+  companyId: number | string,
+  invoiceId: number | string,
+  email?: string
+): Promise<{ blob: Blob | null; error: PortalError | null }> => {
+  const url = buildUrl(`${finanzasPdfPath}/${companyId}/${invoiceId}`);
+
+  let auth = getPortalAuth();
+  if (!auth && email) {
+    await portalLogin(email);
+    auth = getPortalAuth();
+  }
+  if (!auth) {
+    return { blob: null, error: { message: "Missing portal auth token" } };
+  }
+
+  const headers: Record<string, string> = {
+    Accept: "application/pdf",
+    Authorization: `${auth.tokenType} ${auth.token}`,
+  };
+
+  try {
+    const response = await fetch(url, { method: "GET", headers });
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const payload = await response.json().catch(() => ({}));
+        return { blob: null, error: normalizePortalError(payload, response.status) };
+      }
+      const message = await response.text().catch(() => "");
+      return {
+        blob: null,
+        error: { message: message || "Failed to download PDF", status: response.status },
+      };
+    }
+
+    const blob = await response.blob();
+    return { blob, error: null };
+  } catch (error: any) {
+    return { blob: null, error: { message: error?.message || "Network error" } };
+  }
+};
+
 export const portalGetApprovalsReservations = (params?: { page?: number; limit?: number }) =>
   portalRequest(approvalsReservationsPath, { params });
 

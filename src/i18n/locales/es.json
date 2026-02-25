@@ -691,6 +691,7 @@
     "delete": "Eliminar",
     "cancel": "Cancelar",
     "save": "Guardar",
+    "loading": "Cargando...",
     "creating": "Creando...",
     "updating": "Actualizando...",
     "deleting": "Eliminando...",
