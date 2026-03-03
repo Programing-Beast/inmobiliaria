@@ -43,6 +43,7 @@ import {
   getAllAmenities,
   getBuildingAmenities,
   getAllUsersWithRoles,
+  getUserPrimaryUnit,
   getBuilding,
   getBuildingByPortalId,
 } from "@/lib/supabase";
@@ -460,7 +461,13 @@ const ReservationsManagement = () => {
     setSubmitting(true);
     try {
       const selectedUser = users.find((user) => user.id === userIdToUse);
-      const unitId = selectedUser?.unit?.id;
+      const { primaryUnitId, error: unitError } = await getUserPrimaryUnit(userIdToUse);
+      if (unitError) {
+        toast.error(unitError.message || "Error resolving user unit");
+        setSubmitting(false);
+        return;
+      }
+      const unitId = primaryUnitId || selectedUser?.unit?.id || "";
       if (!unitId) {
         toast.error("Selected user has no unit mapping");
         setSubmitting(false);

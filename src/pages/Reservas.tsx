@@ -102,6 +102,7 @@ const Reservas = () => {
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .trim();
+  const effectiveBuildingId = profile?.currentUnit?.building_id || profile?.building_id || null;
 
   // New reservation form
   const getDefaultReservation = () => ({
@@ -149,8 +150,8 @@ const Reservas = () => {
         let filteredProperties = mappedProperties;
         let assignedPortalId: number | null = null;
         let assignedName = "";
-        if (profile.building_id) {
-          const { building } = await getBuilding(profile.building_id);
+        if (effectiveBuildingId) {
+          const { building } = await getBuilding(effectiveBuildingId);
           assignedPortalId = building?.portal_id ?? null;
           assignedName = normalizeText(building?.name || "");
           if (assignedPortalId || assignedName) {
@@ -168,8 +169,8 @@ const Reservas = () => {
 
         if (!selectedPropertyId) {
           let defaultPortalId: string | null = null;
-          if (profile.building_id) {
-            const { building } = await getBuilding(profile.building_id);
+          if (effectiveBuildingId) {
+            const { building } = await getBuilding(effectiveBuildingId);
             if (building?.portal_id) {
               defaultPortalId = String(building.portal_id);
             } else if (building?.name) {
@@ -183,7 +184,7 @@ const Reservas = () => {
           }
           setSelectedPropertyId(defaultPortalId || (filteredProperties[0] ? String(filteredProperties[0].portalId) : ""));
         }
-        if (profile.building_id && filteredProperties.length === 0) {
+        if (effectiveBuildingId && filteredProperties.length === 0) {
           toast.error("No hay propiedades asignadas para este usuario");
         }
       } catch (error) {
@@ -599,7 +600,7 @@ const Reservas = () => {
     );
   }
 
-  if (!profile?.building_id) {
+  if (!effectiveBuildingId) {
     return (
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

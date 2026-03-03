@@ -684,7 +684,7 @@ export const createReservationSynced = async (params: {
     return { reservation: null, error: { message: "Missing or invalid reservation fields" }, queued: false };
   }
 
-  if (!userHasAnyRole(["tenant", "owner", "regular_user"])) {
+  if (!userHasAnyRole(["tenant", "owner", "regular_user", "super_admin"])) {
     return { reservation: null, error: { message: "User role not permitted to create reservations" }, queued: false };
   }
 
