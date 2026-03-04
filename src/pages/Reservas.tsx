@@ -103,6 +103,7 @@ const Reservas = () => {
       .replace(/[\u0300-\u036f]/g, "")
       .trim();
   const effectiveBuildingId = profile?.currentUnit?.building_id || profile?.building_id || null;
+  const effectiveUnitId = profile?.currentUnit?.unit_id || profile?.unit_id || null;
 
   // New reservation form
   const getDefaultReservation = () => ({
@@ -618,6 +619,32 @@ const Reservas = () => {
             <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground font-medium">No Building Assigned</p>
             <p className="text-sm text-muted-foreground mt-1">Please contact your administrator to assign you to a building.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!effectiveUnitId) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">{t('reservations.title')}</h1>
+            <p className="text-muted-foreground mt-1">{t('reservations.subtitle')}</p>
+          </div>
+          <Button className="bg-primary hover:bg-primary/90 shadow-lg gap-2" disabled>
+            <Plus className="h-5 w-5" />
+            {t('reservations.newReservation')}
+          </Button>
+        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+            <p className="text-muted-foreground font-medium">{t('reservations.noUnitAssignedTitle')}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {t('reservations.noUnitAssignedDesc')}
+            </p>
           </CardContent>
         </Card>
       </div>

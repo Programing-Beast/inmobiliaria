@@ -333,6 +333,8 @@
     "downloadReceipt": "Download Receipt",
     "downloadDescription": "Get your reservation receipt",
     "download": "Download",
+    "noUnitAssignedTitle": "No unit assigned",
+    "noUnitAssignedDesc": "Please contact your administrator to assign you to a unit.",
     "myReservations": "My Reservations",
     "allReservations": "All Reservations",
     "upcomingReservations": "Upcoming Reservations",

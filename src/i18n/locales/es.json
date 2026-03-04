@@ -334,6 +334,8 @@
     "downloadReceipt": "Descargar Comprobante",
     "downloadDescription": "Obtén tu comprobante de reserva",
     "download": "Descargar",
+    "noUnitAssignedTitle": "Sin unidad asignada",
+    "noUnitAssignedDesc": "Por favor contacta al administrador para asignarte una unidad.",
     "myReservations": "Mis Reservas",
     "allReservations": "Todas las Reservas",
     "upcomingReservations": "Próximas Reservas",
