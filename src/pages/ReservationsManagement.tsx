@@ -44,6 +44,7 @@ import {
   getBuildingAmenities,
   getAllUsersWithRoles,
   getUserPrimaryUnit,
+  getAllBuildings,
   getBuilding,
   getBuildingByPortalId,
 } from "@/lib/supabase";
@@ -165,8 +166,9 @@ const ReservationsManagement = () => {
   const [reservationForm, setReservationForm] = useState(getDefaultReservationForm);
 
   // Check if user can access this page
-  const canAccess = profile?.role === "super_admin";
-  const isOwner = profile?.role === "owner" || profile?.roles?.includes("owner");
+  const isSuperAdmin = profile?.role === "super_admin" || profile?.roles?.includes("super_admin");
+  const isOwner = !isSuperAdmin && (profile?.role === "owner" || profile?.roles?.includes("owner"));
+  const canAccess = Boolean(isSuperAdmin);
   const ownerBuildingId = profile?.currentUnit?.building_id || profile?.building_id || null;
 
   const toPortalList = (payload: any): any[] => {
@@ -254,59 +256,111 @@ const ReservationsManagement = () => {
           setUsers(usersResult.users || []);
         }
 
-        setPropertiesLoading(true);
-        const propertiesResult = await portalGetAllMyProperties();
-        if (propertiesResult.error) {
-          console.error("Error fetching portal properties:", propertiesResult.error);
-          toast.error("No se pudieron cargar las propiedades");
-          setProperties([]);
-          setSelectedPropertyId("");
-        } else {
-          const portalProperties = toPortalList(propertiesResult.data);
-          const mappedProperties = portalProperties
+        const mapPortalProperties = (portalProperties: any[]): PortalProperty[] =>
+          portalProperties
             .map((property) => {
-              const portalId = readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"]);
+              const portalId = readNumber(property, [
+                "idPropiedad",
+                "id_propiedad",
+                "propiedadId",
+                "propiedad_id",
+                "idCondominio",
+                "condominio_id",
+                "propertyId",
+                "id",
+              ]);
               if (!portalId) return null;
               const name =
-                readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"]) ||
-                `Propiedad ${portalId}`;
+                readString(property, [
+                  "nombre",
+                  "name",
+                  "razonSocial",
+                  "razon_social",
+                  "propiedad",
+                  "condominio",
+                  "property",
+                ]) || `Propiedad ${portalId}`;
               return { portalId, name, raw: property };
             })
             .filter((item): item is PortalProperty => item !== null);
-          let filteredProperties = mappedProperties;
-          if (isOwner && ownerBuildingId) {
-            const { building } = await getBuilding(ownerBuildingId);
-            const ownerPortalId = building?.portal_id ?? null;
-            const ownerName = normalizeText(building?.name || "");
-            filteredProperties = mappedProperties.filter((property) => {
-              if (ownerPortalId && property.portalId === ownerPortalId) return true;
-              if (ownerName && normalizeText(property.name) === ownerName) return true;
-              return false;
-            });
+
+        const getLocalFallbackProperties = async (): Promise<PortalProperty[]> => {
+          const { buildings, error } = await getAllBuildings();
+          if (error) {
+            console.error("Error loading local buildings for reservation properties:", error);
+            return [];
           }
+          return (buildings || [])
+            .map((building) => {
+              const portalId = readNumber(building, ["portal_id"]);
+              if (!portalId) return null;
+              const name = readString(building, ["name"]) || `Propiedad ${portalId}`;
+              return {
+                portalId,
+                name,
+                raw: {
+                  idPropiedad: portalId,
+                  nombre: name,
+                  source: "local-fallback",
+                },
+              };
+            })
+            .filter((item): item is PortalProperty => item !== null);
+        };
 
-          setProperties(filteredProperties);
+        setPropertiesLoading(true);
+        const propertiesResult = await portalGetAllMyProperties();
+        let mappedProperties: PortalProperty[] = [];
 
-          if (!selectedPropertyId) {
-            let defaultPortalId: string | null = null;
-            if (ownerBuildingId) {
-              const { building } = await getBuilding(ownerBuildingId);
-              if (building?.portal_id) {
-                defaultPortalId = String(building.portal_id);
-              } else if (building?.name) {
-                const match = filteredProperties.find(
-                  (property) => normalizeText(property.name) === normalizeText(building.name)
-                );
-                if (match) {
-                  defaultPortalId = String(match.portalId);
-                }
+        if (propertiesResult.error) {
+          console.error("Error fetching portal properties:", propertiesResult.error);
+        } else {
+          mappedProperties = mapPortalProperties(toPortalList(propertiesResult.data));
+        }
+
+        if (mappedProperties.length === 0) {
+          mappedProperties = await getLocalFallbackProperties();
+        }
+
+        let filteredProperties = mappedProperties;
+        if (isOwner && ownerBuildingId) {
+          const { building } = await getBuilding(ownerBuildingId);
+          const ownerPortalId = building?.portal_id ?? null;
+          const ownerName = normalizeText(building?.name || "");
+          filteredProperties = mappedProperties.filter((property) => {
+            if (ownerPortalId && property.portalId === ownerPortalId) return true;
+            if (ownerName && normalizeText(property.name) === ownerName) return true;
+            return false;
+          });
+        }
+
+        setProperties(filteredProperties);
+
+        const hasValidSelection = filteredProperties.some(
+          (property) => String(property.portalId) === selectedPropertyId
+        );
+        if (!hasValidSelection) {
+          let defaultPortalId: string | null = null;
+          if (ownerBuildingId) {
+            const { building } = await getBuilding(ownerBuildingId);
+            if (building?.portal_id) {
+              defaultPortalId = String(building.portal_id);
+            } else if (building?.name) {
+              const match = filteredProperties.find(
+                (property) => normalizeText(property.name) === normalizeText(building.name)
+              );
+              if (match) {
+                defaultPortalId = String(match.portalId);
               }
             }
-            setSelectedPropertyId(defaultPortalId || (filteredProperties[0] ? String(filteredProperties[0].portalId) : ""));
           }
-          if (isOwner && ownerBuildingId && filteredProperties.length === 0) {
-            toast.error("No hay propiedades asignadas para este propietario");
-          }
+          setSelectedPropertyId(defaultPortalId || (filteredProperties[0] ? String(filteredProperties[0].portalId) : ""));
+        }
+
+        if (isOwner && ownerBuildingId && filteredProperties.length === 0) {
+          toast.error("No hay propiedades asignadas para este propietario");
+        } else if (propertiesResult.error && filteredProperties.length === 0) {
+          toast.error("No se pudieron cargar las propiedades");
         }
       } catch (error) {
         console.error("Error:", error);
@@ -330,18 +384,43 @@ const ReservationsManagement = () => {
       setAmenitiesLoading(true);
       setFormAmenities([]);
       try {
-        const amenitiesResult = await portalGetAllAmenities(selectedPropertyId);
-        if (amenitiesResult.error) {
-          console.error("Error fetching portal amenities:", amenitiesResult.error);
-          toast.error(t("reservationsManagement.errorLoading"));
-          return;
-        }
+        const applyAmenitiesFromBuilding = async (buildingId: string) => {
+          const { amenities: localAmenities, error: localAmenitiesError } = await getBuildingAmenities(buildingId);
+          if (localAmenitiesError) {
+            console.error("Error fetching local amenities:", localAmenitiesError);
+            return false;
+          }
+          const nextAmenities = localAmenities || [];
+          setFormAmenities(nextAmenities);
+          setReservationForm((prev) => ({
+            ...prev,
+            amenity_id: nextAmenities.some((amenity) => amenity.id === prev.amenity_id) ? prev.amenity_id : "",
+            property_id: selectedPropertyId,
+          }));
+          return true;
+        };
 
         let buildingId: string | null = null;
         const existingBuilding = await getBuildingByPortalId(Number(selectedPropertyId));
         if (existingBuilding.building?.id) {
           buildingId = existingBuilding.building.id;
-        } else {
+        }
+
+        const amenitiesResult = await portalGetAllAmenities(selectedPropertyId);
+        if (amenitiesResult.error) {
+          console.error("Error fetching portal amenities:", amenitiesResult.error);
+          if (buildingId) {
+            const loaded = await applyAmenitiesFromBuilding(buildingId);
+            if (!loaded) {
+              toast.error(t("amenities.errorLoading"));
+            }
+          } else {
+            toast.error(t("reservationsManagement.errorLoading"));
+          }
+          return;
+        }
+
+        if (!buildingId) {
           const propertyRecord = properties.find((property) => String(property.portalId) === selectedPropertyId);
           const syncResult = await syncPortalCatalog({
             email: profile?.email || undefined,
@@ -372,13 +451,10 @@ const ReservationsManagement = () => {
           toast.error(t("amenities.errorLoading"));
         }
 
-        const { amenities: localAmenities } = await getBuildingAmenities(buildingId);
-        setFormAmenities(localAmenities || []);
-        setReservationForm((prev) => ({
-          ...prev,
-          amenity_id: localAmenities.some((amenity) => amenity.id === prev.amenity_id) ? prev.amenity_id : "",
-          property_id: selectedPropertyId,
-        }));
+        const loaded = await applyAmenitiesFromBuilding(buildingId);
+        if (!loaded) {
+          toast.error(t("amenities.errorLoading"));
+        }
       } catch (error) {
         console.error("Error fetching amenities:", error);
         toast.error(t("amenities.errorLoading"));
