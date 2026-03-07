@@ -17,11 +17,12 @@ import { Calendar, Clock, Plus, Info, CheckCircle2, XCircle, AlertCircle, FileTe
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { getBuildingAmenities, getBuildingByPortalId, getBuilding, getUserReservations } from "@/lib/supabase";
-import { createReservationSynced, syncPortalAmenitiesForBuilding, syncPortalCatalog } from "@/lib/portal-sync";
+import { getBuildingAmenities, getBuildingByPortalId, getBuilding, getBuildingUnits, getUserReservations } from "@/lib/supabase";
+import { createReservationSynced, syncPortalAmenitiesForBuilding, syncPortalCatalog, syncPortalUnitsForBuilding } from "@/lib/portal-sync";
 import {
   portalGetAllAmenities,
   portalGetAllMyProperties,
+  portalGetAllUnits,
   portalGetAmenityAvailability,
   portalGetAmenityInfo,
 } from "@/lib/portal-api";
@@ -94,6 +95,7 @@ const Reservas = () => {
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const [reservationsSort, setReservationsSort] = useState<"newest" | "oldest">("newest");
+  const [fallbackUnitId, setFallbackUnitId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 5;
   const normalizeText = (value?: string | null) =>
@@ -102,8 +104,50 @@ const Reservas = () => {
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .trim();
+  const formatPortalDate = (value: string) => {
+    const trimmed = (value || "").trim();
+    if (!trimmed) return trimmed;
+
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      return `${isoMatch[3]}-${isoMatch[2]}-${isoMatch[1]}`;
+    }
+
+    const slashMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (slashMatch) {
+      return `${slashMatch[1]}-${slashMatch[2]}-${slashMatch[3]}`;
+    }
+
+    const hyphenMatch = trimmed.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (hyphenMatch) {
+      return trimmed;
+    }
+
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      const day = String(parsed.getDate()).padStart(2, "0");
+      const month = String(parsed.getMonth() + 1).padStart(2, "0");
+      const year = String(parsed.getFullYear());
+      return `${day}-${month}-${year}`;
+    }
+
+    return trimmed;
+  };
+  const getTodayLocalIso = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
   const effectiveBuildingId = profile?.currentUnit?.building_id || profile?.building_id || null;
   const effectiveUnitId = profile?.currentUnit?.unit_id || profile?.unit_id || null;
+  const isPrivilegedUser =
+    profile?.role === "owner" ||
+    profile?.role === "super_admin" ||
+    profile?.roles?.includes("owner") ||
+    profile?.roles?.includes("super_admin");
+  const reservationUnitId = effectiveUnitId || (isPrivilegedUser ? fallbackUnitId : null);
 
   // New reservation form
   const getDefaultReservation = () => ({
@@ -205,6 +249,7 @@ const Reservas = () => {
       if (!selectedPropertyId) {
         setAmenities([]);
         setSelectedAmenity(null);
+        setFallbackUnitId(null);
         setLoading(false);
         return;
       }
@@ -215,6 +260,7 @@ const Reservas = () => {
       setAmenityInfo(null);
       setAvailabilitySlots([]);
       setAvailabilityError(null);
+      setFallbackUnitId(null);
 
       try {
         const amenitiesResult = await portalGetAllAmenities(selectedPropertyId);
@@ -252,6 +298,28 @@ const Reservas = () => {
           return;
         }
 
+        if (!effectiveUnitId && isPrivilegedUser) {
+          const unitsResult = await portalGetAllUnits(selectedPropertyId);
+          if (unitsResult.error) {
+            console.error("Error fetching portal units:", unitsResult.error);
+          } else {
+            const syncUnitsResult = await syncPortalUnitsForBuilding({
+              buildingId,
+              unitsPayload: unitsResult.data,
+            });
+            if (syncUnitsResult.error) {
+              console.error("Error syncing units:", syncUnitsResult.error);
+            }
+          }
+
+          const { units: buildingUnits, error: unitsError } = await getBuildingUnits(buildingId);
+          if (unitsError) {
+            console.error("Error fetching local units:", unitsError);
+          } else if (buildingUnits && buildingUnits.length > 0) {
+            setFallbackUnitId(buildingUnits[0].id);
+          }
+        }
+
         const syncAmenitiesResult = await syncPortalAmenitiesForBuilding({
           buildingId,
           amenitiesPayload: amenitiesResult.data,
@@ -283,7 +351,7 @@ const Reservas = () => {
     };
 
     fetchAmenitiesForProperty();
-  }, [profile?.email, properties, selectedPropertyId, t]);
+  }, [effectiveUnitId, isPrivilegedUser, profile?.email, properties, selectedPropertyId, t]);
 
   useEffect(() => {
     if (!profile) return;
@@ -351,8 +419,9 @@ const Reservas = () => {
       setAvailabilityLoading(true);
       setAvailabilityError(null);
       try {
+        const formattedDate = formatPortalDate(newReservation.date);
         const result = await portalGetAmenityAvailability(selectedAmenity.portal_id, {
-          fecha: newReservation.date,
+          fecha: formattedDate,
         });
 
         if (result.error) {
@@ -425,7 +494,7 @@ const Reservas = () => {
 
     setSubmitting(true);
     try {
-      const unitId = profile.currentUnit?.unit_id || profile.unit_id;
+      const unitId = reservationUnitId;
       if (!unitId) {
         toast.error("No hay unidad asignada");
         return;
@@ -628,7 +697,7 @@ const Reservas = () => {
     );
   }
 
-  if (!effectiveUnitId) {
+  if (!reservationUnitId) {
     return (
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -891,7 +960,7 @@ const Reservas = () => {
                 type="date"
                 value={newReservation.date}
                 onChange={(e) => setNewReservation({ ...newReservation, date: e.target.value })}
-                min={new Date().toISOString().split('T')[0]}
+                min={getTodayLocalIso()}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">

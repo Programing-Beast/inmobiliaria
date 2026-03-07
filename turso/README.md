@@ -39,15 +39,19 @@ VITE_TURSO_AUTH_TOKEN=your-auth-token-here
 VITE_JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 ```
 
-### 5. Initialize the Database Schema
+### 5. Run Automated Migrations
 
-Connect to your database and run the schema:
+From the project root:
 
 ```bash
-turso db shell reservation < turso/schema.sql
+npm run db:migrate
 ```
 
-Or manually copy and paste the contents of `turso/schema.sql` into the Turso shell.
+This command applies:
+- The base schema in `turso/schema.sql`
+- Any pending incremental migrations in `turso/migrations/*.sql`
+
+Applied migration files are tracked in the `_schema_migrations` table so they are not re-run.
 
 ### 6. Create an Admin User
 
@@ -76,6 +80,12 @@ VALUES (
 ```
 
 **Important**: Change the default password after first login!
+
+You can also seed demo users with:
+
+```bash
+npm run db:seed
+```
 
 ## Features Changes After Migration
 

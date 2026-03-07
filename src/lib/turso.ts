@@ -46,6 +46,28 @@ const rowToObject = <T>(result: ResultSet): T | null => {
   return objects.length > 0 ? objects[0] : null;
 };
 
+let amenitiesRulesPdfUrlColumnExists: boolean | null = null;
+
+const hasAmenitiesRulesPdfUrlColumn = async (): Promise<boolean> => {
+  if (amenitiesRulesPdfUrlColumnExists !== null) {
+    return amenitiesRulesPdfUrlColumnExists;
+  }
+
+  try {
+    const schemaResult = await db.execute({
+      sql: "PRAGMA table_info(amenities)",
+      args: [],
+    });
+    const columns = rowsToObjects<{ name?: string }>(schemaResult);
+    amenitiesRulesPdfUrlColumnExists = columns.some((column) => column.name === "rules_pdf_url");
+  } catch (error) {
+    console.warn("Unable to inspect amenities schema:", error);
+    amenitiesRulesPdfUrlColumnExists = false;
+  }
+
+  return amenitiesRulesPdfUrlColumnExists;
+};
+
 // =====================================================
 // AUTH HELPERS (Simple local auth - no external service)
 // =====================================================
@@ -566,25 +588,42 @@ export const createAmenity = async (amenity: {
   try {
     const id = generateUUID();
     const timestamp = now();
+    const includeRulesPdfUrl = await hasAmenitiesRulesPdfUrlColumn();
+    const columns = [
+      "id",
+      "building_id",
+      "portal_id",
+      "name_es",
+      "name_en",
+      "description_es",
+      "description_en",
+      ...(includeRulesPdfUrl ? ["rules_pdf_url"] : []),
+      "max_capacity",
+      "requires_approval",
+      "is_active",
+      "created_at",
+      "updated_at",
+    ];
+    const args = [
+      id,
+      amenity.building_id,
+      amenity.portal_id || null,
+      amenity.name_es,
+      amenity.name_en || null,
+      amenity.description_es || null,
+      amenity.description_en || null,
+      ...(includeRulesPdfUrl ? [amenity.rules_pdf_url || null] : []),
+      amenity.max_capacity || null,
+      amenity.requires_approval ? 1 : 0,
+      amenity.is_active !== false ? 1 : 0,
+      timestamp,
+      timestamp,
+    ];
+    const placeholders = columns.map(() => "?").join(", ");
 
     await db.execute({
-      sql: `INSERT INTO amenities (id, building_id, portal_id, name_es, name_en, description_es, description_en, rules_pdf_url, max_capacity, requires_approval, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        id,
-        amenity.building_id,
-        amenity.portal_id || null,
-        amenity.name_es,
-        amenity.name_en || null,
-        amenity.description_es || null,
-        amenity.description_en || null,
-        amenity.rules_pdf_url || null,
-        amenity.max_capacity || null,
-        amenity.requires_approval ? 1 : 0,
-        amenity.is_active !== false ? 1 : 0,
-        timestamp,
-        timestamp,
-      ],
+      sql: `INSERT INTO amenities (${columns.join(", ")}) VALUES (${placeholders})`,
+      args,
     });
 
     return await getAmenity(id);
@@ -614,9 +653,13 @@ export const updateAmenity = async (
   try {
     const fields: string[] = [];
     const args: any[] = [];
+    const includeRulesPdfUrl = await hasAmenitiesRulesPdfUrlColumn();
 
     Object.entries(updates).forEach(([key, value]) => {
       if (value !== undefined) {
+        if (key === "rules_pdf_url" && !includeRulesPdfUrl) {
+          return;
+        }
         fields.push(`${key} = ?`);
         if (key === 'requires_approval' || key === 'is_active') {
           args.push(value ? 1 : 0);

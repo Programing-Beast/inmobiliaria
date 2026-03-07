@@ -123,7 +123,7 @@ export const retrySyncQueue = async (email?: string) => {
 const runSyncJob = async (job: SyncJob) => {
   switch (job.type) {
     case "reservation": {
-      const result = await portalCreateReservation(job.payload as any);
+      const { result } = await portalCreateReservationWithFallback(job.payload as any);
       if (!result.error) {
         const localReservationId = job.localPayload?.localReservationId as string | undefined;
         const portalReservationId = (result.data as any)?.data?.idReserva as number | undefined;
@@ -229,6 +229,256 @@ const readBoolean = (record: Record<string, any>, keys: string[]) => {
     }
   }
   return undefined;
+};
+
+type PortalReservationPayload = {
+  razonSocial: string;
+  idUnidad: number | string;
+  cantidadPersonas: number;
+  idQuincho: number | string;
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
+  correo: string;
+  celular: string;
+  observacion?: string;
+};
+
+const formatPortalDateDmyHyphen = (value: string) => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return trimmed;
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return `${isoMatch[3]}-${isoMatch[2]}-${isoMatch[1]}`;
+  }
+
+  const slashMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (slashMatch) {
+    return `${slashMatch[1]}-${slashMatch[2]}-${slashMatch[3]}`;
+  }
+
+  const hyphenMatch = trimmed.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (hyphenMatch) {
+    return trimmed;
+  }
+
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    const day = String(parsed.getDate()).padStart(2, "0");
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const year = String(parsed.getFullYear());
+    return `${day}-${month}-${year}`;
+  }
+
+  return trimmed;
+};
+
+const formatPortalDateDmyHyphenShortYear = (value: string) => {
+  const full = formatPortalDateDmyHyphen(value);
+  const match = full.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (!match) return full;
+  return `${match[1]}-${match[2]}-${match[3].slice(-2)}`;
+};
+
+const formatPortalDateDmySlash = (value: string) => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return trimmed;
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+  }
+
+  const hyphenMatch = trimmed.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (hyphenMatch) {
+    return `${hyphenMatch[1]}/${hyphenMatch[2]}/${hyphenMatch[3]}`;
+  }
+
+  const slashMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (slashMatch) {
+    return trimmed;
+  }
+
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    const day = String(parsed.getDate()).padStart(2, "0");
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const year = String(parsed.getFullYear());
+    return `${day}/${month}/${year}`;
+  }
+
+  return trimmed;
+};
+
+const formatPortalDateIso = (value: string) => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return trimmed;
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return trimmed;
+  }
+
+  const dmySlashMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (dmySlashMatch) {
+    return `${dmySlashMatch[3]}-${dmySlashMatch[2]}-${dmySlashMatch[1]}`;
+  }
+
+  const dmyHyphenMatch = trimmed.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (dmyHyphenMatch) {
+    return `${dmyHyphenMatch[3]}-${dmyHyphenMatch[2]}-${dmyHyphenMatch[1]}`;
+  }
+
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    const day = String(parsed.getDate()).padStart(2, "0");
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const year = String(parsed.getFullYear());
+    return `${year}-${month}-${day}`;
+  }
+
+  return trimmed;
+};
+
+const formatPortalTimeHm = (value: string) => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return trimmed;
+
+  const hmsMatch = trimmed.match(/^(\d{2}):(\d{2}):(\d{2})$/);
+  if (hmsMatch) {
+    return `${hmsMatch[1]}:${hmsMatch[2]}`;
+  }
+
+  if (/^\d{2}:\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  return trimmed;
+};
+
+const formatPortalTimeHms = (value: string) => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return trimmed;
+
+  if (/^\d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (/^\d{2}:\d{2}$/.test(trimmed)) {
+    return `${trimmed}:00`;
+  }
+
+  return trimmed;
+};
+
+const normalizePortalReservationPayload = (
+  payload: PortalReservationPayload,
+  options?: {
+    dateMode?: "iso" | "dmy_hyphen" | "dmy_hyphen_short" | "dmy_slash" | "raw";
+    timeMode?: "hm" | "hms" | "raw";
+  }
+) => {
+  const dateMode = options?.dateMode ?? "dmy_hyphen";
+  const timeMode = options?.timeMode ?? "hm";
+  const normalizedUnitPortalId = Number(payload.idUnidad);
+  const normalizedAmenityPortalId = Number(payload.idQuincho);
+  const normalizedCantidadPersonas = Math.max(1, Math.floor(Number(payload.cantidadPersonas) || 0));
+  const rawDate = (payload.fecha || "").trim();
+  const rawStartTime = (payload.horaInicio || "").trim();
+  const rawEndTime = (payload.horaFin || "").trim();
+  const normalizedDate =
+    dateMode === "iso"
+      ? formatPortalDateIso(rawDate)
+      : dateMode === "dmy_slash"
+        ? formatPortalDateDmySlash(rawDate)
+        : dateMode === "dmy_hyphen_short"
+          ? formatPortalDateDmyHyphenShortYear(rawDate)
+        : dateMode === "dmy_hyphen"
+          ? formatPortalDateDmyHyphen(rawDate)
+          : rawDate;
+  const normalizedStartTime =
+    timeMode === "raw" ? rawStartTime : timeMode === "hms" ? formatPortalTimeHms(rawStartTime) : formatPortalTimeHm(rawStartTime);
+  const normalizedEndTime =
+    timeMode === "raw" ? rawEndTime : timeMode === "hms" ? formatPortalTimeHms(rawEndTime) : formatPortalTimeHm(rawEndTime);
+
+  return {
+    ...payload,
+    idUnidad: Number.isFinite(normalizedUnitPortalId) ? normalizedUnitPortalId : payload.idUnidad,
+    idQuincho: Number.isFinite(normalizedAmenityPortalId) ? normalizedAmenityPortalId : payload.idQuincho,
+    cantidadPersonas: normalizedCantidadPersonas,
+    fecha: normalizedDate,
+    horaInicio: normalizedStartTime,
+    horaFin: normalizedEndTime,
+  };
+};
+
+const shouldRetryReservationWithAlternateFormat = (
+  error?: { message?: string; details?: string; status?: number } | null
+) => {
+  if (!error) return false;
+  const text = `${error?.message || ""} ${error?.details || ""}`.toLowerCase();
+  if (text.includes("literal does not match format string")) return true;
+  if (text.includes("date format picture ends before converting entire input string")) return true;
+  if (text.includes("converting entire input string")) return true;
+  if (error.status === 409) return true;
+  if (error.status === 500 && text.includes("date")) return true;
+  if (text.includes("validaci")) return true;
+  if (text.includes("formato")) return true;
+  return false;
+};
+
+const getReservationPayloadSignature = (payload: PortalReservationPayload) =>
+  JSON.stringify([
+    payload.razonSocial,
+    payload.idUnidad,
+    payload.cantidadPersonas,
+    payload.idQuincho,
+    payload.fecha,
+    payload.horaInicio,
+    payload.horaFin,
+    payload.correo,
+    payload.celular,
+    payload.observacion || "",
+  ]);
+
+const portalCreateReservationWithFallback = async (payload: PortalReservationPayload) => {
+  const variants = [
+    normalizePortalReservationPayload(payload, { dateMode: "dmy_hyphen", timeMode: "hm" }),
+    normalizePortalReservationPayload(payload, { dateMode: "dmy_hyphen", timeMode: "hms" }),
+    normalizePortalReservationPayload(payload, { dateMode: "dmy_hyphen_short", timeMode: "hm" }),
+    normalizePortalReservationPayload(payload, { dateMode: "iso", timeMode: "hm" }),
+    normalizePortalReservationPayload(payload, { dateMode: "raw", timeMode: "raw" }),
+    normalizePortalReservationPayload(payload, { dateMode: "dmy_slash", timeMode: "hm" }),
+  ];
+  const seen = new Set<string>();
+  const candidates = variants.filter((variant) => {
+    const signature = getReservationPayloadSignature(variant);
+    if (seen.has(signature)) return false;
+    seen.add(signature);
+    return true;
+  });
+
+  let lastResult: any = null;
+  let lastPayload: PortalReservationPayload = payload;
+
+  for (let i = 0; i < candidates.length; i += 1) {
+    const candidate = candidates[i];
+    const result = await portalCreateReservation(candidate);
+    if (!result.error) {
+      return { result, usedPayload: candidate };
+    }
+
+    lastResult = result;
+    lastPayload = candidate;
+
+    const isLastCandidate = i === candidates.length - 1;
+    if (isLastCandidate || !shouldRetryReservationWithAlternateFormat(result.error)) {
+      return { result, usedPayload: candidate };
+    }
+  }
+
+  return { result: lastResult, usedPayload: lastPayload };
 };
 
 const normalizeRole = (role?: string | null) => (role || "").trim().toLowerCase();
@@ -701,10 +951,11 @@ export const createReservationSynced = async (params: {
   if (unitError) {
     return { reservation: null, error: unitError, queued: false };
   }
-  if (!assignedUnitId) {
+  const canReserveWithoutAssignedUnit = userHasAnyRole(["owner", "super_admin"]);
+  if (!assignedUnitId && !canReserveWithoutAssignedUnit) {
     return { reservation: null, error: { message: "User has no assigned unit" }, queued: false };
   }
-  if (assignedUnitId !== localPayload.unitId) {
+  if (assignedUnitId && assignedUnitId !== localPayload.unitId) {
     return {
       reservation: null,
       error: { message: "Reservations must use the user's assigned unit" },
@@ -739,7 +990,7 @@ export const createReservationSynced = async (params: {
   if (authResult.error) {
     portalSyncError = authResult.error;
   } else {
-    const portalResult = await portalCreateReservation(portalPayload);
+    const { result: portalResult } = await portalCreateReservationWithFallback(portalPayload);
     if (portalResult.error) {
       portalSyncError = portalResult.error;
     } else {
