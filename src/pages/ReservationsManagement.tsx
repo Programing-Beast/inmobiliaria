@@ -560,7 +560,7 @@ const ReservationsManagement = () => {
         }
       }
 
-      const { reservation, error } = await createReservationSynced({
+      const { reservation, error, queued } = await createReservationSynced({
         email: profile?.email || undefined,
         portalFields: {
           razonSocial: reservationForm.razonSocial,
@@ -586,6 +586,9 @@ const ReservationsManagement = () => {
         return;
       }
 
+      if (queued) {
+        toast.warning("Reserva creada localmente. Sincronización con portal pendiente.");
+      }
       toast.success(t("reservationsManagement.created"));
       setShowCreateDialog(false);
       resetForm();

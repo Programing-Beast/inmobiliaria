@@ -431,7 +431,7 @@ const Reservas = () => {
         return;
       }
 
-      const { reservation, error } = await createReservationSynced({
+      const { reservation, error, queued } = await createReservationSynced({
         email: profile.email || undefined,
         portalFields: {
           razonSocial: newReservation.razonSocial,
@@ -457,6 +457,9 @@ const Reservas = () => {
         return;
       }
 
+      if (queued) {
+        toast.warning("Reserva creada localmente. Sincronización con portal pendiente.");
+      }
       toast.success(t('reservations.success.created'));
       setShowNewReservationDialog(false);
       setNewReservation(getDefaultReservation());
@@ -601,7 +604,7 @@ const Reservas = () => {
     );
   }
 
-  if (!effectiveBuildingId) {
+  if (!propertiesLoading && !selectedPropertyId && properties.length === 0) {
     return (
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

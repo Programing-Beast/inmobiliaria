@@ -122,8 +122,17 @@ export const retrySyncQueue = async (email?: string) => {
 
 const runSyncJob = async (job: SyncJob) => {
   switch (job.type) {
-    case "reservation":
-      return portalCreateReservation(job.payload as any);
+    case "reservation": {
+      const result = await portalCreateReservation(job.payload as any);
+      if (!result.error) {
+        const localReservationId = job.localPayload?.localReservationId as string | undefined;
+        const portalReservationId = (result.data as any)?.data?.idReserva as number | undefined;
+        if (localReservationId && portalReservationId) {
+          await updateReservationPortalId(localReservationId, portalReservationId);
+        }
+      }
+      return result;
+    }
     case "incident":
       return portalCreateIncident(job.payload as any);
     case "incident_update": {
@@ -723,16 +732,19 @@ export const createReservationSynced = async (params: {
     observacion,
   };
 
+  let portalReservationId: number | undefined;
+  let portalSyncError: { message: string; status?: number; details?: string } | null = null;
+
   const authResult = await ensurePortalAuth(email);
   if (authResult.error) {
-    enqueueSyncJob({ type: "reservation", payload: portalPayload, localPayload });
-    return { reservation: null, error: authResult.error, queued: true };
-  }
-
-  const portalResult = await portalCreateReservation(portalPayload);
-  if (portalResult.error) {
-    enqueueSyncJob({ type: "reservation", payload: portalPayload, localPayload });
-    return { reservation: null, error: portalResult.error, queued: true };
+    portalSyncError = authResult.error;
+  } else {
+    const portalResult = await portalCreateReservation(portalPayload);
+    if (portalResult.error) {
+      portalSyncError = portalResult.error;
+    } else {
+      portalReservationId = (portalResult.data as any)?.data?.idReserva ?? undefined;
+    }
   }
 
   const localResult = await createReservation(
@@ -742,23 +754,46 @@ export const createReservationSynced = async (params: {
     localPayload.startTime,
     localPayload.endTime,
     localPayload.notes,
-    (portalResult.data as any)?.data?.idReserva ?? undefined
+    portalReservationId
   );
 
-  if (localResult.error) {
+  if (localResult.error && portalReservationId) {
     enqueueSyncJob({
       type: "local_reservation",
       payload: {},
       localPayload: {
         ...localPayload,
-        portalId: (portalResult.data as any)?.data?.idReserva ?? undefined,
+        portalId: portalReservationId,
       },
     });
-  } else if ((portalResult.data as any)?.data?.idReserva && localResult.reservation?.id) {
-    await updateReservationPortalId(localResult.reservation.id, (portalResult.data as any).data.idReserva);
   }
 
-  return { reservation: localResult.reservation, error: localResult.error, queued: false };
+  if (localResult.error) {
+    return { reservation: localResult.reservation, error: localResult.error, queued: Boolean(portalSyncError) };
+  }
+
+  if (portalSyncError && localResult.reservation?.id) {
+    enqueueSyncJob({
+      type: "reservation",
+      payload: portalPayload,
+      localPayload: {
+        ...localPayload,
+        localReservationId: localResult.reservation.id,
+      },
+    });
+    return {
+      reservation: localResult.reservation,
+      error: null,
+      queued: true,
+      syncError: portalSyncError,
+    };
+  }
+
+  if (portalReservationId && localResult.reservation?.id) {
+    await updateReservationPortalId(localResult.reservation.id, portalReservationId);
+  }
+
+  return { reservation: localResult.reservation, error: null, queued: false };
 };
 
 export const createIncidentSynced = async (params: {
