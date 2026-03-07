@@ -87,6 +87,9 @@ If a portal ID is missing on a local record, reservation/incident creation will 
 - `npm run build` - production build
 - `npm run preview` - preview build
 - `npm run lint` - lint
+- `npm run db:migrate` - apply base schema and pending SQL migrations in `turso/migrations`
+- `npm run db:seed` - seed demo users
+- `npm run db:setup` - run migrations + seed users
 - `npm run test` - run Vitest
 - `npm run test:watch` - run Vitest in watch mode
 - `npm run test:coverage` - run Vitest coverage
@@ -121,12 +124,13 @@ VITE_TURSO_DATABASE_URL=libsql://your-db.turso.io
 VITE_TURSO_AUTH_TOKEN=your-turso-auth-token
 ```
 
-2) Run the migration script:
+2) Run database migrations:
 ```bash
-node turso/migrate.js
+npm run db:migrate
 ```
+This applies `turso/schema.sql`, then automatically runs pending files in `turso/migrations` and records them in `_schema_migrations`.
 
 3) Seed demo users:
 ```bash
-node turso/seed-users.js
+npm run db:seed
 ```

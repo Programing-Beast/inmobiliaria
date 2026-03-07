@@ -9,6 +9,9 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "db:migrate": "node turso/migrate.js",
+    "db:seed": "node turso/seed-users.js",
+    "db:setup": "npm run db:migrate && npm run db:seed",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage"
