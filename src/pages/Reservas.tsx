@@ -48,12 +48,14 @@ import {
 interface Amenity {
   id: string;
   portal_id?: number | null;
-  name: string;
-  type: string;
-  display_name_es: string;
-  display_name_en: string | null;
-  rules_es: string | null;
-  rules_en: string | null;
+  name?: string | null;
+  name_es?: string | null;
+  name_en?: string | null;
+  type?: string | null;
+  display_name_es?: string | null;
+  display_name_en?: string | null;
+  rules_es?: string | null;
+  rules_en?: string | null;
   rules_pdf_url?: string | null;
   max_capacity: number | null;
   is_active: boolean;
@@ -98,6 +100,18 @@ const Reservas = () => {
   const [fallbackUnitId, setFallbackUnitId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 5;
+  const getAmenityLabel = (amenity?: Amenity | null) => {
+    if (!amenity) return "";
+
+    return (
+      getLocalizedField(amenity, "name") ||
+      getLocalizedField(amenity, "display_name") ||
+      amenity.name_en ||
+      amenity.name_es ||
+      amenity.name ||
+      ""
+    );
+  };
   const normalizeText = (value?: string | null) =>
     (value || "")
       .toLowerCase()
@@ -796,12 +810,12 @@ const Reservas = () => {
                 onClick={() => setSelectedAmenity(amenity)}
               >
                 <CardContent className="p-4 text-center">
-                  <div className="text-3xl mb-2">{getAmenityIcon(amenity.type)}</div>
+                  <div className="text-3xl mb-2">{getAmenityIcon(amenity.type || "")}</div>
                   <p className={cn(
                     "text-sm font-semibold mb-1",
                     selectedAmenity?.id === amenity.id ? "text-primary" : "text-foreground"
                   )}>
-                    {getLocalizedField(amenity, 'display_name')}
+                    {getAmenityLabel(amenity)}
                   </p>
                   <Badge
                     variant="outline"
@@ -820,10 +834,10 @@ const Reservas = () => {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className="text-4xl">{getAmenityIcon(selectedAmenity.type)}</div>
+                    <div className="text-4xl">{getAmenityIcon(selectedAmenity.type || "")}</div>
                     <div>
                       <h3 className="text-xl font-bold mb-2">
-                        {getLocalizedField(selectedAmenity, 'display_name')}
+                        {getAmenityLabel(selectedAmenity)}
                       </h3>
                       {selectedAmenity.max_capacity && (
                         <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -887,10 +901,10 @@ const Reservas = () => {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <div className="text-2xl">{getAmenityIcon(reservation.amenity.type)}</div>
+                            <div className="text-2xl">{getAmenityIcon(reservation.amenity.type || "")}</div>
                             <div>
                               <p className="font-semibold">
-                                {getLocalizedField(reservation.amenity, 'display_name')}
+                                {getAmenityLabel(reservation.amenity)}
                               </p>
                               <p className="text-sm text-muted-foreground flex items-center gap-2">
                                 <Calendar className="w-3 h-3" />
@@ -949,7 +963,7 @@ const Reservas = () => {
           <DialogHeader>
             <DialogTitle>{t('reservations.newReservation')}</DialogTitle>
             <DialogDescription>
-              Reserva: {selectedAmenity && getLocalizedField(selectedAmenity, 'display_name')}
+              Reserva: {selectedAmenity && getAmenityLabel(selectedAmenity)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1071,7 +1085,7 @@ const Reservas = () => {
           <DialogHeader>
             <DialogTitle>{t('reservations.rulesTitle')}</DialogTitle>
             <DialogDescription>
-              {selectedAmenity && getLocalizedField(selectedAmenity, 'display_name')}
+              {selectedAmenity && getAmenityLabel(selectedAmenity)}
             </DialogDescription>
           </DialogHeader>
           <div className="prose prose-sm max-w-none">
