@@ -4,6 +4,7 @@ import {
   portalCreateIncident,
   portalCreateReservation,
   portalApproveReservation,
+  portalGetAmenityAvailability,
   portalGetAmenities,
   portalGetProperties,
   portalGetUnits,
@@ -370,6 +371,68 @@ const formatPortalTimeHms = (value: string) => {
   }
 
   return trimmed;
+};
+
+type AvailabilitySlot = {
+  start: string;
+  end: string;
+};
+
+const normalizeAvailabilitySlots = (payload: any): AvailabilitySlot[] =>
+  toPortalList(payload)
+    .map((slot: Record<string, any>) => ({
+      start: formatPortalTimeHm(
+        readString(slot, ["horaInicio", "hora_inicio", "start", "desde", "inicio"]) || ""
+      ),
+      end: formatPortalTimeHm(
+        readString(slot, ["horaFin", "hora_fin", "end", "hasta", "fin"]) || ""
+      ),
+    }))
+    .filter((slot) => slot.start && slot.end);
+
+const isReservationWithinAvailability = (
+  startTime: string,
+  endTime: string,
+  slots: AvailabilitySlot[]
+) => {
+  const normalizedStart = formatPortalTimeHm(startTime);
+  const normalizedEnd = formatPortalTimeHm(endTime);
+
+  if (!normalizedStart || !normalizedEnd || normalizedStart >= normalizedEnd) {
+    return false;
+  }
+
+  return slots.some((slot) => normalizedStart >= slot.start && normalizedEnd <= slot.end);
+};
+
+const checkPortalReservationAvailability = async (params: {
+  amenityPortalId: number;
+  reservationDate: string;
+  startTime: string;
+  endTime: string;
+}) => {
+  const result = await portalGetAmenityAvailability(params.amenityPortalId, {
+    fecha: formatPortalDateDmyHyphen(params.reservationDate),
+  });
+
+  if (result.error) {
+    return { error: null };
+  }
+
+  const slots = normalizeAvailabilitySlots(result.data);
+  if (slots.length === 0) {
+    return {
+      error: { message: "No hay horarios disponibles para esta fecha" },
+    };
+  }
+
+  if (!isReservationWithinAvailability(params.startTime, params.endTime, slots)) {
+    return {
+      error: { message: "El horario seleccionado no esta disponible" },
+    };
+  }
+
+  return { error: null };
 };
 
 const normalizePortalReservationPayload = (
@@ -990,6 +1053,17 @@ export const createReservationSynced = async (params: {
   if (authResult.error) {
     portalSyncError = authResult.error;
   } else {
+    const availabilityResult = await checkPortalReservationAvailability({
+      amenityPortalId,
+      reservationDate: localPayload.reservationDate,
+      startTime: localPayload.startTime,
+      endTime: localPayload.endTime,
+    });
+
+    if (availabilityResult.error) {
+      return { reservation: null, error: availabilityResult.error, queued: false };
+    }
+
     const { result: portalResult } = await portalCreateReservationWithFallback(portalPayload);
     if (portalResult.error) {
       portalSyncError = portalResult.error;

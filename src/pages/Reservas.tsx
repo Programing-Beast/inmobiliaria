@@ -501,6 +501,11 @@ const Reservas = () => {
       return;
     }
 
+    if (!availabilityError && newReservation.date && availabilitySlots.length === 0) {
+      toast.error(noAvailabilityMessage);
+      return;
+    }
+
     if (availabilitySlots.length > 0 && !isSlotAvailable()) {
       toast.error(t("reservations.error.notAvailable"));
       return;
@@ -536,7 +541,7 @@ const Reservas = () => {
 
       if (error) {
         console.error('Error creating reservation:', error);
-        toast.error(t('reservations.error.create'));
+        toast.error(error.message || t('reservations.error.create'));
         return;
       }
 
@@ -623,7 +628,16 @@ const Reservas = () => {
     });
   };
 
-  const canSubmit = !availabilityLoading && (availabilitySlots.length === 0 || isSlotAvailable());
+  const noAvailabilityMessage = "No hay horarios disponibles para esta fecha";
+  const hasNoAvailability =
+    Boolean(newReservation.date) &&
+    !availabilityLoading &&
+    !availabilityError &&
+    availabilitySlots.length === 0;
+  const canSubmit =
+    !availabilityLoading &&
+    !hasNoAvailability &&
+    (availabilityError ? true : isSlotAvailable());
 
   const getReservationDate = (reservation: Reservation) =>
     reservation.reservation_date ? new Date(reservation.reservation_date).getTime() : 0;
@@ -1017,7 +1031,7 @@ const Reservas = () => {
                   )}
                 </>
               ) : (
-                <p className="text-muted-foreground">No hay horarios disponibles para esta fecha</p>
+                <p className="text-muted-foreground">{noAvailabilityMessage}</p>
               )}
             </div>
             <div>
