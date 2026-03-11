@@ -11,6 +11,11 @@ import {
   portalUpdateIncident,
 } from "@/lib/portal-api";
 import {
+  isReservationWithinAvailabilitySlots,
+  normalizePortalAvailability,
+  normalizePortalTime,
+} from "@/lib/portal-availability";
+import {
   createIncident,
   createReservation,
   createAmenity,
@@ -373,60 +378,57 @@ const formatPortalTimeHms = (value: string) => {
   return trimmed;
 };
 
-type AvailabilitySlot = {
-  start: string;
-  end: string;
-};
-
-const normalizeAvailabilitySlots = (payload: any): AvailabilitySlot[] =>
-  toPortalList(payload)
-    .map((slot: Record<string, any>) => ({
-      start: formatPortalTimeHm(
-        readString(slot, ["horaInicio", "hora_inicio", "start", "desde", "inicio"]) || ""
-      ),
-      end: formatPortalTimeHm(
-        readString(slot, ["horaFin", "hora_fin", "end", "hasta", "fin"]) || ""
-      ),
-    }))
-    .filter((slot) => slot.start && slot.end);
-
-const isReservationWithinAvailability = (
-  startTime: string,
-  endTime: string,
-  slots: AvailabilitySlot[]
-) => {
-  const normalizedStart = formatPortalTimeHm(startTime);
-  const normalizedEnd = formatPortalTimeHm(endTime);
-
-  if (!normalizedStart || !normalizedEnd || normalizedStart >= normalizedEnd) {
-    return false;
-  }
-
-  return slots.some((slot) => normalizedStart >= slot.start && normalizedEnd <= slot.end);
-};
-
 const checkPortalReservationAvailability = async (params: {
   amenityPortalId: number;
   reservationDate: string;
   startTime: string;
   endTime: string;
 }) => {
+  const formattedDate = formatPortalDateDmyHyphen(params.reservationDate);
+  const normalizedStart = normalizePortalTime(params.startTime);
+  const normalizedEnd = normalizePortalTime(params.endTime);
   const result = await portalGetAmenityAvailability(params.amenityPortalId, {
-    fecha: formatPortalDateDmyHyphen(params.reservationDate),
+    fecha: formattedDate,
   });
 
   if (result.error) {
     return { error: null };
   }
 
-  const slots = normalizeAvailabilitySlots(result.data);
-  if (slots.length === 0) {
+  const availability = normalizePortalAvailability(result.data);
+  if (availability.slots.length > 0) {
+    if (!isReservationWithinAvailabilitySlots(normalizedStart, normalizedEnd, availability.slots)) {
+      return {
+        error: { message: "El horario seleccionado no esta disponible" },
+      };
+    }
+
+    return { error: null };
+  }
+
+  if (availability.startTimes.length === 0) {
     return {
       error: { message: "No hay horarios disponibles para esta fecha" },
     };
   }
 
-  if (!isReservationWithinAvailability(params.startTime, params.endTime, slots)) {
+  if (!availability.startTimes.includes(normalizedStart)) {
+    return {
+      error: { message: "El horario seleccionado no esta disponible" },
+    };
+  }
+
+  const endTimesResult = await portalGetAmenityAvailability(params.amenityPortalId, {
+    fecha: formattedDate,
+    start: normalizedStart,
+  });
+
+  if (endTimesResult.error) {
+    return { error: null };
+  }
+
+  const endAvailability = normalizePortalAvailability(endTimesResult.data);
+  if (endAvailability.endTimes.length === 0 || !endAvailability.endTimes.includes(normalizedEnd)) {
     return {
       error: { message: "El horario seleccionado no esta disponible" },
     };

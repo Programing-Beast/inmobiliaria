@@ -142,6 +142,38 @@ describe("createReservationSynced", () => {
     expect(mockCreateReservation).not.toHaveBeenCalled();
   });
 
+  it("accepts startTimes/endTimes availability responses from the portal", async () => {
+    mockPortalGetAmenityAvailability
+      .mockResolvedValueOnce({
+        data: {
+          startTimes: [{ horaDisponible: "10:00" }, { horaDisponible: "11:00" }],
+          endTimes: [],
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          startTimes: [],
+          endTimes: [{ horaDisponible: "11:00" }, { horaDisponible: "12:00" }],
+        },
+        error: null,
+      });
+
+    const result = await createReservationSynced(buildParams());
+
+    expect(result.error).toBeNull();
+    expect(mockPortalGetAmenityAvailability).toHaveBeenCalledTimes(2);
+    expect(mockPortalGetAmenityAvailability).toHaveBeenNthCalledWith(1, 202, {
+      fecha: "20-03-2026",
+    });
+    expect(mockPortalGetAmenityAvailability).toHaveBeenNthCalledWith(2, 202, {
+      fecha: "20-03-2026",
+      start: "10:00",
+    });
+    expect(mockPortalCreateReservation).toHaveBeenCalledOnce();
+    expect(mockCreateReservation).toHaveBeenCalledOnce();
+  });
+
   it("preserves queued local creation when portal auth is unavailable", async () => {
     mockEnsurePortalAuth.mockResolvedValue({
       token: null,

@@ -13,7 +13,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, Plus, Info, CheckCircle2, XCircle, AlertCircle, FileText } from "lucide-react";
+import { Calendar, Clock, Plus, Info, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,6 +27,7 @@ import {
   portalGetAmenityInfo,
 } from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
+import { isReservationWithinAvailabilitySlots, normalizePortalAvailability, normalizePortalTime } from "@/lib/portal-availability";
 import { toast } from "sonner";
 import type { ReservationStatus } from "@/lib/database.types";
 import {
@@ -78,7 +79,7 @@ type PortalProperty = {
 };
 
 const Reservas = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const getLocalizedField = useLocalizedField();
   const [properties, setProperties] = useState<PortalProperty[]>([]);
@@ -89,11 +90,12 @@ const Reservas = () => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selectedAmenity, setSelectedAmenity] = useState<Amenity | null>(null);
   const [showNewReservationDialog, setShowNewReservationDialog] = useState(false);
-  const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [amenityInfo, setAmenityInfo] = useState<Record<string, any> | null>(null);
   const [availabilitySlots, setAvailabilitySlots] = useState<{ start: string; end: string }[]>([]);
+  const [availabilityStartTimes, setAvailabilityStartTimes] = useState<string[]>([]);
+  const [availabilityEndTimes, setAvailabilityEndTimes] = useState<string[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const [reservationsSort, setReservationsSort] = useState<"newest" | "oldest">("newest");
@@ -273,6 +275,8 @@ const Reservas = () => {
       setSelectedAmenity(null);
       setAmenityInfo(null);
       setAvailabilitySlots([]);
+      setAvailabilityStartTimes([]);
+      setAvailabilityEndTimes([]);
       setAvailabilityError(null);
       setFallbackUnitId(null);
 
@@ -415,7 +419,11 @@ const Reservas = () => {
         setAmenityInfo(null);
         return;
       }
-      const record = toPortalList(result.data)[0] || (result.data as any);
+      const record =
+        (result.data as any)?.data?.amenity ||
+        (result.data as any)?.data ||
+        toPortalList(result.data)[0] ||
+        (result.data as any);
       setAmenityInfo(record || null);
     };
 
@@ -426,6 +434,8 @@ const Reservas = () => {
     const fetchAvailability = async () => {
       if (!selectedAmenity?.portal_id || !newReservation.date) {
         setAvailabilitySlots([]);
+        setAvailabilityStartTimes([]);
+        setAvailabilityEndTimes([]);
         setAvailabilityError(null);
         return;
       }
@@ -441,18 +451,28 @@ const Reservas = () => {
         if (result.error) {
           setAvailabilityError(result.error.message || "Error checking availability");
           setAvailabilitySlots([]);
+          setAvailabilityStartTimes([]);
+          setAvailabilityEndTimes([]);
           return;
         }
 
-        const slots = toPortalList(result.data).map((slot: Record<string, any>) => ({
-          start: readString(slot, ["horaInicio", "hora_inicio", "start", "desde", "inicio"]),
-          end: readString(slot, ["horaFin", "hora_fin", "end", "hasta", "fin"]),
-        }));
+        const availability = normalizePortalAvailability(result.data);
+        setAvailabilitySlots(availability.slots);
+        setAvailabilityStartTimes(availability.startTimes);
+        setAvailabilityEndTimes([]);
 
-        setAvailabilitySlots(slots.filter((slot) => slot.start && slot.end));
+        if (newReservation.startTime && availability.startTimes.length > 0 && !availability.startTimes.includes(newReservation.startTime)) {
+          setNewReservation((prev) => ({
+            ...prev,
+            startTime: "",
+            endTime: "",
+          }));
+        }
       } catch (error: any) {
         setAvailabilityError(error?.message || "Error checking availability");
         setAvailabilitySlots([]);
+        setAvailabilityStartTimes([]);
+        setAvailabilityEndTimes([]);
       } finally {
         setAvailabilityLoading(false);
       }
@@ -460,6 +480,64 @@ const Reservas = () => {
 
     fetchAvailability();
   }, [newReservation.date, selectedAmenity?.portal_id]);
+
+  useEffect(() => {
+    const fetchEndTimes = async () => {
+      if (!selectedAmenity?.portal_id || !newReservation.date || !newReservation.startTime) {
+        setAvailabilityEndTimes([]);
+        return;
+      }
+
+      if (availabilitySlots.length > 0) {
+        setAvailabilityEndTimes([]);
+        return;
+      }
+
+      if (availabilityStartTimes.length > 0 && !availabilityStartTimes.includes(newReservation.startTime)) {
+        setAvailabilityEndTimes([]);
+        return;
+      }
+
+      setAvailabilityLoading(true);
+      setAvailabilityError(null);
+      try {
+        const formattedDate = formatPortalDate(newReservation.date);
+        const result = await portalGetAmenityAvailability(selectedAmenity.portal_id, {
+          fecha: formattedDate,
+          start: newReservation.startTime,
+        });
+
+        if (result.error) {
+          setAvailabilityError(result.error.message || "Error checking availability");
+          setAvailabilityEndTimes([]);
+          return;
+        }
+
+        const availability = normalizePortalAvailability(result.data);
+        setAvailabilityEndTimes(availability.endTimes);
+
+        if (newReservation.endTime && !availability.endTimes.includes(newReservation.endTime)) {
+          setNewReservation((prev) => ({
+            ...prev,
+            endTime: "",
+          }));
+        }
+      } catch (error: any) {
+        setAvailabilityError(error?.message || "Error checking availability");
+        setAvailabilityEndTimes([]);
+      } finally {
+        setAvailabilityLoading(false);
+      }
+    };
+
+    fetchEndTimes();
+  }, [
+    availabilitySlots.length,
+    availabilityStartTimes,
+    newReservation.date,
+    newReservation.startTime,
+    selectedAmenity?.portal_id,
+  ]);
 
   // Fetch user reservations
   useEffect(() => {
@@ -501,12 +579,12 @@ const Reservas = () => {
       return;
     }
 
-    if (!availabilityError && newReservation.date && availabilitySlots.length === 0) {
+    if (!availabilityError && newReservation.date && availabilitySlots.length === 0 && availabilityStartTimes.length === 0) {
       toast.error(noAvailabilityMessage);
       return;
     }
 
-    if (availabilitySlots.length > 0 && !isSlotAvailable()) {
+    if ((availabilitySlots.length > 0 || availabilityStartTimes.length > 0) && !isSlotAvailable()) {
       toast.error(t("reservations.error.notAvailable"));
       return;
     }
@@ -621,11 +699,20 @@ const Reservas = () => {
   };
 
   const isSlotAvailable = () => {
-    if (availabilitySlots.length === 0) return true;
-    if (!newReservation.startTime || !newReservation.endTime) return true;
-    return availabilitySlots.some((slot) => {
-      return newReservation.startTime >= slot.start && newReservation.endTime <= slot.end;
-    });
+    const normalizedStart = normalizePortalTime(newReservation.startTime);
+    const normalizedEnd = normalizePortalTime(newReservation.endTime);
+
+    if (availabilitySlots.length > 0) {
+      if (!normalizedStart || !normalizedEnd) return true;
+      return isReservationWithinAvailabilitySlots(normalizedStart, normalizedEnd, availabilitySlots);
+    }
+
+    if (availabilityStartTimes.length === 0) return true;
+    if (!normalizedStart) return true;
+    if (!availabilityStartTimes.includes(normalizedStart)) return false;
+    if (!normalizedEnd) return true;
+    if (availabilityEndTimes.length === 0) return false;
+    return normalizedEnd > normalizedStart && availabilityEndTimes.includes(normalizedEnd);
   };
 
   const noAvailabilityMessage = "No hay horarios disponibles para esta fecha";
@@ -633,7 +720,8 @@ const Reservas = () => {
     Boolean(newReservation.date) &&
     !availabilityLoading &&
     !availabilityError &&
-    availabilitySlots.length === 0;
+    availabilitySlots.length === 0 &&
+    availabilityStartTimes.length === 0;
   const canSubmit =
     !availabilityLoading &&
     !hasNoAvailability &&
@@ -658,35 +746,6 @@ const Reservas = () => {
   const amenityStart = amenityInfo ? readString(amenityInfo, ["horaInicio", "hora_inicio", "start"]) : "";
   const amenityEnd = amenityInfo ? readString(amenityInfo, ["horaFin", "hora_fin", "end"]) : "";
   const amenityNotes = amenityInfo ? readString(amenityInfo, ["descripcion", "description", "detalle"]) : "";
-  const getPdfUrl = (record: Record<string, any> | null, keys: string[]) => {
-    if (!record) return "";
-    for (const key of keys) {
-      const raw = record?.[key];
-      if (typeof raw !== "string") continue;
-      const trimmed = raw.trim();
-      if (!trimmed) continue;
-      const lower = trimmed.toLowerCase();
-      if (lower.endsWith(".pdf") || lower.startsWith("http://") || lower.startsWith("https://")) {
-        return trimmed;
-      }
-    }
-    return "";
-  };
-  const portalRulesPdfUrl = getPdfUrl(amenityInfo, [
-    "verreglamentos",
-    "ver_reglamentos",
-    "reglamento",
-    "reglamentos",
-    "reglamento_url",
-    "reglamentoUrl",
-    "url_reglamento",
-    "urlReglamento",
-    "pdfReglamento",
-    "pdf_reglamento",
-    "reglamento_pdf",
-  ]);
-  const rulesPdfUrl = selectedAmenity?.rules_pdf_url || portalRulesPdfUrl;
-
   useEffect(() => {
     if (page > totalPages) {
       setPage(totalPages);
@@ -782,6 +841,8 @@ const Reservas = () => {
                   setSelectedAmenity(null);
                   setAmenityInfo(null);
                   setAvailabilitySlots([]);
+                  setAvailabilityStartTimes([]);
+                  setAvailabilityEndTimes([]);
                   setAvailabilityError(null);
                 }}
                 disabled={propertiesLoading || properties.length === 0}
@@ -870,14 +931,6 @@ const Reservas = () => {
                       )}
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowRulesDialog(true)}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    {t('reservations.viewRules')}
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -998,7 +1051,13 @@ const Reservas = () => {
                   id="startTime"
                   type="time"
                   value={newReservation.startTime}
-                  onChange={(e) => setNewReservation({ ...newReservation, startTime: e.target.value })}
+                  onChange={(e) =>
+                    setNewReservation((prev) => ({
+                      ...prev,
+                      startTime: e.target.value,
+                      endTime: prev.startTime === e.target.value ? prev.endTime : "",
+                    }))
+                  }
                 />
               </div>
               <div>
@@ -1025,6 +1084,68 @@ const Reservas = () => {
                         {slot.start} - {slot.end}
                       </span>
                     ))}
+                  </div>
+                  {!isSlotAvailable() && newReservation.startTime && newReservation.endTime && (
+                    <p className="text-xs text-red-600 mt-2">{t("reservations.error.notAvailable")}</p>
+                  )}
+                </>
+              ) : availabilityStartTimes.length > 0 ? (
+                <>
+                  <p className="font-medium text-foreground mb-2">Horas de inicio disponibles</p>
+                  <div className="flex flex-wrap gap-2">
+                    {availabilityStartTimes.map((time) => (
+                      <button
+                        key={time}
+                        type="button"
+                        className={cn(
+                          "rounded-full border px-3 py-1 text-xs transition-colors",
+                          newReservation.startTime === time
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "hover:border-primary/40"
+                        )}
+                        onClick={() =>
+                          setNewReservation((prev) => ({
+                            ...prev,
+                            startTime: time,
+                            endTime: prev.startTime === time ? prev.endTime : "",
+                          }))
+                        }
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3">
+                    <p className="font-medium text-foreground mb-2">Horas de fin disponibles</p>
+                    {newReservation.startTime ? (
+                      availabilityEndTimes.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {availabilityEndTimes.map((time) => (
+                            <button
+                              key={time}
+                              type="button"
+                              className={cn(
+                                "rounded-full border px-3 py-1 text-xs transition-colors",
+                                newReservation.endTime === time
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "hover:border-primary/40"
+                              )}
+                              onClick={() => setNewReservation({ ...newReservation, endTime: time })}
+                            >
+                              {time}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground">
+                          Selecciona una hora de inicio para ver los horarios de fin.
+                        </p>
+                      )
+                    ) : (
+                      <p className="text-muted-foreground">
+                        Selecciona una hora de inicio para ver los horarios de fin.
+                      </p>
+                    )}
                   </div>
                   {!isSlotAvailable() && newReservation.startTime && newReservation.endTime && (
                     <p className="text-xs text-red-600 mt-2">{t("reservations.error.notAvailable")}</p>
@@ -1088,43 +1209,6 @@ const Reservas = () => {
             </Button>
             <Button onClick={handleCreateReservation} disabled={submitting || !canSubmit}>
               {submitting ? "Creando..." : t('reservations.submit')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Rules Dialog */}
-      <Dialog open={showRulesDialog} onOpenChange={setShowRulesDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t('reservations.rulesTitle')}</DialogTitle>
-            <DialogDescription>
-              {selectedAmenity && getAmenityLabel(selectedAmenity)}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="prose prose-sm max-w-none">
-            <div className="whitespace-pre-wrap text-sm">
-              {selectedAmenity && (
-                i18n.language === 'en' && selectedAmenity.rules_en
-                  ? selectedAmenity.rules_en
-                  : selectedAmenity.rules_es || 'No hay reglamento disponible'
-              )}
-            </div>
-            {rulesPdfUrl && (
-              <div className="mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => window.open(rulesPdfUrl, "_blank", "noopener,noreferrer")}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Ver reglamento (PDF)
-                </Button>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setShowRulesDialog(false)}>
-              Cerrar
             </Button>
           </DialogFooter>
         </DialogContent>
