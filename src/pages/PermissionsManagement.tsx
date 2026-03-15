@@ -508,7 +508,7 @@ const PermissionsManagement = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-secondary flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-zinc-950 flex items-center gap-2">
             <Lock className="w-8 h-8" />
             {t("permissions.title")}
           </h1>

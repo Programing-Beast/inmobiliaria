@@ -2,7 +2,8 @@
   "header": {
     "title": "Residents Portal",
     "contactAgent": "Contact agent",
-    "login": "Sign in"
+    "login": "Sign in",
+    "searchPlaceholder": "Search"
   },
   "roles": {
     "title": "Roles Management",

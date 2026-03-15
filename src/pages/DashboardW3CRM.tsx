@@ -283,7 +283,7 @@ const DashboardW3CRM = () => {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-secondary">{t('dashboard.title')}</h1>
+          <h1 className="text-2xl font-bold text-zinc-950">{t('dashboard.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {t('dashboard.subtitle')}
           </p>

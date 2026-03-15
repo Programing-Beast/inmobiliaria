@@ -15,12 +15,14 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { UnitSwitcher } from "@/components/UnitSwitcher";
 import { OwnerContextSwitcher } from "@/components/OwnerContextSwitcher";
+import { useTranslation } from "react-i18next";
 
 interface HeaderProps {
   onMenuClick?: () => void;
 }
 
 const Header = ({ onMenuClick }: HeaderProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
 
@@ -58,7 +60,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
   };
 
   return (
-    <header className="header-sticky w-full bg-white border-b border-border shadow-header z-50">
+    <header className="header-sticky z-50 w-full border-b border-orange-100 bg-white/95 shadow-header backdrop-blur">
       <div className="flex items-center justify-between px-4 h-16">
         {/* Left side - Search */}
         <div className="flex items-center gap-4 flex-1">
@@ -73,12 +75,12 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           </Button>
 
           {/* Search bar */}
-          <div className="hidden md:flex items-center relative max-w-md w-full">
-            <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
+          <div className="relative hidden w-full max-w-xl items-center md:flex">
+            <Search className="pointer-events-none absolute left-4 h-4 w-4 text-primary" />
             <Input
               type="text"
-              placeholder="Search"
-              className="pl-10 h-10 bg-muted/50 border-0 focus-visible:ring-1"
+              placeholder={t("header.searchPlaceholder")}
+              className="h-12 rounded-full border border-primary/35 bg-orange-50/80 pl-11 pr-4 text-sm text-zinc-800 shadow-[0_0_0_3px_rgba(255,92,0,0.12)] placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-0"
             />
           </div>
         </div>

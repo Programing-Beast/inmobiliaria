@@ -303,11 +303,11 @@ export const portalCreateReservation = (payload: {
 
 export const portalCreateIncident = (payload: {
   idPropiedad: number | string;
-  idUnidad: number | string;
+  idUnidad?: number | string | null;
   titulo: string;
   descripcion: string;
-  prioridad: string;
-  idQuincho?: number | string;
+  prioridad?: string | null;
+  idQuincho?: number | string | null;
 }) => portalRequest("incidencias", { method: "POST", body: payload });
 
 export const portalUpdateIncident = (

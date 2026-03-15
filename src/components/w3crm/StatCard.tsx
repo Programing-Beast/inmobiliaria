@@ -50,7 +50,7 @@ export const StatCard = ({
       <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-full blur-2xl -z-10" />
 
       <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="text-sm font-bold text-zinc-950">
           {title}
         </CardTitle>
         <div className={cn(
@@ -63,7 +63,7 @@ export const StatCard = ({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-secondary tracking-tight">{value}</div>
+        <div className="text-2xl font-bold tracking-tight text-zinc-950">{value}</div>
         {trend && (
           <div className="flex items-center gap-2 mt-2">
             <div className={cn(

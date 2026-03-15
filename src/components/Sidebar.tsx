@@ -150,15 +150,15 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed lg:sticky top-0 left-0 z-50 h-screen bg-white border-r border-border transition-all duration-300 flex flex-col",
+          "fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-zinc-800 bg-zinc-950 text-zinc-100 transition-all duration-300 lg:sticky",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           collapsed ? "w-20" : "w-64"
         )}
       >
         {/* Logo Section */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-800 px-4">
           {!collapsed && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm">
               <img src={logoOriginal} alt="Logo" className="h-8 w-auto" />
             </div>
           )}
@@ -167,7 +167,7 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden h-8 w-8"
+            className="h-8 w-8 text-zinc-100 hover:bg-zinc-900 hover:text-white lg:hidden"
             onClick={onClose}
           >
             <X className="h-5 w-5" />
@@ -177,7 +177,7 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
           <Button
             variant="ghost"
             size="icon"
-            className="hidden lg:flex h-8 w-8"
+            className="hidden h-8 w-8 text-zinc-300 hover:bg-zinc-900 hover:text-white lg:flex"
             onClick={() => setCollapsed(!collapsed)}
           >
             <ChevronRight className={cn(
@@ -190,7 +190,7 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
           {!collapsed && (
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-3">
+            <div className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
               Main Menu
             </div>
           )}
@@ -202,11 +202,11 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
                 to={item.path}
                 onClick={onClose}
                 className={({ isActive }) => cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group",
-                  "hover:bg-muted/80",
+                  "group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all",
+                  "hover:bg-zinc-900 hover:text-white",
                   isActive
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "bg-primary text-white shadow-[0_10px_30px_rgba(255,92,0,0.35)]"
+                    : "text-zinc-300",
                   collapsed && "justify-center"
                 )}
               >
@@ -214,10 +214,10 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
                   <>
                     <item.icon className={cn(
                       "h-5 w-5 shrink-0",
-                      isActive && "text-primary"
+                      isActive ? "text-white" : "text-zinc-400 group-hover:text-white"
                     )} />
                     {!collapsed && (
-                      <span className="text-sm">{item.label}</span>
+                      <span className="text-sm font-medium">{item.label}</span>
                     )}
                   </>
                 )}
@@ -228,9 +228,9 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
         </nav>
 
         {/* User Section at Bottom */}
-        <div className="border-t border-border p-3 shrink-0">
+        <div className="shrink-0 border-t border-zinc-800 p-3">
         <div className={cn(
-            "flex items-center gap-3 p-2 rounded-lg bg-muted/50",
+            "flex items-center gap-3 rounded-xl bg-zinc-900 p-3",
             collapsed && "justify-center"
           )}>
             <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold shrink-0">
@@ -238,8 +238,8 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{displayName}</p>
-                <p className="text-xs text-muted-foreground truncate">{roleLabel}</p>
+                <p className="truncate text-sm font-medium text-white">{displayName}</p>
+                <p className="truncate text-xs text-zinc-400">{roleLabel}</p>
               </div>
             )}
           </div>

@@ -765,7 +765,7 @@ const Reservas = () => {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('reservations.title')}</h1>
+            <h1 className="text-3xl font-bold text-zinc-950">{t('reservations.title')}</h1>
             <p className="text-muted-foreground mt-1">{t('reservations.subtitle')}</p>
           </div>
           <Button className="bg-primary hover:bg-primary/90 shadow-lg gap-2" disabled>
@@ -789,7 +789,7 @@ const Reservas = () => {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('reservations.title')}</h1>
+            <h1 className="text-3xl font-bold text-zinc-950">{t('reservations.title')}</h1>
             <p className="text-muted-foreground mt-1">{t('reservations.subtitle')}</p>
           </div>
           <Button className="bg-primary hover:bg-primary/90 shadow-lg gap-2" disabled>
@@ -815,7 +815,7 @@ const Reservas = () => {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">{t('reservations.title')}</h1>
+          <h1 className="text-3xl font-bold text-zinc-950">{t('reservations.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('reservations.subtitle')}</p>
         </div>
         <Button

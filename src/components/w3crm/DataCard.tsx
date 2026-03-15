@@ -36,9 +36,9 @@ export const DataCard = ({
 
       <CardHeader className="flex flex-row items-start justify-between space-y-0 relative z-10">
         <div className="flex-1">
-          <CardTitle className="text-lg font-semibold text-secondary tracking-tight">{title}</CardTitle>
+          <CardTitle className="text-lg font-bold text-zinc-950 tracking-tight">{title}</CardTitle>
           {description && (
-            <CardDescription className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+            <CardDescription className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
               {description}
             </CardDescription>
           )}

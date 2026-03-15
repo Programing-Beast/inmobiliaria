@@ -2,18 +2,24 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockEnsurePortalAuth = vi.hoisted(() => vi.fn());
 const mockPortalGetAmenityAvailability = vi.hoisted(() => vi.fn());
+const mockPortalCreateIncident = vi.hoisted(() => vi.fn());
 const mockPortalCreateReservation = vi.hoisted(() => vi.fn());
+const mockCreateIncident = vi.hoisted(() => vi.fn());
 const mockCreateReservation = vi.hoisted(() => vi.fn());
 const mockGetAmenityPortalId = vi.hoisted(() => vi.fn());
+const mockGetBuildingAmenities = vi.hoisted(() => vi.fn());
+const mockGetBuildingPortalId = vi.hoisted(() => vi.fn());
 const mockGetUserPrimaryUnit = vi.hoisted(() => vi.fn());
 const mockGetUserProfile = vi.hoisted(() => vi.fn());
+const mockGetUnit = vi.hoisted(() => vi.fn());
 const mockGetUnitPortalId = vi.hoisted(() => vi.fn());
+const mockUpdateIncidentPortalId = vi.hoisted(() => vi.fn());
 const mockUpdateReservationPortalId = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/portal-api", () => ({
   ensurePortalAuth: mockEnsurePortalAuth,
   portalCreateAuthUsuario: vi.fn(),
-  portalCreateIncident: vi.fn(),
+  portalCreateIncident: mockPortalCreateIncident,
   portalCreateReservation: mockPortalCreateReservation,
   portalApproveReservation: vi.fn(),
   portalGetAmenityAvailability: mockPortalGetAmenityAvailability,
@@ -24,24 +30,26 @@ vi.mock("@/lib/portal-api", () => ({
 }));
 
 vi.mock("@/lib/supabase", () => ({
-  createIncident: vi.fn(),
+  createIncident: mockCreateIncident,
   createReservation: mockCreateReservation,
   createAmenity: vi.fn(),
   createBuilding: vi.fn(),
   createUnit: vi.fn(),
   getAmenityPortalId: mockGetAmenityPortalId,
+  getBuildingAmenities: mockGetBuildingAmenities,
   getAmenityByNameInBuilding: vi.fn(),
   getAmenityByPortalId: vi.fn(),
-  getBuildingPortalId: vi.fn(),
+  getBuildingPortalId: mockGetBuildingPortalId,
   getBuildingByName: vi.fn(),
   getBuildingByPortalId: vi.fn(),
   getUserPrimaryUnit: mockGetUserPrimaryUnit,
   getUserProfile: mockGetUserProfile,
+  getUnit: mockGetUnit,
   getUnitPortalId: mockGetUnitPortalId,
   getUnitByNumberInBuilding: vi.fn(),
   getUnitByPortalId: vi.fn(),
   updateIncident: vi.fn(),
-  updateIncidentPortalId: vi.fn(),
+  updateIncidentPortalId: mockUpdateIncidentPortalId,
   updateAmenity: vi.fn(),
   updateBuilding: vi.fn(),
   updateReservationPortalId: mockUpdateReservationPortalId,
@@ -51,10 +59,12 @@ vi.mock("@/lib/supabase", () => ({
 
 vi.unmock("@/lib/portal-sync");
 
+let createIncidentSynced: typeof import("@/lib/portal-sync").createIncidentSynced;
 let createReservationSynced: typeof import("@/lib/portal-sync").createReservationSynced;
+let retrySyncQueue: typeof import("@/lib/portal-sync").retrySyncQueue;
 
 beforeAll(async () => {
-  ({ createReservationSynced } = await import("@/lib/portal-sync"));
+  ({ createIncidentSynced, createReservationSynced, retrySyncQueue } = await import("@/lib/portal-sync"));
 });
 
 beforeEach(() => {
@@ -68,8 +78,16 @@ beforeEach(() => {
     data: { data: [{ horaInicio: "10:00", horaFin: "12:00" }] },
     error: null,
   });
+  mockPortalCreateIncident.mockResolvedValue({
+    data: { data: { idIncidencia: 654 } },
+    error: null,
+  });
   mockPortalCreateReservation.mockResolvedValue({
     data: { data: { idReserva: 321 } },
+    error: null,
+  });
+  mockCreateIncident.mockResolvedValue({
+    incident: { id: "incident-1" },
     error: null,
   });
   mockCreateReservation.mockResolvedValue({
@@ -77,16 +95,26 @@ beforeEach(() => {
     error: null,
   });
   mockGetAmenityPortalId.mockResolvedValue(202);
+  mockGetBuildingAmenities.mockResolvedValue({
+    amenities: [{ id: "amenity-1", portal_id: 202 }],
+    error: null,
+  });
+  mockGetBuildingPortalId.mockResolvedValue(303);
   mockGetUserPrimaryUnit.mockResolvedValue({ primaryUnitId: "unit-1", error: null });
   mockGetUserProfile.mockResolvedValue({
     profile: { id: "user-1", unit_id: "unit-1" },
     error: null,
   });
+  mockGetUnit.mockResolvedValue({
+    unit: { id: "unit-1", building_id: "building-1" },
+    error: null,
+  });
   mockGetUnitPortalId.mockResolvedValue(101);
+  mockUpdateIncidentPortalId.mockResolvedValue({ error: null });
   mockUpdateReservationPortalId.mockResolvedValue({ error: null });
 });
 
-const buildParams = () => ({
+const buildReservationParams = () => ({
   email: "user@example.com",
   portalFields: {
     razonSocial: "Test User",
@@ -104,6 +132,23 @@ const buildParams = () => ({
   },
 });
 
+const buildIncidentParams = () => ({
+  email: "user@example.com",
+  portalFields: {
+    titulo: "Nueva incidencia",
+    descripcion: "Descripcion de prueba",
+    prioridad: "MEDIA",
+  },
+  localPayload: {
+    userId: "user-1",
+    buildingId: "building-1",
+    type: "maintenance" as const,
+    title: "Nueva incidencia",
+    description: "Descripcion de prueba",
+    priority: "MEDIA",
+  },
+});
+
 describe("createReservationSynced", () => {
   it("blocks reservation creation when the selected date has no available slots", async () => {
     mockPortalGetAmenityAvailability.mockResolvedValue({
@@ -111,7 +156,7 @@ describe("createReservationSynced", () => {
       error: null,
     });
 
-    const result = await createReservationSynced(buildParams());
+    const result = await createReservationSynced(buildReservationParams());
 
     expect(result.error).toMatchObject({
       message: "No hay horarios disponibles para esta fecha",
@@ -127,9 +172,9 @@ describe("createReservationSynced", () => {
     });
 
     const result = await createReservationSynced({
-      ...buildParams(),
+      ...buildReservationParams(),
       localPayload: {
-        ...buildParams().localPayload,
+        ...buildReservationParams().localPayload,
         startTime: "10:00",
         endTime: "11:00",
       },
@@ -159,7 +204,7 @@ describe("createReservationSynced", () => {
         error: null,
       });
 
-    const result = await createReservationSynced(buildParams());
+    const result = await createReservationSynced(buildReservationParams());
 
     expect(result.error).toBeNull();
     expect(mockPortalGetAmenityAvailability).toHaveBeenCalledTimes(2);
@@ -180,11 +225,111 @@ describe("createReservationSynced", () => {
       error: { message: "Missing portal auth token" },
     });
 
-    const result = await createReservationSynced(buildParams());
+    const result = await createReservationSynced(buildReservationParams());
 
     expect(result.error).toBeNull();
     expect(result.queued).toBe(true);
     expect(mockPortalGetAmenityAvailability).not.toHaveBeenCalled();
     expect(mockCreateReservation).toHaveBeenCalledOnce();
+  });
+});
+
+describe("createIncidentSynced", () => {
+  it("retries validation failures with hidden unit and amenity fallbacks", async () => {
+    mockPortalCreateIncident
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          message: "Error de validacion",
+          status: 409,
+          details: "Formato JSON invalido o faltan claves request",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { data: { idIncidencia: 654 } },
+        error: null,
+      });
+
+    const result = await createIncidentSynced(buildIncidentParams());
+
+    expect(result.error).toBeNull();
+    expect(result.queued).toBe(false);
+    expect(mockPortalCreateIncident).toHaveBeenCalledTimes(2);
+    expect(mockPortalCreateIncident).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        idPropiedad: 303,
+        titulo: "Nueva incidencia",
+        descripcion: "Descripcion de prueba",
+        prioridad: "MEDIA",
+      })
+    );
+    expect(mockPortalCreateIncident.mock.calls[0][0]).not.toHaveProperty("idUnidad");
+    expect(mockPortalCreateIncident.mock.calls[0][0]).not.toHaveProperty("idQuincho");
+    expect(mockPortalCreateIncident).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        idPropiedad: 303,
+        idUnidad: 101,
+        titulo: "Nueva incidencia",
+        descripcion: "Descripcion de prueba",
+        prioridad: "MEDIA",
+        idQuincho: 202,
+      })
+    );
+    expect(mockCreateIncident).toHaveBeenCalledWith(
+      "user-1",
+      "building-1",
+      "maintenance",
+      "Nueva incidencia",
+      "Descripcion de prueba",
+      undefined,
+      "MEDIA",
+      654
+    );
+  });
+
+  it("retries queued incident jobs with the same fallback context", async () => {
+    mockEnsurePortalAuth
+      .mockResolvedValueOnce({
+        token: null,
+        error: { message: "Missing portal auth token" },
+      })
+      .mockResolvedValue({
+        token: "portal-token",
+        error: null,
+      });
+
+    mockPortalCreateIncident
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          message: "Error de validacion",
+          status: 409,
+          details: "Formato JSON invalido o faltan claves request",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { data: { idIncidencia: 987 } },
+        error: null,
+      });
+
+    const queuedResult = await createIncidentSynced(buildIncidentParams());
+    expect(queuedResult.queued).toBe(true);
+    expect(mockPortalCreateIncident).not.toHaveBeenCalled();
+
+    const retryResult = await retrySyncQueue("user@example.com");
+
+    expect(retryResult).toEqual({ processed: 1, remaining: 0 });
+    expect(mockPortalCreateIncident).toHaveBeenCalledTimes(2);
+    expect(mockPortalCreateIncident.mock.calls[0][0]).not.toHaveProperty("idUnidad");
+    expect(mockPortalCreateIncident).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        idUnidad: 101,
+        idQuincho: 202,
+        prioridad: "MEDIA",
+      })
+    );
   });
 });

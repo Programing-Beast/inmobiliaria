@@ -162,7 +162,7 @@ const Profile = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Profile</h1>
+        <h1 className="text-3xl font-bold text-zinc-950">Profile</h1>
         <p className="text-muted-foreground mt-1">View and manage your profile information</p>
       </div>
 

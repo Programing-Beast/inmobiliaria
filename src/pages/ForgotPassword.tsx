@@ -56,7 +56,7 @@ const ForgotPassword = () => {
             <>
               {/* Title */}
               <div className="text-center mb-8 animate-in fade-in slide-in-from-top-6 duration-700 delay-100">
-                <h1 className="text-3xl font-bold text-secondary mb-3">
+                <h1 className="text-3xl font-bold text-zinc-950 mb-3">
                   {t('forgotPassword.title')}
                 </h1>
                 <p className="text-sm text-muted-foreground leading-relaxed">
@@ -127,7 +127,7 @@ const ForgotPassword = () => {
                   </div>
                 </div>
 
-                <h2 className="text-3xl font-bold text-secondary mb-3">
+                <h2 className="text-3xl font-bold text-zinc-950 mb-3">
                   Check Your Email
                 </h2>
                 <p className="text-sm text-muted-foreground mb-8 leading-relaxed">

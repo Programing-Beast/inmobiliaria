@@ -2,7 +2,8 @@
   "header": {
     "title": "Portal de Residentes",
     "contactAgent": "Contactar agente",
-    "login": "Ingresar"
+    "login": "Ingresar",
+    "searchPlaceholder": "Buscá..."
   },
   "roles": {
     "title": "Gestión de Roles",
@@ -78,10 +79,10 @@
     "errorGeneric": "Error al iniciar sesión",
     "success": "¡Sesión iniciada exitosamente!",
     "unexpectedError": "Error inesperado al iniciar sesión",
-    "heroTitle": "Gestión inmobiliaria, en un solo lugar",
-    "heroSubtitle": "Consultá expensas, comunicados y servicios de tu edificio de forma simple y segura.",
+    "heroTitle": "Gestión de Administración de Consorcios, en un solo lugar.",
+    "heroSubtitle": "Consultá expensas, facturas, reservas y comunicados de forma simple y segura.",
     "heroBullet1": "Gestión simple y rápida",
-    "heroBullet2": "Datos seguros y cifrados",
+    "heroBullet2": "Datos seguros",
     "heroBullet3": "Soporte cuando lo necesitás"
   },
   "register": {
@@ -148,7 +149,7 @@
     "upcomingReservations": "Próximas Reservas",
     "upcomingReservationsDesc": "Reservas de amenities confirmadas",
     "financialSummary": "Resumen Financiero",
-    "financialSummaryDesc": "Pagos mensuales del edificio",
+    "financialSummaryDesc": "Encontrá en el módulo de finanzas:\nFacturas\nRecibos\nInformes generales",
     "recentActivity": "Actividad Reciente",
     "recentActivityDesc": "Últimas acciones en el edificio",
     "viewAll": "Ver Todos",
