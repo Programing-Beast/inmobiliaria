@@ -146,9 +146,9 @@ const portalRequest = async <T>(
 ): Promise<PortalResponse<T>> => {
   const { method = "GET", body, headers, params } = options || {};
   const url = buildUrl(path, params);
+  const email = getPortalAuthEmail();
   let auth = getPortalAuth();
   if (!auth && path !== "auth/login") {
-    const email = getPortalAuthEmail();
     if (email) {
       await portalLogin(email);
       auth = getPortalAuth();
@@ -161,6 +161,9 @@ const portalRequest = async <T>(
     Accept: "application/json",
     ...headers,
   };
+  if (email && path !== "auth/login" && !requestHeaders.correo) {
+    requestHeaders.correo = email;
+  }
 
   if (body) {
     requestHeaders["Content-Type"] = "application/json";

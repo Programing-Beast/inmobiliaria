@@ -48,6 +48,7 @@ const Incidencias = () => {
   const [submitting, setSubmitting] = useState(false);
   const [allowedPropertyIds, setAllowedPropertyIds] = useState<number[]>([]);
   const [allowedPropertyNames, setAllowedPropertyNames] = useState<string[]>([]);
+  const [allowedPropertiesLoaded, setAllowedPropertiesLoaded] = useState(false);
   const defaultLocalPriority = "low";
   const defaultType = "maintenance";
 
@@ -107,6 +108,10 @@ const Incidencias = () => {
       "propiedad_id",
       "propiedadIdPortal",
       "idPropiedadPortal",
+      "idCondominio",
+      "condominio_id",
+      "propertyId",
+      "id",
     ]);
 
   const getIncidentPropertyName = (incident: Record<string, any>) =>
@@ -120,24 +125,26 @@ const Incidencias = () => {
       "building_name",
     ]);
 
-  const fetchIncidents = async () => {
+  const fetchIncidents = async (options?: { silent?: boolean }) => {
     setLoading(true);
     try {
       const { data, error } = await portalGetDashboardIncidents();
       if (error) {
         console.error("Error fetching incidents:", error);
-        toast.error("No se pudieron cargar las incidencias");
+        if (!options?.silent) {
+          toast.error("No se pudieron cargar las incidencias");
+        }
         return;
       }
-      const rawIncidents = (data as any)?.data || [];
-      if (!isSuperAdmin && (allowedPropertyIds.length || allowedPropertyNames.length)) {
+      const rawIncidents = toPortalList(data);
+      if (!isSuperAdmin) {
         const allowedIds = new Set(allowedPropertyIds);
-        const allowedNames = new Set(allowedPropertyNames.map((name) => name.toLowerCase()));
+        const allowedNames = new Set(allowedPropertyNames.map((name) => normalizeText(name)));
         const filtered = rawIncidents.filter((incident: any) => {
           const propertyId = getIncidentPropertyId(incident);
           if (propertyId !== null && allowedIds.has(propertyId)) return true;
           const propertyName = getIncidentPropertyName(incident);
-          if (propertyName && allowedNames.has(propertyName.toLowerCase())) return true;
+          if (propertyName && allowedNames.has(normalizeText(propertyName))) return true;
           return false;
         });
         setIncidents(filtered);
@@ -146,56 +153,83 @@ const Incidencias = () => {
       }
     } catch (error) {
       console.error("Error:", error);
-      toast.error("No se pudieron cargar las incidencias");
+      if (!options?.silent) {
+        toast.error("No se pudieron cargar las incidencias");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (!profile) return;
+    if (!isSuperAdmin && !allowedPropertiesLoaded) return;
     fetchIncidents();
-  }, [allowedPropertyIds, allowedPropertyNames, isSuperAdmin]);
+  }, [allowedPropertyIds, allowedPropertyNames, allowedPropertiesLoaded, isSuperAdmin, profile]);
 
   useEffect(() => {
     const fetchAllowedProperties = async () => {
+      setAllowedPropertiesLoaded(false);
       if (!profile || isSuperAdmin) {
         setAllowedPropertyIds([]);
         setAllowedPropertyNames([]);
+        setAllowedPropertiesLoaded(true);
         return;
       }
 
-      if (profile.building_id) {
-        const { building } = await getBuilding(profile.building_id);
-        const portalId = building?.portal_id ?? null;
-        const name = building?.name || "";
-        setAllowedPropertyIds(portalId ? [portalId] : []);
-        setAllowedPropertyNames(name ? [name] : []);
-        return;
+      try {
+        if (profile.building_id) {
+          const { building } = await getBuilding(profile.building_id);
+          const portalId = building?.portal_id ?? null;
+          const name = building?.name || "";
+          setAllowedPropertyIds(portalId ? [portalId] : []);
+          setAllowedPropertyNames(name ? [name] : []);
+          return;
+        }
+
+        const result = await portalGetAllMyProperties();
+        if (result.error) {
+          console.error("Error fetching portal properties:", result.error);
+          setAllowedPropertyIds([]);
+          setAllowedPropertyNames([]);
+          return;
+        }
+
+        const portalProperties = toPortalList(result.data);
+        const ids = portalProperties
+          .map((property) =>
+            readNumber(property, [
+              "idPropiedad",
+              "id_propiedad",
+              "propiedadId",
+              "propiedad_id",
+              "idCondominio",
+              "condominio_id",
+              "propertyId",
+              "id",
+            ])
+          )
+          .filter((value): value is number => value !== null);
+        const names = portalProperties
+          .map((property) =>
+            readString(property, [
+              "nombre",
+              "name",
+              "razonSocial",
+              "razon_social",
+              "propiedad",
+              "condominio",
+              "property",
+            ])
+          )
+          .filter(Boolean);
+
+        console.log("[portal] allowed property IDs", ids);
+        setAllowedPropertyIds(ids);
+        setAllowedPropertyNames(names);
+      } finally {
+        setAllowedPropertiesLoaded(true);
       }
-
-      const result = await portalGetAllMyProperties();
-      if (result.error) {
-        console.error("Error fetching portal properties:", result.error);
-        setAllowedPropertyIds([]);
-        setAllowedPropertyNames([]);
-        return;
-      }
-
-      const portalProperties = toPortalList(result.data);
-      const ids = portalProperties
-        .map((property) =>
-          readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"])
-        )
-        .filter((value): value is number => value !== null);
-      const names = portalProperties
-        .map((property) =>
-          readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"])
-        )
-        .filter(Boolean);
-
-      console.log("[portal] allowed property IDs", ids);
-      setAllowedPropertyIds(ids);
-      setAllowedPropertyNames(names);
     };
 
     fetchAllowedProperties();
@@ -203,6 +237,11 @@ const Incidencias = () => {
 
   useEffect(() => {
     const fetchBuildings = async () => {
+      if (!profile) {
+        setBuildings([]);
+        return;
+      }
+
       if (profile?.building_id && !isSuperAdmin) {
         const { building } = await getBuilding(profile.building_id);
         const fallbackName = (profile as any)?.building?.name || "Propiedad";
@@ -210,23 +249,47 @@ const Incidencias = () => {
         setNewIncident((prev) => ({ ...prev, buildingId: profile.building_id }));
         return;
       }
+
+      if (!isSuperAdmin && !allowedPropertiesLoaded) {
+        return;
+      }
+
+      if (!isSuperAdmin && allowedPropertyIds.length === 0 && allowedPropertyNames.length === 0) {
+        setBuildings([]);
+        setNewIncident((prev) => ({ ...prev, buildingId: "", unitId: "" }));
+        return;
+      }
+
       const { buildings: fetchedBuildings, error } = await getAllBuildings();
       if (error) {
         console.error("Error fetching buildings:", error);
         return;
       }
+
       let buildingsToShow = fetchedBuildings || [];
-      if (!isSuperAdmin && allowedPropertyIds.length > 0) {
+      if (!isSuperAdmin) {
         const allowedIds = new Set(allowedPropertyIds);
+        const allowedNames = new Set(allowedPropertyNames.map((name) => normalizeText(name)));
         buildingsToShow = buildingsToShow.filter((building) =>
-          building?.portal_id !== null && allowedIds.has(building.portal_id)
+          (building?.portal_id !== null && building?.portal_id !== undefined && allowedIds.has(building.portal_id)) ||
+          (building?.name && allowedNames.has(normalizeText(building.name)))
         );
       }
       setBuildings(buildingsToShow);
+
+      setNewIncident((prev) => {
+        const hasSelectedBuilding = buildingsToShow.some((building) => building.id === prev.buildingId);
+        if (hasSelectedBuilding) return prev;
+        return {
+          ...prev,
+          buildingId: buildingsToShow[0]?.id || "",
+          unitId: "",
+        };
+      });
     };
 
     fetchBuildings();
-  }, [profile?.building_id, profile?.building?.name, allowedPropertyIds, isSuperAdmin]);
+  }, [profile, profile?.building_id, profile?.building?.name, allowedPropertyIds, allowedPropertyNames, allowedPropertiesLoaded, isSuperAdmin]);
 
   const ensureBuildingPortalMapping = async (buildingId: string) => {
     const { building } = await getBuilding(buildingId);
@@ -335,7 +398,7 @@ const Incidencias = () => {
         buildingId: profile?.building_id || "",
         unitId: "",
       });
-      fetchIncidents();
+      await fetchIncidents({ silent: true });
     } catch (error) {
       console.error("Error:", error);
       toast.error("No se pudo crear la incidencia");
@@ -380,7 +443,7 @@ const Incidencias = () => {
       toast.success("Incidencia actualizada");
       setShowUpdateDialog(false);
       setSelectedIncident(null);
-      fetchIncidents();
+      await fetchIncidents({ silent: true });
     } catch (error) {
       console.error("Error:", error);
       toast.error("No se pudo actualizar la incidencia");
