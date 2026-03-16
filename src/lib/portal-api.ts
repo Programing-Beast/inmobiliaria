@@ -306,8 +306,6 @@ export const portalCreateIncident = (payload: {
   idUnidad?: number | string | null;
   titulo: string;
   descripcion: string;
-  prioridad?: string | null;
-  idQuincho?: number | string | null;
 }) => portalRequest("incidencias", { method: "POST", body: payload });
 
 export const portalUpdateIncident = (
@@ -315,8 +313,6 @@ export const portalUpdateIncident = (
   payload: {
     titulo?: string;
     descripcion?: string;
-    prioridad?: string;
-    estado?: string;
   }
 ) => portalRequest(`incidencias/${incidentId}`, { method: "PUT", body: payload });
 

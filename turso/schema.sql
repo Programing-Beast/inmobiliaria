@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS incidents (
     description TEXT NOT NULL,
     status TEXT DEFAULT 'open' CHECK(status IN ('open', 'in_progress', 'resolved', 'closed')),
     location TEXT,
-    priority TEXT DEFAULT 'medium',
+    priority TEXT DEFAULT 'low',
     assigned_to TEXT,
     resolved_at TEXT,
     created_at TEXT DEFAULT (datetime('now')),

@@ -137,7 +137,6 @@ const buildIncidentParams = () => ({
   portalFields: {
     titulo: "Nueva incidencia",
     descripcion: "Descripcion de prueba",
-    prioridad: "MEDIA",
   },
   localPayload: {
     userId: "user-1",
@@ -145,7 +144,7 @@ const buildIncidentParams = () => ({
     type: "maintenance" as const,
     title: "Nueva incidencia",
     description: "Descripcion de prueba",
-    priority: "MEDIA",
+    priority: "low",
   },
 });
 
@@ -235,48 +234,27 @@ describe("createReservationSynced", () => {
 });
 
 describe("createIncidentSynced", () => {
-  it("retries validation failures with hidden unit and amenity fallbacks", async () => {
-    mockPortalCreateIncident
-      .mockResolvedValueOnce({
-        data: null,
-        error: {
-          message: "Error de validacion",
-          status: 409,
-          details: "Formato JSON invalido o faltan claves request",
-        },
-      })
-      .mockResolvedValueOnce({
-        data: { data: { idIncidencia: 654 } },
-        error: null,
-      });
+  it("creates incidents with the simplified payload and relies on API defaults", async () => {
+    mockPortalCreateIncident.mockResolvedValueOnce({
+      data: { data: { idIncidencia: 654 } },
+      error: null,
+    });
 
     const result = await createIncidentSynced(buildIncidentParams());
 
     expect(result.error).toBeNull();
     expect(result.queued).toBe(false);
-    expect(mockPortalCreateIncident).toHaveBeenCalledTimes(2);
-    expect(mockPortalCreateIncident).toHaveBeenNthCalledWith(
-      1,
+    expect(mockPortalCreateIncident).toHaveBeenCalledTimes(1);
+    expect(mockPortalCreateIncident).toHaveBeenCalledWith(
       expect.objectContaining({
         idPropiedad: 303,
         titulo: "Nueva incidencia",
         descripcion: "Descripcion de prueba",
-        prioridad: "MEDIA",
       })
     );
     expect(mockPortalCreateIncident.mock.calls[0][0]).not.toHaveProperty("idUnidad");
     expect(mockPortalCreateIncident.mock.calls[0][0]).not.toHaveProperty("idQuincho");
-    expect(mockPortalCreateIncident).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        idPropiedad: 303,
-        idUnidad: 101,
-        titulo: "Nueva incidencia",
-        descripcion: "Descripcion de prueba",
-        prioridad: "MEDIA",
-        idQuincho: 202,
-      })
-    );
+    expect(mockPortalCreateIncident.mock.calls[0][0]).not.toHaveProperty("prioridad");
     expect(mockCreateIncident).toHaveBeenCalledWith(
       "user-1",
       "building-1",
@@ -284,12 +262,12 @@ describe("createIncidentSynced", () => {
       "Nueva incidencia",
       "Descripcion de prueba",
       undefined,
-      "MEDIA",
+      "low",
       654
     );
   });
 
-  it("retries queued incident jobs with the same fallback context", async () => {
+  it("retries queued incident jobs with the simplified payload", async () => {
     mockEnsurePortalAuth
       .mockResolvedValueOnce({
         token: null,
@@ -300,19 +278,10 @@ describe("createIncidentSynced", () => {
         error: null,
       });
 
-    mockPortalCreateIncident
-      .mockResolvedValueOnce({
-        data: null,
-        error: {
-          message: "Error de validacion",
-          status: 409,
-          details: "Formato JSON invalido o faltan claves request",
-        },
-      })
-      .mockResolvedValueOnce({
-        data: { data: { idIncidencia: 987 } },
-        error: null,
-      });
+    mockPortalCreateIncident.mockResolvedValueOnce({
+      data: { data: { idIncidencia: 987 } },
+      error: null,
+    });
 
     const queuedResult = await createIncidentSynced(buildIncidentParams());
     expect(queuedResult.queued).toBe(true);
@@ -321,15 +290,9 @@ describe("createIncidentSynced", () => {
     const retryResult = await retrySyncQueue("user@example.com");
 
     expect(retryResult).toEqual({ processed: 1, remaining: 0 });
-    expect(mockPortalCreateIncident).toHaveBeenCalledTimes(2);
+    expect(mockPortalCreateIncident).toHaveBeenCalledTimes(1);
     expect(mockPortalCreateIncident.mock.calls[0][0]).not.toHaveProperty("idUnidad");
-    expect(mockPortalCreateIncident).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        idUnidad: 101,
-        idQuincho: 202,
-        prioridad: "MEDIA",
-      })
-    );
+    expect(mockPortalCreateIncident.mock.calls[0][0]).not.toHaveProperty("idQuincho");
+    expect(mockPortalCreateIncident.mock.calls[0][0]).not.toHaveProperty("prioridad");
   });
 });

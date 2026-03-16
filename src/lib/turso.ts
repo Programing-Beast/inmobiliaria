@@ -987,7 +987,7 @@ export const createIncident = async (
     await db.execute({
       sql: `INSERT INTO incidents (id, portal_id, user_id, building_id, type, title, description, location, priority, status, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
-      args: [id, portalId || null, userId, buildingId, type, title, description, location || null, priority || 'medium', timestamp, timestamp],
+      args: [id, portalId || null, userId, buildingId, type, title, description, location || null, priority || 'low', timestamp, timestamp],
     });
 
     const result = await db.execute({

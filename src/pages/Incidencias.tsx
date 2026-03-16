@@ -48,7 +48,7 @@ const Incidencias = () => {
   const [submitting, setSubmitting] = useState(false);
   const [allowedPropertyIds, setAllowedPropertyIds] = useState<number[]>([]);
   const [allowedPropertyNames, setAllowedPropertyNames] = useState<string[]>([]);
-  const defaultPriority = "MEDIA";
+  const defaultLocalPriority = "low";
   const defaultType = "maintenance";
 
   const [newIncident, setNewIncident] = useState({
@@ -59,7 +59,6 @@ const Incidencias = () => {
   });
 
   const [updateIncident, setUpdateIncident] = useState({
-    estado: "",
     titulo: "",
     descripcion: "",
   });
@@ -311,7 +310,6 @@ const Incidencias = () => {
         portalFields: {
           titulo: newIncident.titulo,
           descripcion: newIncident.descripcion,
-          prioridad: defaultPriority,
         },
         localPayload: {
           userId: profile?.id || "",
@@ -320,7 +318,7 @@ const Incidencias = () => {
           type: defaultType as "maintenance" | "complaint" | "suggestion",
           title: newIncident.titulo,
           description: newIncident.descripcion,
-          priority: defaultPriority,
+          priority: defaultLocalPriority,
         },
       });
 
@@ -349,16 +347,15 @@ const Incidencias = () => {
   const openUpdateDialog = (incident: any) => {
     setSelectedIncident(incident);
     setUpdateIncident({
-      estado: "",
       titulo: incident?.titulo || "",
-      descripcion: "",
+      descripcion: incident?.descripcion || "",
     });
     setShowUpdateDialog(true);
   };
 
   const handleUpdateIncident = async () => {
     if (!selectedIncident) return;
-    if (!updateIncident.estado && !updateIncident.titulo && !updateIncident.descripcion) {
+    if (!updateIncident.titulo.trim() && !updateIncident.descripcion.trim()) {
       toast.error("Ingresa al menos un campo para actualizar");
       return;
     }
@@ -366,7 +363,6 @@ const Incidencias = () => {
     setSubmitting(true);
     try {
       const portalPayload: any = {};
-      if (updateIncident.estado) portalPayload.estado = updateIncident.estado;
       if (updateIncident.titulo) portalPayload.titulo = updateIncident.titulo;
       if (updateIncident.descripcion) portalPayload.descripcion = updateIncident.descripcion;
       const incidentId = selectedIncident?.idIncidencia ?? selectedIncident?.id;
@@ -614,24 +610,6 @@ const Incidencias = () => {
             <DialogTitle>Actualizar incidencia</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Estado</label>
-              <Select
-                value={updateIncident.estado}
-                onValueChange={(value) => setUpdateIncident({ ...updateIncident, estado: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ABIERTA">ABIERTA</SelectItem>
-                  <SelectItem value="EN_PROCESO">EN_PROCESO</SelectItem>
-                  <SelectItem value="RESUELTA">RESUELTA</SelectItem>
-                  <SelectItem value="CERRADA">CERRADA</SelectItem>
-                  <SelectItem value="RECHAZADA">RECHAZADA</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div>
               <label className="text-sm font-medium">Titulo</label>
               <Input

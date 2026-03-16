@@ -142,17 +142,17 @@ const runSyncJob = async (job: SyncJob) => {
       return result;
     }
     case "incident": {
-      const { result } = await portalCreateIncidentWithFallback(
-        job.payload as PortalIncidentPayload,
-        job.localPayload as IncidentPortalFallbackContext | undefined
-      );
+      const { result } = await portalCreateIncidentWithFallback(job.payload as PortalIncidentPayload);
       return result;
     }
     case "incident_update": {
       const incidentId = job.payload?.incidentId as string | number | undefined;
       if (!incidentId) return { data: null, error: { message: "Missing incidentId" } };
-      const { incidentId: _unused, ...body } = job.payload;
-      return portalUpdateIncident(incidentId, body as any);
+      const body = {
+        titulo: typeof job.payload?.titulo === "string" ? job.payload.titulo : undefined,
+        descripcion: typeof job.payload?.descripcion === "string" ? job.payload.descripcion : undefined,
+      };
+      return portalUpdateIncident(incidentId, body);
     }
     case "approval_reservation": {
       const reservationId = job.payload?.reservationId as string | number | undefined;
@@ -262,15 +262,6 @@ type PortalIncidentPayload = {
   idUnidad?: number | string | null;
   titulo: string;
   descripcion: string;
-  prioridad?: string | null;
-  idQuincho?: number | string | null;
-};
-
-type IncidentPortalFallbackContext = {
-  userId?: string;
-  buildingId?: string;
-  unitId?: string;
-  amenityId?: string;
 };
 
 const normalizePortalIdentifier = (value: unknown): number | string | undefined => {
@@ -286,12 +277,6 @@ const normalizePortalIdentifier = (value: unknown): number | string | undefined 
   }
   return undefined;
 };
-
-const incidentDefaultPriority = ((import.meta.env.VITE_PORTAL_INCIDENT_DEFAULT_PRIORITY as string | undefined) || "MEDIA")
-  .trim()
-  .toUpperCase() || "MEDIA";
-const incidentDefaultUnitPortalId = normalizePortalIdentifier(import.meta.env.VITE_PORTAL_INCIDENT_DEFAULT_UNIT_ID);
-const incidentDefaultAmenityPortalId = normalizePortalIdentifier(import.meta.env.VITE_PORTAL_INCIDENT_DEFAULT_QUINCHO_ID);
 
 const formatPortalDateDmyHyphen = (value: string) => {
   const trimmed = (value || "").trim();
@@ -550,184 +535,27 @@ const getReservationPayloadSignature = (payload: PortalReservationPayload) =>
     payload.observacion || "",
   ]);
 
-const normalizeIncidentPriority = (value?: string | null) => {
-  const normalized = (value || "").trim().toUpperCase();
-  return normalized || incidentDefaultPriority;
-};
-
 const normalizePortalIncidentPayload = (payload: PortalIncidentPayload): PortalIncidentPayload => {
   const normalizedBuildingPortalId = normalizePortalIdentifier(payload.idPropiedad);
   const normalizedUnitPortalId = normalizePortalIdentifier(payload.idUnidad);
-  const normalizedAmenityPortalId = normalizePortalIdentifier(payload.idQuincho);
 
-  return {
-    ...payload,
+  const normalizedPayload: PortalIncidentPayload = {
     idPropiedad: normalizedBuildingPortalId ?? payload.idPropiedad,
-    idUnidad: normalizedUnitPortalId ?? undefined,
     titulo: (payload.titulo || "").trim(),
     descripcion: (payload.descripcion || "").trim(),
-    prioridad: normalizeIncidentPriority(payload.prioridad),
-    idQuincho: normalizedAmenityPortalId ?? undefined,
-  };
-};
-
-const shouldRetryIncidentWithFallback = (
-  error?: { message?: string; details?: string; status?: number } | null
-) => {
-  if (!error) return false;
-  const text = `${error?.message || ""} ${error?.details || ""}`.toLowerCase();
-  if (error.status === 409) return true;
-  if (text.includes("validaci")) return true;
-  if (text.includes("formato")) return true;
-  if (text.includes("json")) return true;
-  if (text.includes("claves")) return true;
-  if (text.includes("bad request")) return true;
-  return false;
-};
-
-const buildIncidentPayloadVariant = (
-  payload: PortalIncidentPayload,
-  missingMode: "omit" | "null" | "empty" | "zero"
-): PortalIncidentPayload => {
-  const variant: PortalIncidentPayload = {
-    idPropiedad: payload.idPropiedad,
-    titulo: payload.titulo,
-    descripcion: payload.descripcion,
-    prioridad: normalizeIncidentPriority(payload.prioridad),
   };
 
-  const assignField = (key: "idUnidad" | "idQuincho", value: number | string | undefined) => {
-    if (value !== undefined) {
-      variant[key] = value;
-      return;
-    }
-    if (missingMode === "omit") return;
-    if (missingMode === "null") {
-      variant[key] = null;
-      return;
-    }
-    variant[key] = missingMode === "empty" ? "" : 0;
-  };
+  if (normalizedUnitPortalId !== undefined) {
+    normalizedPayload.idUnidad = normalizedUnitPortalId;
+  }
 
-  assignField("idUnidad", normalizePortalIdentifier(payload.idUnidad));
-  assignField("idQuincho", normalizePortalIdentifier(payload.idQuincho));
-
-  return variant;
+  return normalizedPayload;
 };
 
-const getIncidentPayloadSignature = (payload: PortalIncidentPayload) =>
-  JSON.stringify([
-    payload.idPropiedad,
-    payload.idUnidad ?? "__missing__",
-    payload.titulo,
-    payload.descripcion,
-    payload.prioridad ?? "__missing__",
-    payload.idQuincho ?? "__missing__",
-  ]);
-
-const resolveIncidentFallbackUnitPortalId = async (context?: IncidentPortalFallbackContext) => {
-  if (context?.unitId) {
-    const selectedUnitPortalId = normalizePortalIdentifier(await getUnitPortalId(context.unitId));
-    if (selectedUnitPortalId !== undefined) return selectedUnitPortalId;
-  }
-
-  if (context?.userId) {
-    const { unitId: assignedUnitId } = await resolveAssignedUnitId(context.userId);
-    if (assignedUnitId) {
-      let canUseAssignedUnit = true;
-      if (context.buildingId) {
-        const { unit, error } = await getUnit(assignedUnitId);
-        if (!error && unit?.building_id && unit.building_id !== context.buildingId) {
-          canUseAssignedUnit = false;
-        }
-      }
-
-      if (canUseAssignedUnit) {
-        const assignedUnitPortalId = normalizePortalIdentifier(await getUnitPortalId(assignedUnitId));
-        if (assignedUnitPortalId !== undefined) return assignedUnitPortalId;
-      }
-    }
-  }
-
-  return incidentDefaultUnitPortalId;
-};
-
-const resolveIncidentFallbackAmenityPortalId = async (context?: IncidentPortalFallbackContext) => {
-  if (context?.amenityId) {
-    const explicitAmenityPortalId = normalizePortalIdentifier(await getAmenityPortalId(context.amenityId));
-    if (explicitAmenityPortalId !== undefined) return explicitAmenityPortalId;
-  }
-
-  if (incidentDefaultAmenityPortalId !== undefined) {
-    return incidentDefaultAmenityPortalId;
-  }
-
-  if (context?.buildingId) {
-    const { amenities, error } = await getBuildingAmenities(context.buildingId);
-    if (!error) {
-      for (const amenity of amenities || []) {
-        const amenityPortalId = normalizePortalIdentifier(
-          amenity?.portal_id ?? amenity?.idQuincho ?? amenity?.idAmenity ?? amenity?.amenity_id
-        );
-        if (amenityPortalId !== undefined) return amenityPortalId;
-      }
-    }
-  }
-
-  return undefined;
-};
-
-const resolveIncidentFallbackPayload = async (
-  payload: PortalIncidentPayload,
-  context?: IncidentPortalFallbackContext
-) => {
-  const resolvedPayload = normalizePortalIncidentPayload(payload);
-
-  if (normalizePortalIdentifier(resolvedPayload.idUnidad) === undefined) {
-    resolvedPayload.idUnidad = await resolveIncidentFallbackUnitPortalId(context);
-  }
-
-  if (normalizePortalIdentifier(resolvedPayload.idQuincho) === undefined) {
-    resolvedPayload.idQuincho = await resolveIncidentFallbackAmenityPortalId(context);
-  }
-
-  return resolvedPayload;
-};
-
-const portalCreateIncidentWithFallback = async (
-  payload: PortalIncidentPayload,
-  context?: IncidentPortalFallbackContext
-) => {
-  const initialPayload = buildIncidentPayloadVariant(normalizePortalIncidentPayload(payload), "omit");
-  const initialResult = await portalCreateIncident(initialPayload);
-  if (!initialResult.error || !shouldRetryIncidentWithFallback(initialResult.error)) {
-    return { result: initialResult, payload: initialPayload };
-  }
-
-  const resolvedPayload = await resolveIncidentFallbackPayload(initialPayload, context);
-  const candidates = [
-    buildIncidentPayloadVariant(resolvedPayload, "omit"),
-    buildIncidentPayloadVariant(resolvedPayload, "null"),
-    buildIncidentPayloadVariant(resolvedPayload, "empty"),
-    buildIncidentPayloadVariant(resolvedPayload, "zero"),
-  ];
-  const seen = new Set<string>([getIncidentPayloadSignature(initialPayload)]);
-  let lastResult = initialResult;
-  let lastPayload = initialPayload;
-
-  for (const candidate of candidates) {
-    const signature = getIncidentPayloadSignature(candidate);
-    if (seen.has(signature)) continue;
-    seen.add(signature);
-
-    lastPayload = candidate;
-    lastResult = await portalCreateIncident(candidate);
-    if (!lastResult.error || !shouldRetryIncidentWithFallback(lastResult.error)) {
-      return { result: lastResult, payload: candidate };
-    }
-  }
-
-  return { result: lastResult, payload: lastPayload };
+const portalCreateIncidentWithFallback = async (payload: PortalIncidentPayload) => {
+  const normalizedPayload = normalizePortalIncidentPayload(payload);
+  const result = await portalCreateIncident(normalizedPayload);
+  return { result, payload: normalizedPayload };
 };
 
 const portalCreateReservationWithFallback = async (payload: PortalReservationPayload) => {
@@ -816,7 +644,7 @@ export const syncPortalCatalog = async (params?: {
 
   const includeUnits = params?.includeUnits !== false;
   const includeAmenities = params?.includeAmenities !== false;
-  let propertiesPayload = params?.properties;
+  let propertiesPayload: any[] | undefined = params?.properties;
 
   if (!propertiesPayload) {
     const propertiesResult = await portalGetProperties();
@@ -827,7 +655,7 @@ export const syncPortalCatalog = async (params?: {
         errors: [propertiesResult.error.message],
       };
     }
-    propertiesPayload = propertiesResult.data;
+    propertiesPayload = toPortalList(propertiesResult.data);
   }
 
   const properties = toPortalList(propertiesPayload);
@@ -1351,13 +1179,11 @@ export const createIncidentSynced = async (params: {
   portalFields: {
     titulo: string;
     descripcion: string;
-    prioridad: string;
   };
   localPayload: {
     userId: string;
     buildingId: string;
     unitId?: string;
-    amenityId?: string;
     type: "maintenance" | "complaint" | "suggestion";
     title: string;
     description: string;
@@ -1373,7 +1199,6 @@ export const createIncidentSynced = async (params: {
 
   const buildingPortalId = await getBuildingPortalId(localPayload.buildingId);
   const unitPortalId = localPayload.unitId ? await getUnitPortalId(localPayload.unitId) : null;
-  const amenityPortalId = localPayload.amenityId ? await getAmenityPortalId(localPayload.amenityId) : null;
 
   if (!buildingPortalId) {
     return { incident: null, error: { message: "Missing portal mapping for building" }, queued: false };
@@ -1387,8 +1212,6 @@ export const createIncidentSynced = async (params: {
     idUnidad: unitPortalId || undefined,
     titulo: portalFields.titulo,
     descripcion: portalFields.descripcion,
-    prioridad: normalizeIncidentPriority(portalFields.prioridad),
-    idQuincho: amenityPortalId || undefined,
   };
 
   const authResult = await ensurePortalAuth(email);
@@ -1397,12 +1220,7 @@ export const createIncidentSynced = async (params: {
     return { incident: null, error: authResult.error, queued: true };
   }
 
-  const { result: portalResult } = await portalCreateIncidentWithFallback(portalPayload, {
-    userId: localPayload.userId,
-    buildingId: localPayload.buildingId,
-    unitId: localPayload.unitId,
-    amenityId: localPayload.amenityId,
-  });
+  const { result: portalResult } = await portalCreateIncidentWithFallback(portalPayload);
   if (portalResult.error) {
     enqueueSyncJob({ type: "incident", payload: portalPayload, localPayload });
     return { incident: null, error: portalResult.error, queued: true };
@@ -1435,38 +1253,18 @@ export const createIncidentSynced = async (params: {
   return { incident: localResult.incident, error: localResult.error, queued: false };
 };
 
-const mapPortalStatusToLocal = (status?: string) => {
-  switch (status) {
-    case "ABIERTA":
-      return "open";
-    case "EN_PROCESO":
-      return "in_progress";
-    case "RESUELTA":
-      return "resolved";
-    case "CERRADA":
-    case "RECHAZADA":
-      return "closed";
-    default:
-      return undefined;
-  }
-};
-
 export const updateIncidentSynced = async (params: {
   email?: string;
   incidentId: number | string;
   portalPayload: {
     titulo?: string;
     descripcion?: string;
-    prioridad?: string;
-    estado?: string;
   };
   localPayload?: {
     incidentId: string;
     updates: {
       title?: string;
       description?: string;
-      priority?: string;
-      status?: "open" | "in_progress" | "resolved" | "closed";
     };
   };
 }) => {
@@ -1492,17 +1290,13 @@ export const updateIncidentSynced = async (params: {
     return { incident: null, error: portalResult.error, queued: true };
   }
 
-  const localStatus = mapPortalStatusToLocal(portalPayload.estado);
-  const mergedLocal =
-    localPayload || (localStatus ? { incidentId: String(incidentId), updates: { status: localStatus } } : undefined);
-
-  if (mergedLocal) {
-    const localResult = await updateIncident(mergedLocal.incidentId, mergedLocal.updates);
+  if (localPayload) {
+    const localResult = await updateIncident(localPayload.incidentId, localPayload.updates);
     if (localResult.error) {
       enqueueSyncJob({
         type: "local_incident_update",
         payload: {},
-        localPayload: mergedLocal,
+        localPayload,
       });
       return { incident: localResult.incident, error: localResult.error, queued: true };
     }
