@@ -22,7 +22,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { portalGetAllDashboardIncidents, portalGetAllMyProperties } from "@/lib/portal-api";
-import { createIncidentSynced, updateIncidentSynced } from "@/lib/portal-sync";
+import { createIncidentSynced, updateIncidentSynced, syncPortalCatalog } from "@/lib/portal-sync";
 import { getAllBuildings, getBuilding, getBuildingUnits, updateBuilding } from "@/lib/supabase";
 import {
   Pagination,
@@ -233,6 +233,20 @@ const Incidencias = () => {
         }
 
         const portalProperties = toPortalList(result.data);
+
+        if (portalProperties.length > 0) {
+          try {
+            await syncPortalCatalog({
+              email: profile?.email || undefined,
+              properties: portalProperties,
+              includeUnits: true,
+              includeAmenities: false,
+            });
+          } catch (syncError) {
+            console.error("Error syncing portal properties:", syncError);
+          }
+        }
+
         const ids = portalProperties
           .map((property) =>
             readNumber(property, [
@@ -315,11 +329,11 @@ const Incidencias = () => {
       setBuildings(buildingsToShow);
 
       setNewIncident((prev) => {
-        const hasSelectedBuilding = buildingsToShow.some((building) => building.id === prev.buildingId);
+        const hasSelectedBuilding = buildingsToShow.some((building) => String(building.id) === String(prev.buildingId));
         if (hasSelectedBuilding) return prev;
         return {
           ...prev,
-          buildingId: buildingsToShow[0]?.id || "",
+          buildingId: buildingsToShow[0]?.id ? String(buildingsToShow[0].id) : "",
           unitId: "",
         };
       });
@@ -637,7 +651,7 @@ const Incidencias = () => {
             <div>
               <label className="text-sm font-medium">Propiedad *</label>
               <Select
-                value={newIncident.buildingId || "none"}
+                value={newIncident.buildingId ? String(newIncident.buildingId) : "none"}
                 onValueChange={(value) =>
                   setNewIncident({ ...newIncident, buildingId: value === "none" ? "" : value, unitId: "" })
                 }
@@ -649,7 +663,7 @@ const Incidencias = () => {
                 <SelectContent>
                   <SelectItem value="none">Selecciona una propiedad</SelectItem>
                   {buildings.map((building) => (
-                    <SelectItem key={building.id} value={building.id}>
+                    <SelectItem key={building.id} value={String(building.id)}>
                       {building.name || building.nombre || building.razonSocial || building.razon_social || building.id}
                     </SelectItem>
                   ))}
@@ -659,7 +673,7 @@ const Incidencias = () => {
             <div>
               <label className="text-sm font-medium">Unidad (opcional)</label>
               <Select
-                value={newIncident.unitId || "none"}
+                value={newIncident.unitId ? String(newIncident.unitId) : "none"}
                 onValueChange={(value) =>
                   setNewIncident({ ...newIncident, unitId: value === "none" ? "" : value })
                 }
@@ -671,7 +685,7 @@ const Incidencias = () => {
                 <SelectContent>
                   <SelectItem value="none">Sin unidad</SelectItem>
                   {units.map((unit) => (
-                    <SelectItem key={unit.id} value={unit.id}>
+                    <SelectItem key={unit.id} value={String(unit.id)}>
                       {unit.unit_number || unit.numero || unit.unidad || unit.id}
                     </SelectItem>
                   ))}
