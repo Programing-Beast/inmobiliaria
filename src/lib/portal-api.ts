@@ -67,6 +67,39 @@ const normalizePortalList = (payload: any): any[] => {
   return [];
 };
 
+const getPortalNextLink = (payload: any): string | null => {
+  const nextLink = payload?.links?.next ?? payload?.next;
+  return typeof nextLink === "string" && nextLink.trim() ? nextLink.trim() : null;
+};
+
+const getPortalNextPageParams = (
+  payload: any,
+  baseParams?: Record<string, string | number | undefined>,
+  limit?: number
+) => {
+  const currentPage = Number(payload?.page);
+  const totalPages = Number(payload?.total_pages);
+  const hasMore = payload?.has_more === true;
+
+  if (!Number.isFinite(currentPage)) {
+    return null;
+  }
+
+  if (Number.isFinite(totalPages) && currentPage >= totalPages) {
+    return null;
+  }
+
+  if (!hasMore && !Number.isFinite(totalPages)) {
+    return null;
+  }
+
+  return {
+    ...(baseParams || {}),
+    page: currentPage + 1,
+    ...(limit !== undefined ? { limit } : {}),
+  };
+};
+
 const getPortalAuth = () => {
   const token = localStorage.getItem(portalTokenKey);
   const tokenType = localStorage.getItem(portalTokenTypeKey) || "Bearer";
@@ -328,6 +361,58 @@ export const portalGetDashboardIncidents = (params?: {
   page?: number;
   limit?: number;
 }) => portalRequest(dashboardIncidentsPath, { params });
+
+export const portalGetAllDashboardIncidents = async <T = any>(params?: {
+  estado?: string;
+  titulo?: string;
+  page?: number;
+  limit?: number;
+  maxPages?: number;
+}): Promise<PortalResponse<T[]>> => {
+  const maxPages = params?.maxPages ?? 50;
+  const baseParams = {
+    estado: params?.estado,
+    titulo: params?.titulo,
+  };
+  const collected: T[] = [];
+  const visitedLinks = new Set<string>();
+  let nextPath: string | null = dashboardIncidentsPath;
+  let nextParams: Record<string, string | number | undefined> | undefined = {
+    ...baseParams,
+    page: params?.page ?? 1,
+    ...(params?.limit !== undefined ? { limit: params.limit } : {}),
+  };
+
+  for (let requestCount = 0; requestCount < maxPages && nextPath; requestCount += 1) {
+    const result = await portalRequest<any>(nextPath, { params: nextParams });
+    if (result.error) {
+      return { data: null, error: result.error };
+    }
+
+    collected.push(...(normalizePortalList(result.data) as T[]));
+
+    const nextLink = getPortalNextLink(result.data);
+    if (nextLink) {
+      if (visitedLinks.has(nextLink)) {
+        break;
+      }
+      visitedLinks.add(nextLink);
+      nextPath = nextLink;
+      nextParams = undefined;
+      continue;
+    }
+
+    const fallbackParams = getPortalNextPageParams(result.data, baseParams, params?.limit);
+    if (!fallbackParams) {
+      break;
+    }
+
+    nextPath = dashboardIncidentsPath;
+    nextParams = fallbackParams;
+  }
+
+  return { data: collected, error: null };
+};
 
 export const portalGetDashboardExpensas = (params?: { page?: number; limit?: number }) =>
   portalRequest(dashboardExpensasPath, { params });

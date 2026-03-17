@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { portalGetAllMyProperties, portalGetDashboardIncidents } from "@/lib/portal-api";
+import { portalGetAllDashboardIncidents, portalGetAllMyProperties } from "@/lib/portal-api";
 import { createIncidentSynced, updateIncidentSynced } from "@/lib/portal-sync";
 import { getAllBuildings, getBuilding, getBuildingUnits, updateBuilding } from "@/lib/supabase";
 import {
@@ -100,6 +100,42 @@ const Incidencias = () => {
       .replace(/[\u0300-\u036f]/g, "")
       .trim();
 
+  const normalizeIncidentRecord = (incident: Record<string, any>) => {
+    const idIncidencia =
+      readNumber(incident, ["idIncidencia", "id_incidencia", "incidentId", "incident_id", "id"]) ??
+      incident?.idIncidencia ??
+      incident?.id ??
+      null;
+    const titulo = readString(incident, ["titulo", "title", "asunto"]);
+    const estado = readString(incident, ["estado", "status"]);
+    const fechaModificacion = readString(incident, [
+      "fechaModificacion",
+      "fecha_modificacion",
+      "updated_at",
+      "fecha",
+    ]);
+    const unidad = readString(incident, ["unidad", "unit", "unidad_desc", "unidad_nombre"]) || null;
+    const propiedad = readString(incident, [
+      "propiedad",
+      "propiedadNombre",
+      "propiedad_nombre",
+      "edificio",
+      "edificioNombre",
+      "building",
+      "building_name",
+    ]);
+
+    return {
+      ...incident,
+      idIncidencia,
+      titulo,
+      estado,
+      fechaModificacion,
+      unidad,
+      propiedad,
+    };
+  };
+
   const getIncidentPropertyId = (incident: Record<string, any>) =>
     readNumber(incident, [
       "idPropiedad",
@@ -128,7 +164,7 @@ const Incidencias = () => {
   const fetchIncidents = async (options?: { silent?: boolean }) => {
     setLoading(true);
     try {
-      const { data, error } = await portalGetDashboardIncidents();
+      const { data, error } = await portalGetAllDashboardIncidents();
       if (error) {
         console.error("Error fetching incidents:", error);
         if (!options?.silent) {
@@ -136,20 +172,21 @@ const Incidencias = () => {
         }
         return;
       }
-      const rawIncidents = toPortalList(data);
+      const rawIncidents = Array.isArray(data) ? data : [];
       if (!isSuperAdmin) {
         const allowedIds = new Set(allowedPropertyIds);
         const allowedNames = new Set(allowedPropertyNames.map((name) => normalizeText(name)));
         const filtered = rawIncidents.filter((incident: any) => {
           const propertyId = getIncidentPropertyId(incident);
-          if (propertyId !== null && allowedIds.has(propertyId)) return true;
           const propertyName = getIncidentPropertyName(incident);
+          if (propertyId === null && !propertyName) return true;
+          if (propertyId !== null && allowedIds.has(propertyId)) return true;
           if (propertyName && allowedNames.has(normalizeText(propertyName))) return true;
           return false;
         });
-        setIncidents(filtered);
+        setIncidents(filtered.map((incident: any) => normalizeIncidentRecord(incident)));
       } else {
-        setIncidents(rawIncidents);
+        setIncidents(rawIncidents.map((incident: any) => normalizeIncidentRecord(incident)));
       }
     } catch (error) {
       console.error("Error:", error);
@@ -554,7 +591,7 @@ const Incidencias = () => {
                       <TableCell>{incident.titulo || "-"}</TableCell>
                       <TableCell>{getStatusBadge(incident.estado)}</TableCell>
                       <TableCell>{incident.fechaModificacion || "-"}</TableCell>
-                      <TableCell>{incident.unidad || "-"}</TableCell>
+                      <TableCell>{incident.unidad || "Area comun"}</TableCell>
                       <TableCell>{incident.propiedad || incident.propiedadNombre || incident.edificio || "-"}</TableCell>
                       <TableCell>
                         <Button size="sm" variant="outline" onClick={() => openUpdateDialog(incident)}>

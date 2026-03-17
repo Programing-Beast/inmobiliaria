@@ -16,7 +16,7 @@ import {
 import {
   portalGetDashboardComunicados,
   portalGetDashboardExpensas,
-  portalGetDashboardIncidents,
+  portalGetAllDashboardIncidents,
   portalGetDashboardReservations,
   portalGetAllMyProperties,
   portalGetFinanzasResumen,
@@ -160,7 +160,7 @@ const DashboardW3CRM = () => {
         ] = await Promise.all([
           portalGetDashboardExpensas(),
           portalGetDashboardReservations(),
-          portalGetDashboardIncidents(),
+          portalGetAllDashboardIncidents(),
           portalGetDashboardComunicados(),
           isOwner ? portalGetFinanzasResumen({ correo }) : Promise.resolve({ data: null, error: null }),
         ]);
@@ -172,7 +172,7 @@ const DashboardW3CRM = () => {
         const shouldFilter = !isSuperAdmin && (allowedIds.size || allowedNames.size);
 
         const reservasRaw = toPortalList(reservasResult.data);
-        const incidenciasRaw = toPortalList(incidenciasResult.data);
+        const incidenciasRaw = Array.isArray(incidenciasResult.data) ? incidenciasResult.data : [];
         const reservas = shouldFilter
           ? reservasRaw.filter((record: any) => {
               const propertyId = getRecordPropertyId(record);
@@ -185,8 +185,9 @@ const DashboardW3CRM = () => {
         const incidencias = shouldFilter
           ? incidenciasRaw.filter((record: any) => {
               const propertyId = getRecordPropertyId(record);
-              if (propertyId !== null && allowedIds.has(propertyId)) return true;
               const propertyName = getRecordPropertyName(record);
+              if (propertyId === null && !propertyName) return true;
+              if (propertyId !== null && allowedIds.has(propertyId)) return true;
               if (propertyName && allowedNames.has(propertyName.toLowerCase())) return true;
               return false;
             })
