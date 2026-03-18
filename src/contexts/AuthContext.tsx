@@ -156,7 +156,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setSession({ user: currentUser });
       fetchProfile(userId);
       ensurePortalAuth(userEmail).catch((error) => {
-        console.error("Error syncing portal auth:", error);
+        // Portal auth failure is non-blocking — local auth still works
+        console.warn("Portal auth sync failed (non-blocking):", error);
       });
     }
 
@@ -199,7 +200,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(newUser);
         setSession({ user: newUser });
         await fetchProfile(data.user.id);
-        await ensurePortalAuth(newUser.email || email);
+        // Portal auth is best-effort — do not block sign-up if it fails
+        ensurePortalAuth(newUser.email || email).catch((portalErr) => {
+          console.warn("Portal auth failed during sign-up (non-blocking):", portalErr);
+        });
       }
 
       return { error: null };
@@ -222,7 +226,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(newUser);
         setSession({ user: newUser });
         await fetchProfile(data.user.id);
-        await ensurePortalAuth(newUser.email || email);
+        // Portal auth is best-effort — do not block login if it fails
+        ensurePortalAuth(newUser.email || email).catch((portalErr) => {
+          console.warn("Portal auth failed during sign-in (non-blocking):", portalErr);
+        });
       }
 
       return { error: null };
