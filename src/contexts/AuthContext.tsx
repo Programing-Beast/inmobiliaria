@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, getUserProfile, getUserUnits, getUserRoles, signIn, signUp as signUpUser, signOut as signOutUser } from '@/lib/supabase';
-import { clearPortalAuth, ensurePortalAuth } from "@/lib/portal-api";
+import { clearPortalAuth, ensurePortalAuth, getPortalAuthDebugState } from "@/lib/portal-api";
 import type { UserRole } from '@/lib/database.types';
 
 interface UserUnit {
@@ -201,9 +201,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setSession({ user: newUser });
         await fetchProfile(data.user.id);
         // Portal auth is best-effort — do not block sign-up if it fails
-        ensurePortalAuth(newUser.email || email).catch((portalErr) => {
-          console.warn("Portal auth failed during sign-up (non-blocking):", portalErr);
-        });
+        const portalResult = await ensurePortalAuth(newUser.email || email, { reason: "sign-up" }).catch(
+          (portalErr) => ({
+            token: null,
+            error: portalErr,
+          })
+        );
+        if (portalResult?.error) {
+          console.warn("Portal auth failed during sign-up (non-blocking):", portalResult.error);
+        } else {
+          console.debug("[portal auth] post-sign-up snapshot", getPortalAuthDebugState(newUser.email || email));
+        }
       }
 
       return { error: null };
@@ -227,9 +235,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setSession({ user: newUser });
         await fetchProfile(data.user.id);
         // Portal auth is best-effort — do not block login if it fails
-        ensurePortalAuth(newUser.email || email).catch((portalErr) => {
-          console.warn("Portal auth failed during sign-in (non-blocking):", portalErr);
-        });
+        const portalResult = await ensurePortalAuth(newUser.email || email, { reason: "sign-in" }).catch(
+          (portalErr) => ({
+            token: null,
+            error: portalErr,
+          })
+        );
+        if (portalResult?.error) {
+          console.warn("Portal auth failed during sign-in (non-blocking):", portalResult.error);
+        } else {
+          console.debug("[portal auth] post-sign-in snapshot", getPortalAuthDebugState(newUser.email || email));
+        }
       }
 
       return { error: null };

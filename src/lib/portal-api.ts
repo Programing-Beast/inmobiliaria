@@ -23,6 +23,10 @@ const portalAuthEmailKey = "currentUserEmail";
 const portalTokenKey = "token";
 const portalTokenTypeKey = "Bearer";
 const portalRoleKey = "portalRole";
+const portalTokenOwnerEmailKey = "portalTokenOwnerEmail";
+const portalTokenExpiresAtKey = "portalTokenExpiresAt";
+const portalTokenIssuedAtKey = "portalTokenIssuedAt";
+const portalAuthDebugKey = "portalAuthDebug";
 
 type PortalError = {
   message: string;
@@ -33,6 +37,13 @@ type PortalError = {
 type PortalResponse<T> = {
   data: T | null;
   error: PortalError | null;
+};
+
+type PortalAuth = {
+  token: string;
+  tokenType: string;
+  ownerEmail?: string;
+  expiresAt: number | null;
 };
 
 const buildUrl = (path: string, params?: Record<string, string | number | undefined>) => {
@@ -100,14 +111,136 @@ const getPortalNextPageParams = (
   };
 };
 
-const getPortalAuth = () => {
+const getPortalAuth = (expectedEmailOverride?: string) => {
   const token = localStorage.getItem(portalTokenKey);
   const tokenType = localStorage.getItem(portalTokenTypeKey) || "Bearer";
+  const ownerEmail = localStorage.getItem(portalTokenOwnerEmailKey) || undefined;
   if (!token) return null;
-  return { token, tokenType };
+
+  const expiresAt = getStoredPortalTokenExpiry(token);
+  const normalizedOwnerEmail = ownerEmail?.trim().toLowerCase();
+  const expectedEmail = expectedEmailOverride?.trim().toLowerCase() || getPortalAuthEmail()?.trim().toLowerCase();
+
+  if (!normalizedOwnerEmail && expectedEmail) {
+    debugPortalAuth("Discarding legacy token without owner binding", {
+      expectedEmail,
+      auth: getPortalAuthDebugState(expectedEmail),
+    });
+    clearPortalAuth();
+    return null;
+  }
+
+  if (normalizedOwnerEmail && expectedEmail && normalizedOwnerEmail !== expectedEmail) {
+    debugPortalAuth("Discarding token for different user", {
+      ownerEmail: normalizedOwnerEmail,
+      expectedEmail,
+      auth: getPortalAuthDebugState(expectedEmail),
+    });
+    clearPortalAuth();
+    return null;
+  }
+
+  if (expiresAt && expiresAt <= Date.now()) {
+    debugPortalAuth("Discarding expired token", getPortalAuthDebugState(expectedEmail));
+    clearPortalAuth();
+    return null;
+  }
+
+  return {
+    token,
+    tokenType,
+    ownerEmail: normalizedOwnerEmail,
+    expiresAt,
+  };
 };
 
 const getPortalAuthEmail = () => localStorage.getItem(portalAuthEmailKey) || undefined;
+
+const shouldDebugPortalAuth = () => {
+  try {
+    return import.meta.env.DEV || localStorage.getItem(portalAuthDebugKey) === "1";
+  } catch {
+    return false;
+  }
+};
+
+const debugPortalAuth = (message: string, details?: Record<string, unknown>) => {
+  if (!shouldDebugPortalAuth()) return;
+  if (details) {
+    console.debug(`[portal auth] ${message}`, details);
+    return;
+  }
+  console.debug(`[portal auth] ${message}`);
+};
+
+const maskPortalToken = (token?: string | null) => {
+  if (!token) return null;
+  if (token.length <= 12) return token;
+  return `${token.slice(0, 8)}...${token.slice(-4)}`;
+};
+
+const decodeBase64Url = (value: string) => {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = normalized.length % 4;
+  const padded = padding === 0 ? normalized : normalized.padEnd(normalized.length + (4 - padding), "=");
+
+  if (typeof atob === "function") {
+    return atob(padded);
+  }
+
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(padded, "base64").toString("utf-8");
+  }
+
+  throw new Error("No base64 decoder available");
+};
+
+const parseJwtExpiry = (token: string): number | null => {
+  const [, payload] = token.split(".");
+  if (!payload) return null;
+
+  try {
+    const decoded = JSON.parse(decodeBase64Url(payload));
+    const exp = Number(decoded?.exp);
+    return Number.isFinite(exp) ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
+};
+
+const getStoredPortalTokenExpiry = (token?: string | null) => {
+  const stored = Number(localStorage.getItem(portalTokenExpiresAtKey));
+  if (Number.isFinite(stored) && stored > 0) {
+    return stored;
+  }
+
+  const parsed = token ? parseJwtExpiry(token) : null;
+  if (parsed) {
+    localStorage.setItem(portalTokenExpiresAtKey, String(parsed));
+  }
+  return parsed;
+};
+
+export const getPortalAuthDebugState = (expectedEmail?: string) => {
+  const token = localStorage.getItem(portalTokenKey);
+  const ownerEmail = localStorage.getItem(portalTokenOwnerEmailKey) || undefined;
+  const tokenType = localStorage.getItem(portalTokenTypeKey) || "Bearer";
+  const expiresAt = getStoredPortalTokenExpiry(token);
+  const now = Date.now();
+
+  return {
+    hasToken: Boolean(token),
+    tokenType,
+    tokenPreview: maskPortalToken(token),
+    tokenLength: token?.length || 0,
+    ownerEmail,
+    expectedEmail: expectedEmail || getPortalAuthEmail(),
+    expiresAt,
+    expiresAtIso: expiresAt ? new Date(expiresAt).toISOString() : null,
+    isExpired: expiresAt ? expiresAt <= now : null,
+    issuedAt: localStorage.getItem(portalTokenIssuedAtKey),
+  };
+};
 
 const mapPortalRoleToLocalRole = (role?: string | null): UserRole | null => {
   if (!role) return null;
@@ -140,15 +273,33 @@ const syncPortalRoleToLocalUser = async (portalRole?: string | null) => {
   localStorage.setItem("userRoles", JSON.stringify([mappedRole]));
 };
 
-export const setPortalAuth = (token: string, tokenType: string = "Bearer") => {
+export const setPortalAuth = (token: string, tokenType: string = "Bearer", ownerEmail?: string) => {
   localStorage.setItem(portalTokenKey, token);
-  localStorage.setItem(portalTokenTypeKey, tokenType);
+  localStorage.setItem(portalTokenTypeKey, tokenType || "Bearer");
+  if (ownerEmail) {
+    localStorage.setItem(portalTokenOwnerEmailKey, ownerEmail.trim().toLowerCase());
+  } else {
+    localStorage.removeItem(portalTokenOwnerEmailKey);
+  }
+
+  const expiresAt = parseJwtExpiry(token);
+  if (expiresAt) {
+    localStorage.setItem(portalTokenExpiresAtKey, String(expiresAt));
+  } else {
+    localStorage.removeItem(portalTokenExpiresAtKey);
+  }
+  localStorage.setItem(portalTokenIssuedAtKey, new Date().toISOString());
+
+  debugPortalAuth("Stored portal token", getPortalAuthDebugState(ownerEmail));
 };
 
 export const clearPortalAuth = () => {
   localStorage.removeItem(portalTokenKey);
   localStorage.removeItem(portalTokenTypeKey);
   localStorage.removeItem(portalRoleKey);
+  localStorage.removeItem(portalTokenOwnerEmailKey);
+  localStorage.removeItem(portalTokenExpiresAtKey);
+  localStorage.removeItem(portalTokenIssuedAtKey);
 };
 
 const normalizePortalError = (payload: any, status?: number): PortalError => {
@@ -168,6 +319,23 @@ const normalizePortalError = (payload: any, status?: number): PortalError => {
   return { message: "Unexpected portal API error", status };
 };
 
+const isPortalAuthFailure = (status?: number, payload?: any) => {
+  if (status === 401 || status === 403) {
+    return true;
+  }
+
+  const text = `${payload?.message || ""} ${payload?.error?.message || ""} ${payload?.error?.description || ""}`
+    .toLowerCase()
+    .trim();
+
+  if (!text) return false;
+
+  const authTerms = ["token", "jwt", "bearer", "authorization", "autoriz"];
+  const failureTerms = ["expired", "expir", "invalid", "invalido", "missing", "falt", "unauthorized", "forbidden"];
+
+  return authTerms.some((term) => text.includes(term)) && failureTerms.some((term) => text.includes(term));
+};
+
 const portalRequest = async <T>(
   path: string,
   options?: {
@@ -180,32 +348,39 @@ const portalRequest = async <T>(
   const { method = "GET", body, headers, params } = options || {};
   const url = buildUrl(path, params);
   const email = getPortalAuthEmail();
-  let auth = getPortalAuth();
-  if (!auth && path !== "auth/login") {
-    if (email) {
-      await portalLogin(email);
-      auth = getPortalAuth();
+  const buildRequestHeaders = (auth?: PortalAuth | null) => {
+    const requestHeaders: Record<string, string> = {
+      Accept: "application/json",
+      ...headers,
+    };
+
+    if (email && path !== "auth/login" && !requestHeaders.correo) {
+      requestHeaders.correo = email;
     }
-  }
-  if (!auth && path !== "auth/login") {
-    return { data: null, error: { message: "Missing portal auth token" } };
-  }
-  const requestHeaders: Record<string, string> = {
-    Accept: "application/json",
-    ...headers,
+
+    if (body) {
+      requestHeaders["Content-Type"] = "application/json";
+    }
+    if (auth) {
+      requestHeaders.Authorization = `${auth.tokenType} ${auth.token}`;
+    }
+
+    return requestHeaders;
   };
-  if (email && path !== "auth/login" && !requestHeaders.correo) {
-    requestHeaders.correo = email;
-  }
 
-  if (body) {
-    requestHeaders["Content-Type"] = "application/json";
-  }
-  if (auth) {
-    requestHeaders.Authorization = `${auth.tokenType} ${auth.token}`;
-  }
+  const executeRequest = async (auth?: PortalAuth | null) => {
+    const requestHeaders = buildRequestHeaders(auth);
+    debugPortalAuth("Portal request", {
+      method,
+      path,
+      url,
+      email,
+      hasAuthorization: Boolean(requestHeaders.Authorization),
+      authorizationPreview: requestHeaders.Authorization
+        ? `${auth?.tokenType || "Bearer"} ${maskPortalToken(auth?.token)}`
+        : null,
+    });
 
-  try {
     const response = await fetch(url, {
       method,
       headers: requestHeaders,
@@ -213,6 +388,44 @@ const portalRequest = async <T>(
     });
 
     const payload = await response.json().catch(() => ({}));
+    return { response, payload };
+  };
+
+  let auth: PortalAuth | null = null;
+  if (path !== "auth/login") {
+    const authResult = await ensurePortalAuth(email, { reason: `request:${path}` });
+    if (authResult.error) {
+      return { data: null, error: authResult.error };
+    }
+    auth = getPortalAuth(email);
+    if (!auth) {
+      return { data: null, error: { message: "Missing portal auth token" } };
+    }
+  }
+
+  try {
+    let { response, payload } = await executeRequest(auth);
+
+    if (path !== "auth/login" && email && isPortalAuthFailure(response.status, payload)) {
+      debugPortalAuth("Portal request rejected auth, refreshing token", {
+        path,
+        status: response.status,
+        message: payload?.message || payload?.error?.message || null,
+        auth: getPortalAuthDebugState(email),
+      });
+      clearPortalAuth();
+      const loginResult = await portalLogin(email, { reason: `retry:${path}` });
+      const refreshedAuth = getPortalAuth(email);
+      if (loginResult.error || !refreshedAuth) {
+        return {
+          data: null,
+          error: loginResult.error || normalizePortalError(payload, response.status),
+        };
+      }
+
+      ({ response, payload } = await executeRequest(refreshedAuth));
+    }
+
     if (!response.ok || payload?.status === "error") {
       return { data: null, error: normalizePortalError(payload, response.status) };
     }
@@ -223,7 +436,9 @@ const portalRequest = async <T>(
   }
 };
 
-export const portalLogin = async (email: string) => {
+export const portalLogin = async (email: string, options?: { reason?: string }) => {
+  debugPortalAuth("Portal login requested", { email, reason: options?.reason || "direct" });
+
   const result = await portalRequest<{
     status: number;
     message: string;
@@ -231,24 +446,38 @@ export const portalLogin = async (email: string) => {
   }>("auth/login", { method: "POST", body: { correo: email } });
 
   if (!result.error && result.data?.data?.token) {
-    setPortalAuth(result.data.data.token, result.data.data.tokenType);
+    setPortalAuth(result.data.data.token, result.data.data.tokenType, email);
     if (result.data.data.rol) {
       localStorage.setItem(portalRoleKey, result.data.data.rol);
       await syncPortalRoleToLocalUser(result.data.data.rol);
     }
+    debugPortalAuth("Portal login succeeded", {
+      email,
+      auth: getPortalAuthDebugState(email),
+    });
+  } else {
+    debugPortalAuth("Portal login failed", {
+      email,
+      reason: options?.reason || "direct",
+      error: result.error,
+    });
   }
 
   return result;
 };
 
-export const ensurePortalAuth = async (email?: string) => {
-  const auth = getPortalAuth();
+export const ensurePortalAuth = async (email?: string, options?: { reason?: string; forceRefresh?: boolean }) => {
+  if (options?.forceRefresh) {
+    clearPortalAuth();
+  }
+
+  const auth = getPortalAuth(email);
   if (auth) return { token: auth.token, error: null };
   if (!email) {
     return { token: null, error: { message: "Missing portal auth token" } };
   }
 
-  const loginResult = await portalLogin(email);
+  const loginResult = await portalLogin(email, { reason: options?.reason || "ensure" });
   if (loginResult.error || !loginResult.data?.data?.token) {
     return { token: null, error: loginResult.error || { message: "Portal login failed" } };
   }
@@ -450,22 +679,39 @@ export const portalDownloadFinanzasPdf = async (
 ): Promise<{ blob: Blob | null; error: PortalError | null }> => {
   const url = buildUrl(`${finanzasPdfPath}/${companyId}/${invoiceId}`);
 
-  let auth = getPortalAuth();
-  if (!auth && email) {
-    await portalLogin(email);
-    auth = getPortalAuth();
-  }
-  if (!auth) {
-    return { blob: null, error: { message: "Missing portal auth token" } };
-  }
-
-  const headers: Record<string, string> = {
-    Accept: "application/pdf",
-    Authorization: `${auth.tokenType} ${auth.token}`,
-  };
-
   try {
-    const response = await fetch(url, { method: "GET", headers });
+    const authResult = await ensurePortalAuth(email, { reason: "download:finanzas-pdf" });
+    if (authResult.error) {
+      return { blob: null, error: authResult.error };
+    }
+
+    let auth = getPortalAuth(email);
+    if (!auth) {
+      return { blob: null, error: { message: "Missing portal auth token" } };
+    }
+
+    const buildHeaders = (currentAuth: PortalAuth) => ({
+      Accept: "application/pdf",
+      Authorization: `${currentAuth.tokenType} ${currentAuth.token}`,
+    });
+
+    let response = await fetch(url, { method: "GET", headers: buildHeaders(auth) });
+    if ((response.status === 401 || response.status === 403) && email) {
+      debugPortalAuth("PDF download rejected auth, refreshing token", {
+        path: `${finanzasPdfPath}/${companyId}/${invoiceId}`,
+        email,
+        status: response.status,
+        auth: getPortalAuthDebugState(email),
+      });
+      clearPortalAuth();
+      const loginResult = await portalLogin(email, { reason: "retry:download:finanzas-pdf" });
+      auth = getPortalAuth(email);
+      if (loginResult.error || !auth) {
+        return { blob: null, error: loginResult.error || { message: "Portal login failed" } };
+      }
+      response = await fetch(url, { method: "GET", headers: buildHeaders(auth) });
+    }
+
     if (!response.ok) {
       const contentType = response.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
