@@ -45,7 +45,10 @@ const Login = () => {
 
       if (error) {
         // Handle specific error messages
-        if (error.message.includes('Invalid login credentials')) {
+        if ((error as any).isPortalError) {
+          // Portal auth/login API failure — show the API response and stay on login
+          toast.error(error.message || t("login.errorGeneric"));
+        } else if (error.message.includes('Invalid login credentials')) {
           toast.error(t("login.errorInvalidCredentials"));
         } else if (error.message.includes('Email not confirmed')) {
           toast.error(t("login.errorEmailNotConfirmed"));
@@ -56,14 +59,12 @@ const Login = () => {
         return;
       }
 
-      // Success - auth context will handle profile loading
+      // Success - navigate to dashboard
       toast.success(t("login.success"));
-
-      // Redirect to intended page or dashboard
       const from = (location.state as any)?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
-    } catch (error: any) {
-      console.error('Login error:', error);
+    } catch (err: any) {
+      console.error('Login error:', err);
       toast.error(t("login.unexpectedError"));
       setIsLoading(false);
     }

@@ -234,7 +234,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(newUser);
         setSession({ user: newUser });
         await fetchProfile(data.user.id);
-        // Portal auth is best-effort — do not block login if it fails
+        // Portal auth is required — block login if it fails
         const portalResult = await ensurePortalAuth(newUser.email || email, { reason: "sign-in" }).catch(
           (portalErr) => ({
             token: null,
@@ -242,10 +242,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           })
         );
         if (portalResult?.error) {
-          console.warn("Portal auth failed during sign-in (non-blocking):", portalResult.error);
-        } else {
-          console.debug("[portal auth] post-sign-in snapshot", getPortalAuthDebugState(newUser.email || email));
+          // Roll back local auth state so the user is not considered logged in
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          localStorage.removeItem('currentUserId');
+          localStorage.removeItem('currentUserEmail');
+          localStorage.removeItem('userRole');
+          localStorage.removeItem('userName');
+          localStorage.removeItem('userUnit');
+          localStorage.removeItem('currentUnitNumber');
+          localStorage.removeItem('userUnits');
+          localStorage.removeItem('userRoles');
+          const portalError = portalResult.error as any;
+          return {
+            error: {
+              message: portalError?.message || 'Portal authentication failed. Please try again.',
+              isPortalError: true,
+            },
+          };
         }
+        console.debug("[portal auth] post-sign-in snapshot", getPortalAuthDebugState(newUser.email || email));
       }
 
       return { error: null };
