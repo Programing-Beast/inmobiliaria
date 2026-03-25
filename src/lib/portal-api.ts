@@ -4,6 +4,8 @@ import { setUserRoles, updateUserProfile } from "@/lib/supabase";
 const DEFAULT_BASE_URL = "https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal";
 
 const portalBaseUrl = import.meta.env.VITE_PORTAL_API_BASE_URL || DEFAULT_BASE_URL;
+const apexApiUser = import.meta.env.VITE_APEX_API_USER;
+const apexApiPassword = import.meta.env.VITE_APEX_API_PASSWORD;
 const dashboardIncidentsPath =
   import.meta.env.VITE_PORTAL_DASHBOARD_INCIDENTS_PATH || "dashboard/incidencias";
 const dashboardExpensasPath =
@@ -177,6 +179,18 @@ const maskPortalToken = (token?: string | null) => {
   if (!token) return null;
   if (token.length <= 12) return token;
   return `${token.slice(0, 8)}...${token.slice(-4)}`;
+};
+
+const encodeBase64 = (value: string) => {
+  if (typeof btoa === "function") {
+    return btoa(value);
+  }
+
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(value, "utf-8").toString("base64");
+  }
+
+  throw new Error("No base64 encoder available");
 };
 
 const decodeBase64Url = (value: string) => {
@@ -354,14 +368,21 @@ const portalRequest = async <T>(
       ...headers,
     };
 
-    if (email && path !== "auth/login" && !requestHeaders.correo) {
+    const isAuthEndpoint = path.startsWith("auth/");
+
+    if (isAuthEndpoint && apexApiUser && apexApiPassword) {
+      requestHeaders.Authorization = `Basic ${encodeBase64(`${apexApiUser}:${apexApiPassword}`)}`;
+    }
+
+    if (email && !isAuthEndpoint && !requestHeaders.correo) {
       requestHeaders.correo = email;
     }
 
     if (body) {
       requestHeaders["Content-Type"] = "application/json";
     }
-    if (auth) {
+
+    if (auth && !isAuthEndpoint) {
       requestHeaders.Authorization = `${auth.tokenType} ${auth.token}`;
     }
 

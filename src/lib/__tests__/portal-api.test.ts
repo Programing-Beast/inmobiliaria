@@ -12,11 +12,14 @@ describe("portalGetAllDashboardIncidents", () => {
   beforeEach(() => {
     vi.resetModules();
     localStorage.clear();
+    vi.stubEnv("VITE_APEX_API_USER", "INMOBILIARIA_VIEW");
+    vi.stubEnv("VITE_APEX_API_PASSWORD", "secret");
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     localStorage.clear();
   });
 
@@ -54,8 +57,8 @@ describe("portalGetAllDashboardIncidents", () => {
 
     const { portalGetAllDashboardIncidents, setPortalAuth } = await import("@/lib/portal-api");
 
-    setPortalAuth("test-token");
     localStorage.setItem("currentUserEmail", "user@example.com");
+    setPortalAuth("test-token", "Bearer", "user@example.com");
 
     const result = await portalGetAllDashboardIncidents();
 
@@ -177,5 +180,63 @@ describe("portalGetAllDashboardIncidents", () => {
         Authorization: `Bearer ${freshToken}`,
       }),
     });
+  });
+
+  it("applies Basic Auth to auth/login requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        status: 200,
+        data: { token: "new-token", tokenType: "Bearer", rol: "owner" },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    
+    vi.stubEnv("VITE_APEX_API_USER", "TEST_USER");
+    vi.stubEnv("VITE_APEX_API_PASSWORD", "TEST_PASS");
+
+    const { portalLogin } = await import("@/lib/portal-api");
+    await portalLogin("test@example.com");
+
+    const expectedBasicAuth = `Basic ${Buffer.from("TEST_USER:TEST_PASS").toString("base64")}`;
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("auth/login"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: expectedBasicAuth,
+        }),
+      })
+    );
+  });
+
+  it("applies Basic Auth to auth/usuarios requests and skips Bearer token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 200, message: "Created" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.stubEnv("VITE_APEX_API_USER", "TEST_USER");
+    vi.stubEnv("VITE_APEX_API_PASSWORD", "TEST_PASS");
+
+    const { portalCreateAuthUsuario, setPortalAuth } = await import("@/lib/portal-api");
+    
+    // Even if we have a token, it should be skipped for auth/ endpoints
+    setPortalAuth("some-token");
+    localStorage.setItem("currentUserEmail", "admin@example.com");
+
+    await portalCreateAuthUsuario({ correo: "new@example.com" });
+
+    const expectedBasicAuth = `Basic ${Buffer.from("TEST_USER:TEST_PASS").toString("base64")}`;
+    const call = fetchMock.mock.calls[0];
+    const headers = call?.[1]?.headers;
+
+    expect(headers).toMatchObject({
+      Authorization: expectedBasicAuth,
+    });
+    // Ensure Bearer token is NOT present
+    expect(headers.Authorization).not.toContain("Bearer");
   });
 });
