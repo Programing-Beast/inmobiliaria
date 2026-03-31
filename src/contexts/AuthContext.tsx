@@ -201,7 +201,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setSession({ user: newUser });
         await fetchProfile(data.user.id);
         // Portal auth is best-effort — do not block sign-up if it fails
-        const portalResult = await ensurePortalAuth(newUser.email || email, { reason: "sign-up" }).catch(
+        const portalResult = await ensurePortalAuth(newUser.email || email, { reason: "sign-up", password }).catch(
           (portalErr) => ({
             token: null,
             error: portalErr,
@@ -235,7 +235,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setSession({ user: newUser });
         await fetchProfile(data.user.id);
         // Portal auth is required — block login if it fails
-        const portalResult = await ensurePortalAuth(newUser.email || email, { reason: "sign-in" }).catch(
+        const portalResult = await ensurePortalAuth(newUser.email || email, { reason: "sign-in", password }).catch(
           (portalErr) => ({
             token: null,
             error: portalErr,

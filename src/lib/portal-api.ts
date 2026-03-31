@@ -435,7 +435,7 @@ const portalRequest = async <T>(
         auth: getPortalAuthDebugState(email),
       });
       clearPortalAuth();
-      const loginResult = await portalLogin(email, { reason: `retry:${path}` });
+      const loginResult = await portalLogin(email, undefined, { reason: `retry:${path}` });
       const refreshedAuth = getPortalAuth(email);
       if (loginResult.error || !refreshedAuth) {
         return {
@@ -457,14 +457,19 @@ const portalRequest = async <T>(
   }
 };
 
-export const portalLogin = async (email: string, options?: { reason?: string }) => {
+export const portalLogin = async (email: string, password?: string, options?: { reason?: string }) => {
   debugPortalAuth("Portal login requested", { email, reason: options?.reason || "direct" });
 
   const result = await portalRequest<{
     status: number;
     message: string;
-    data: { rol: string; token: string; tokenType: string };
-  }>("auth/login", { method: "POST", body: { correo: email } });
+    data: {
+      propiedades: { idPropiedad: number; nombre: string }[];
+      rol: string;
+      token: string;
+      tokenType: string;
+    };
+  }>("auth/login", { method: "POST", body: { correo: email, password } });
 
   if (!result.error && result.data?.data?.token) {
     setPortalAuth(result.data.data.token, result.data.data.tokenType, email);
@@ -487,7 +492,7 @@ export const portalLogin = async (email: string, options?: { reason?: string }) 
   return result;
 };
 
-export const ensurePortalAuth = async (email?: string, options?: { reason?: string; forceRefresh?: boolean }) => {
+export const ensurePortalAuth = async (email?: string, options?: { reason?: string; forceRefresh?: boolean; password?: string }) => {
   if (options?.forceRefresh) {
     clearPortalAuth();
   }
@@ -498,7 +503,7 @@ export const ensurePortalAuth = async (email?: string, options?: { reason?: stri
     return { token: null, error: { message: "Missing portal auth token" } };
   }
 
-  const loginResult = await portalLogin(email, { reason: options?.reason || "ensure" });
+  const loginResult = await portalLogin(email, options?.password, { reason: options?.reason || "ensure" });
   if (loginResult.error || !loginResult.data?.data?.token) {
     return { token: null, error: loginResult.error || { message: "Portal login failed" } };
   }
@@ -725,7 +730,7 @@ export const portalDownloadFinanzasPdf = async (
         auth: getPortalAuthDebugState(email),
       });
       clearPortalAuth();
-      const loginResult = await portalLogin(email, { reason: "retry:download:finanzas-pdf" });
+      const loginResult = await portalLogin(email, undefined, { reason: "retry:download:finanzas-pdf" });
       auth = getPortalAuth(email);
       if (loginResult.error || !auth) {
         return { blob: null, error: loginResult.error || { message: "Portal login failed" } };

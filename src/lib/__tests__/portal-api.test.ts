@@ -86,6 +86,7 @@ describe("portalGetAllDashboardIncidents", () => {
         json: async () => ({
           status: 200,
           data: {
+            propiedades: [],
             rol: "owner",
             token: freshToken,
             tokenType: "Bearer",
@@ -140,6 +141,7 @@ describe("portalGetAllDashboardIncidents", () => {
         json: async () => ({
           status: 200,
           data: {
+            propiedades: [],
             rol: "owner",
             token: freshToken,
             tokenType: "Bearer",
@@ -188,7 +190,7 @@ describe("portalGetAllDashboardIncidents", () => {
       status: 200,
       json: async () => ({
         status: 200,
-        data: { token: "new-token", tokenType: "Bearer", rol: "owner" },
+        data: { token: "new-token", tokenType: "Bearer", rol: "owner", propiedades: [] },
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
