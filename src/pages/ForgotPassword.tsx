@@ -34,6 +34,7 @@ const ForgotPassword = () => {
 
     try {
       const result = await portalForgotPassword(email);
+      console.log("Forgot password response:", result);
       if (result.error) {
         toast.error(result.error.message || "Error al enviar el correo");
       } else {
