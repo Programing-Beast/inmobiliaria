@@ -8,6 +8,7 @@ import logoOriginal from "@/assets/logo-original.png";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Lock, CheckCircle2, ShieldAlert } from "lucide-react";
 import { portalResetPassword } from "@/lib/portal-api";
+import { updateUserPasswordByEmail } from "@/lib/turso";
 
 const ResetPassword = () => {
   const { t } = useTranslation();
@@ -56,6 +57,17 @@ const ResetPassword = () => {
       if (result.error) {
         toast.error(result.error.message || "Error al restablecer la contraseña");
       } else {
+        // Sync with Turso if we have the email
+        const resetEmail = localStorage.getItem('portalResetPasswordEmail');
+        if (resetEmail) {
+          const tursoResult = await updateUserPasswordByEmail(resetEmail, password);
+          if (tursoResult.error) {
+            console.warn("Turso password sync failed:", tursoResult.error.message);
+          } else {
+            localStorage.removeItem('portalResetPasswordEmail');
+          }
+        }
+
         setIsSuccess(true);
         toast.success(t('resetPassword.successMessage'));
         // Automatically redirect to login after 3 seconds

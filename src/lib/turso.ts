@@ -87,6 +87,25 @@ const verifyPassword = async (password: string, hash: string): Promise<boolean> 
 };
 
 /**
+ * Update user password by email (used for syncing with Portal API)
+ */
+export const updateUserPasswordByEmail = async (email: string, newPassword: string) => {
+  try {
+    const passwordHash = await hashPassword(newPassword);
+    const timestamp = now();
+
+    await db.execute({
+      sql: 'UPDATE users SET password_hash = ?, updated_at = ? WHERE email = ?',
+      args: [passwordHash, timestamp, email],
+    });
+
+    return { error: null };
+  } catch (error: any) {
+    return { error: { message: error.message } };
+  }
+};
+
+/**
  * Sign up a new user with email and password
  */
 export const signUp = async (email: string, password: string, fullName: string) => {

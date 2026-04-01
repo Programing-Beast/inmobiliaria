@@ -38,6 +38,7 @@ const ForgotPassword = () => {
       if (result.error) {
         toast.error(result.error.message || "Error al enviar el correo");
       } else {
+        localStorage.setItem('portalResetPasswordEmail', email);
         setIsSubmitted(true);
         toast.success(t('forgotPassword.successMessage'));
       }
