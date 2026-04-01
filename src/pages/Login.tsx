@@ -15,7 +15,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn } = useAuth();
-  const [email, setEmail] = useState("");
+  const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -25,14 +25,14 @@ const Login = () => {
     e.preventDefault();
 
     // Validation
-    if (!email || !password) {
+    if (!correo || !password) {
       toast.error(t("login.validationRequired"));
       return;
     }
 
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(correo)) {
       toast.error(t("login.validationEmail"));
       return;
     }
@@ -40,17 +40,16 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Sign in with Supabase
-      const { error } = await signIn(email, password);
+      // Sign in with the provider
+      const { error } = await signIn(correo, password);
 
       if (error) {
-        // Handle specific error messages
+        // Handle specific error messages from Portal API
         if ((error as any).isPortalError) {
-          // Portal auth/login API failure — show the API response and stay on login
           toast.error(error.message || t("login.errorGeneric"));
-        } else if (error.message.includes('Invalid login credentials')) {
+        } else if (error.message?.includes('Invalid login credentials') || error.message?.includes('401')) {
           toast.error(t("login.errorInvalidCredentials"));
-        } else if (error.message.includes('Email not confirmed')) {
+        } else if (error.message?.includes('Email not confirmed')) {
           toast.error(t("login.errorEmailNotConfirmed"));
         } else {
           toast.error(error.message || t("login.errorGeneric"));
@@ -102,8 +101,8 @@ const Login = () => {
                   id="email"
                   type="email"
                   placeholder={t("login.emailPlaceholder")}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={correo}
+                  onChange={(e) => setCorreo(e.target.value)}
                   className="h-12 border-[#d6e1f4] bg-[#eef4ff] pl-10 text-zinc-800 transition-all placeholder:text-zinc-400 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
                   disabled={isLoading}
                 />

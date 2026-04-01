@@ -7,8 +7,6 @@ import {
   Home,
   Calendar,
   AlertCircle,
-  Eye,
-  Download,
   MoreVertical,
   Users,
   DollarSign,
@@ -53,6 +51,7 @@ const DashboardW3CRM = () => {
     activeReservations: "-",
     openIncidents: "-",
   });
+  
   const isSuperAdmin = profile?.role === "super_admin";
   const isOwner = profile?.role === "owner";
 
@@ -122,6 +121,7 @@ const DashboardW3CRM = () => {
       try {
         let allowedPropertyIds: number[] = [];
         let allowedPropertyNames: string[] = [];
+        
         if (!isSuperAdmin) {
           if (profile?.building_id) {
             const { building } = await getBuilding(profile.building_id);
@@ -132,20 +132,33 @@ const DashboardW3CRM = () => {
               allowedPropertyNames = [building.name];
             }
           } else {
-            const propertiesResult = await portalGetAllMyProperties();
-            if (!propertiesResult.error) {
-              const portalProperties = toPortalList(propertiesResult.data);
-              allowedPropertyIds = portalProperties
-                .map((property) =>
-                  readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"])
-                )
+            // First check if we have properties in the profile (hydrated from login)
+            const sessionProperties = profile?.portalProperties || [];
+            
+            if (sessionProperties.length > 0) {
+              allowedPropertyIds = sessionProperties
+                .map((property) => readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"]))
                 .filter((value): value is number => value !== null);
-              allowedPropertyNames = portalProperties
-                .map((property) =>
-                  readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"])
-                )
+              allowedPropertyNames = sessionProperties
+                .map((property) => readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad", "propiedadNombre"]))
                 .filter(Boolean);
-              console.log("[portal] allowed property IDs", allowedPropertyIds);
+              console.log("[portal] using properties from session", allowedPropertyIds);
+            } else {
+              // Fallback to API if session is empty
+              const propertiesResult = await portalGetAllMyProperties();
+              if (!propertiesResult.error) {
+                const portalProperties = toPortalList(propertiesResult.data);
+                allowedPropertyIds = portalProperties
+                  .map((property) =>
+                    readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"])
+                  )
+                  .filter((value): value is number => value !== null);
+                allowedPropertyNames = portalProperties
+                  .map((property) =>
+                    readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"])
+                  )
+                  .filter(Boolean);
+              }
             }
           }
         }
@@ -173,6 +186,7 @@ const DashboardW3CRM = () => {
 
         const reservasRaw = toPortalList(reservasResult.data);
         const incidenciasRaw = Array.isArray(incidenciasResult.data) ? incidenciasResult.data : [];
+        
         const reservas = shouldFilter
           ? reservasRaw.filter((record: any) => {
               const propertyId = getRecordPropertyId(record);
@@ -182,6 +196,7 @@ const DashboardW3CRM = () => {
               return false;
             })
           : reservasRaw;
+
         const incidencias = shouldFilter
           ? incidenciasRaw.filter((record: any) => {
               const propertyId = getRecordPropertyId(record);
@@ -192,6 +207,7 @@ const DashboardW3CRM = () => {
               return false;
             })
           : incidenciasRaw;
+
         const comunicados = toPortalList(comunicadosResult.data);
         const expensasSummary = toPortalList(expensasResult.data)[0] || expensasResult.data || {};
         const resumen = toPortalList(finanzasResumenResult.data)[0] || finanzasResumenResult.data || null;
@@ -248,7 +264,7 @@ const DashboardW3CRM = () => {
     return () => {
       active = false;
     };
-  }, [t, isSuperAdmin, isOwner, profile?.building_id, profile?.email]);
+  }, [t, isSuperAdmin, isOwner, profile?.building_id, profile?.email, profile?.portalProperties]);
 
   const formatCurrency = (amount?: number | null) => {
     if (amount === null || amount === undefined || !Number.isFinite(amount)) return "-";
@@ -289,16 +305,6 @@ const DashboardW3CRM = () => {
             {t('dashboard.subtitle')}
           </p>
         </div>
-        <div className="flex gap-2">
-          {/* <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            {t('dashboard.export')}
-          </Button>
-          <Button size="sm">
-            <Eye className="h-4 w-4 mr-2" />
-            {t('dashboard.viewReports')}
-          </Button> */}
-        </div>
       </div>
 
       {/* Stats Grid */}
@@ -308,21 +314,18 @@ const DashboardW3CRM = () => {
           value={stats.totalUnits}
           icon={Home}
           iconColor="primary"
-          // trend={{ value: 2, positive: true }}
         />
         <StatCard
           title={t('dashboard.activeReservations')}
           value={stats.activeReservations}
           icon={Calendar}
           iconColor="success"
-          // trend={{ value: 8, positive: true }}
         />
         <StatCard
           title={t('dashboard.openIncidents')}
           value={stats.openIncidents}
           icon={AlertCircle}
           iconColor="info"
-          // trend={{ value: 2, positive: false }}
         />
       </div>
 
@@ -361,84 +364,86 @@ const DashboardW3CRM = () => {
             )}
           </div>
         </DataCard>
-      </div>
 
-      {/* Additional Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {isOwner && (
-          <DataCard
-            title={t("dashboard.financialSummary")}
-            description={t("dashboard.financialSummaryDesc")}
-          >
-            <div className="space-y-3">
-              {loading ? (
-                <p className="text-sm text-muted-foreground">Cargando...</p>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Total facturas</span>
-                    <span className="font-semibold text-secondary">
-                      {financeSummary?.totalFacturas ?? "-"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Total pagado</span>
-                    <span className="font-semibold text-secondary">
-                      {formatCurrency(financeSummary?.totalPagado)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Total pendiente</span>
-                    <span className="font-semibold text-secondary">
-                      {formatCurrency(financeSummary?.totalPendiente)}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          </DataCard>
-        )}
-        <DataCard
-          title={t('dashboard.recentActivity')}
-          description={t('dashboard.recentActivityDesc')}
-        >
-          <div className="space-y-3">
-            {loading ? (
-              <p className="text-sm text-muted-foreground">Cargando...</p>
-            ) : recentActivity.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sin actividad</p>
-            ) : (
-              recentActivity.map((activity, index) => {
-                const iconList = [Users, Calendar, DollarSign, AlertCircle];
-                const Icon = iconList[index % iconList.length];
-                const toneList = ["primary", "success", "warning", "info"];
-                const tone = toneList[index % toneList.length];
-                const toneClass =
-                  tone === "primary"
-                    ? "bg-primary/10 text-primary"
-                    : tone === "success"
-                    ? "bg-success/10 text-success"
-                    : tone === "warning"
-                    ? "bg-warning/10 text-warning"
-                    : "bg-info/10 text-info";
-
-                return (
-                  <div key={`${activity.title}-${index}`} className="flex items-start gap-3">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${toneClass}`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-secondary">{activity.title}</p>
-                      {activity.description && (
-                        <p className="text-xs text-muted-foreground">{activity.description}</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
+        {/* Finance and Activity Column */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {isOwner && (
+              <DataCard
+                title={t("dashboard.financialSummary")}
+                description={t("dashboard.financialSummaryDesc")}
+              >
+                <div className="space-y-3">
+                  {loading ? (
+                    <p className="text-sm text-muted-foreground">Cargando...</p>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Total facturas</span>
+                        <span className="font-semibold text-secondary">
+                          {financeSummary?.totalFacturas ?? "-"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Total pagado</span>
+                        <span className="font-semibold text-secondary">
+                          {formatCurrency(financeSummary?.totalPagado)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Total pendiente</span>
+                        <span className="font-semibold text-secondary">
+                          {formatCurrency(financeSummary?.totalPendiente)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </DataCard>
             )}
+            <DataCard
+              title={t('dashboard.recentActivity')}
+              description={t('dashboard.recentActivityDesc')}
+            >
+              <div className="space-y-3">
+                {loading ? (
+                  <p className="text-sm text-muted-foreground">Cargando...</p>
+                ) : recentActivity.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Sin actividad</p>
+                ) : (
+                  recentActivity.map((activity, index) => {
+                    const iconList = [Users, Calendar, DollarSign, AlertCircle];
+                    const Icon = iconList[index % iconList.length];
+                    const toneList = ["primary", "success", "warning", "info"];
+                    const tone = toneList[index % toneList.length];
+                    const toneClass =
+                      tone === "primary"
+                        ? "bg-primary/10 text-primary"
+                        : tone === "success"
+                        ? "bg-success/10 text-success"
+                        : tone === "warning"
+                        ? "bg-warning/10 text-warning"
+                        : "bg-info/10 text-info";
+
+                    return (
+                      <div key={`${activity.title}-${index}`} className="flex items-start gap-3">
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${toneClass}`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-secondary">{activity.title}</p>
+                          {activity.description && (
+                            <p className="text-xs text-muted-foreground">{activity.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </DataCard>
           </div>
-        </DataCard>
+        </div>
       </div>
     </div>
   );

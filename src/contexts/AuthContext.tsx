@@ -32,6 +32,7 @@ interface UserProfile {
   units?: UserUnit[];
   roles?: UserRole[];
   currentUnit?: UserUnit | null;
+  portalProperties?: { idPropiedad: number; nombre: string }[];
 }
 
 interface Session {
@@ -103,6 +104,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         roles: userRoles,
         currentUnit: units?.find((u: UserUnit) => u.is_primary) || units?.[0] || null,
       };
+
+      // Load portal properties if available
+      const storedProperties = localStorage.getItem('userProperties');
+      if (storedProperties) {
+        try {
+          enhancedProfile.portalProperties = JSON.parse(storedProperties);
+        } catch (e) {
+          console.error('Error parsing stored portal properties:', e);
+        }
+      }
 
       setProfile(enhancedProfile);
 
@@ -263,6 +274,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           };
         }
         console.debug("[portal auth] post-sign-in snapshot", getPortalAuthDebugState(newUser.email || email));
+        
+        // Refresh profile to include any new data stored in localStorage by portalLogin
+        await fetchProfile(data.user.id);
       }
 
       return { error: null };

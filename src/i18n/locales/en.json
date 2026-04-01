@@ -133,6 +133,15 @@
     "backToLogin": "Back to sign in",
     "successMessage": "If the email exists, you will receive instructions to reset your password"
   },
+  "resetPassword": {
+    "title": "Reset password",
+    "subtitle": "Enter your new password below",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "resetButton": "Reset password",
+    "successMessage": "Your password has been reset successfully",
+    "errorToken": "The reset token is invalid or has expired"
+  },
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Welcome! Here's your property summary today.",
@@ -165,7 +174,7 @@
     "newResidentRegistered": "New resident registered",
     "reservationConfirmed": "Reservation confirmed",
     "paymentReceived": "Payment received",
-    "newIncidentReported": "New incident reported",
+    "newIncident reported": "New incident reported",
     "chartPlaceholder": "Payment chart (Recharts)"
   },
   "finance": {

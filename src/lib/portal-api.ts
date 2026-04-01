@@ -12,6 +12,8 @@ const dashboardExpensasPath =
   import.meta.env.VITE_PORTAL_DASHBOARD_EXPENSAS_PATH || "dashboard/expensas";
 const dashboardReservationsPath =
   import.meta.env.VITE_PORTAL_DASHBOARD_RESERVAS_PATH || "dashboard/reservas";
+const apexAuthToken =
+  apexApiUser && apexApiPassword ? btoa(`${apexApiUser}:${apexApiPassword}`) : "";
 const dashboardComunicadosPath =
   import.meta.env.VITE_PORTAL_DASHBOARD_COMUNICADOS_PATH || "dashboard/comunicados";
 const approvalsReservationsPath =
@@ -25,6 +27,7 @@ const portalAuthEmailKey = "currentUserEmail";
 const portalTokenKey = "token";
 const portalTokenTypeKey = "Bearer";
 const portalRoleKey = "portalRole";
+const portalPropertiesKey = "userProperties";
 const portalTokenOwnerEmailKey = "portalTokenOwnerEmail";
 const portalTokenExpiresAtKey = "portalTokenExpiresAt";
 const portalTokenIssuedAtKey = "portalTokenIssuedAt";
@@ -311,6 +314,7 @@ export const clearPortalAuth = () => {
   localStorage.removeItem(portalTokenKey);
   localStorage.removeItem(portalTokenTypeKey);
   localStorage.removeItem(portalRoleKey);
+  localStorage.removeItem(portalPropertiesKey);
   localStorage.removeItem(portalTokenOwnerEmailKey);
   localStorage.removeItem(portalTokenExpiresAtKey);
   localStorage.removeItem(portalTokenIssuedAtKey);
@@ -360,7 +364,7 @@ const portalRequest = async <T>(
   }
 ): Promise<PortalResponse<T>> => {
   const { method = "GET", body, headers, params } = options || {};
-  const url = buildUrl(path, params);
+  const url = buildUrl(`${portalBaseUrl}/${path}`, params);
   const email = getPortalAuthEmail();
   const buildRequestHeaders = (auth?: PortalAuth | null) => {
     const requestHeaders: Record<string, string> = {
@@ -370,8 +374,8 @@ const portalRequest = async <T>(
 
     const isAuthEndpoint = path.startsWith("auth/");
 
-    if (isAuthEndpoint && apexApiUser && apexApiPassword) {
-      requestHeaders.Authorization = `Basic ${encodeBase64(`${apexApiUser}:${apexApiPassword}`)}`;
+    if (isAuthEndpoint && apexAuthToken) {
+      requestHeaders.Authorization = `Basic ${apexAuthToken}`;
     }
 
     if (email && !isAuthEndpoint && !requestHeaders.correo) {
@@ -477,6 +481,9 @@ export const portalLogin = async (email: string, password?: string, options?: { 
       localStorage.setItem(portalRoleKey, result.data.data.rol);
       await syncPortalRoleToLocalUser(result.data.data.rol);
     }
+    if (result.data.data.propiedades) {
+      localStorage.setItem(portalPropertiesKey, JSON.stringify(result.data.data.propiedades));
+    }
     debugPortalAuth("Portal login succeeded", {
       email,
       auth: getPortalAuthDebugState(email),
@@ -490,6 +497,34 @@ export const portalLogin = async (email: string, password?: string, options?: { 
   }
 
   return result;
+};
+export const portalRegister = async (payload: { nombreCompleto: string; correo: string; password: string }) => {
+  return portalRequest<{
+    status: number;
+    message: string;
+    data: { idUsuario: number };
+  }>("auth/register", { method: "POST", body: payload });
+};
+
+export const portalForgotPassword = async (email: string) => {
+  return portalRequest<{
+    status: number;
+    message: string;
+  }>("auth/forgot-password", { method: "POST", body: { correo: email } });
+};
+
+export const portalResetPassword = async (payload: { token: string; newPassword: string }) => {
+  return portalRequest<{
+    status: number;
+    message: string;
+  }>("auth/reset-password", { method: "POST", body: payload });
+};
+
+export const portalChangePassword = async (payload: { oldPassword: string; newPassword: string }) => {
+  return portalRequest<{
+    status: number;
+    message: string;
+  }>("auth/change-password", { method: "POST", body: payload });
 };
 
 export const ensurePortalAuth = async (email?: string, options?: { reason?: string; forceRefresh?: boolean; password?: string }) => {

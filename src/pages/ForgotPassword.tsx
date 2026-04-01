@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import logoOriginal from "@/assets/logo-original.png";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Mail, CheckCircle2 } from "lucide-react";
+import { portalForgotPassword } from "@/lib/portal-api";
 
 const ForgotPassword = () => {
   const { t } = useTranslation();
@@ -18,25 +19,33 @@ const ForgotPassword = () => {
     e.preventDefault();
 
     if (!email) {
-      toast.error("Please enter your email");
+      toast.error(t("login.validationRequired"));
       return;
     }
 
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      toast.error("Please enter a valid email address");
+      toast.error(t("login.validationEmail"));
       return;
     }
 
     setIsLoading(true);
 
-    // Mock password reset - in real app, this would call an API
-    setTimeout(() => {
-      setIsSubmitted(true);
+    try {
+      const result = await portalForgotPassword(email);
+      if (result.error) {
+        toast.error(result.error.message || "Error al enviar el correo");
+      } else {
+        setIsSubmitted(true);
+        toast.success(t('forgotPassword.successMessage'));
+      }
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      toast.error("Error inesperado");
+    } finally {
       setIsLoading(false);
-      toast.success("Password reset link sent!");
-    }, 1500);
+    }
   };
 
   return (
@@ -86,7 +95,7 @@ const ForgotPassword = () => {
                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    We'll send you a link to reset your password
+                    {t('forgotPassword.successMessage')}
                   </p>
                 </div>
 
@@ -98,7 +107,7 @@ const ForgotPassword = () => {
                   {isLoading ? (
                     <span className="flex items-center gap-2">
                       <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Sending...
+                      {t('login.loading')}
                     </span>
                   ) : (
                     t('forgotPassword.sendButton')

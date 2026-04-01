@@ -134,6 +134,15 @@
     "backToLogin": "Volver al inicio de sesión",
     "successMessage": "Si el correo existe, recibirás instrucciones para restablecer tu contraseña"
   },
+  "resetPassword": {
+    "title": "Restablecer contraseña",
+    "subtitle": "Ingresa tu nueva contraseña a continuación",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirmar nueva contraseña",
+    "resetButton": "Restablecer contraseña",
+    "successMessage": "Tu contraseña ha sido restablecida exitosamente",
+    "errorToken": "El token de restablecimiento es inválido o ha expirado"
+  },
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Bienvenido! Aquí está el resumen de tu propiedad hoy.",
@@ -480,7 +489,7 @@
   },
   "permissions": {
     "title": "Gestión de Permisos",
-    "subtitle": "Administrar permisos del sistema y asignaciones de roles",
+    "subtitle": "Administrar permisos del sistema and asignaciones de roles",
     "permissionsTab": "Permisos",
     "rolesTab": "Permisos por Rol",
     "createPermission": "Crear Permiso",
