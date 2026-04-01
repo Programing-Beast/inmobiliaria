@@ -46,7 +46,8 @@ const Login = () => {
       if (error) {
         // Handle specific error messages from Portal API
         if ((error as any).isPortalError) {
-          toast.error(error.message || t("login.errorGeneric"));
+          const detailStr = (error as any).details ? `\n${(error as any).details}` : "";
+          toast.error(`${error.message}${detailStr}` || t("login.errorGeneric"));
         } else if (error.message?.includes('Invalid login credentials') || error.message?.includes('401')) {
           toast.error(t("login.errorInvalidCredentials"));
         } else if (error.message?.includes('Email not confirmed')) {

@@ -417,7 +417,9 @@ const portalRequest = async <T>(
   };
 
   let auth: PortalAuth | null = null;
-  if (path !== "auth/login") {
+  const isPublicAuthEndpoint = path.startsWith("auth/") && path !== "auth/change-password";
+
+  if (!isPublicAuthEndpoint) {
     const authResult = await ensurePortalAuth(email, { reason: `request:${path}` });
     if (authResult.error) {
       return { data: null, error: authResult.error };

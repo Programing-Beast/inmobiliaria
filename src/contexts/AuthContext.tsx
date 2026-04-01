@@ -269,6 +269,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           return {
             error: {
               message: portalError?.message || 'Portal authentication failed. Please try again.',
+              details: portalError?.details,
               isPortalError: true,
             },
           };
