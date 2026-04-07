@@ -52,7 +52,10 @@ type PortalAuth = {
 };
 
 const buildUrl = (path: string, params?: Record<string, string | number | undefined>) => {
-  const url = new URL(path, portalBaseUrl.endsWith("/") ? portalBaseUrl : `${portalBaseUrl}/`);
+  const isAbsoluteUrl = /^https?:\/\//i.test(path);
+  const url = isAbsoluteUrl
+    ? new URL(path)
+    : new URL(path, portalBaseUrl.endsWith("/") ? portalBaseUrl : `${portalBaseUrl}/`);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -364,7 +367,7 @@ const portalRequest = async <T>(
   }
 ): Promise<PortalResponse<T>> => {
   const { method = "GET", body, headers, params } = options || {};
-  const url = buildUrl(`${portalBaseUrl}/${path}`, params);
+  const url = buildUrl(path, params);
   const email = getPortalAuthEmail();
   const buildRequestHeaders = (auth?: PortalAuth | null) => {
     const requestHeaders: Record<string, string> = {
