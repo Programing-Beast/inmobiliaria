@@ -434,6 +434,11 @@ const portalRequest = async <T>(
       requestHeaders["Content-Type"] = "application/json";
     }
 
+    if (method === "GET") {
+      requestHeaders["Cache-Control"] = requestHeaders["Cache-Control"] || "no-cache, no-store, max-age=0";
+      requestHeaders.Pragma = requestHeaders.Pragma || "no-cache";
+    }
+
     if (auth && !isAuthEndpoint) {
       requestHeaders.Authorization = `${auth.tokenType} ${auth.token}`;
     }
@@ -458,6 +463,7 @@ const portalRequest = async <T>(
       method,
       headers: requestHeaders,
       body: body ? JSON.stringify(body) : undefined,
+      cache: method === "GET" ? "no-store" : "default",
     });
 
     const payload = await response.json().catch(() => ({}));
