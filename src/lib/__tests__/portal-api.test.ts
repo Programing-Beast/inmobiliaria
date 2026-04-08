@@ -241,4 +241,21 @@ describe("portalGetAllDashboardIncidents", () => {
     // Ensure Bearer token is NOT present
     expect(headers.Authorization).not.toContain("Bearer");
   });
+
+  it("resolves reset email from query params before decoding the token", async () => {
+    const { resolvePortalResetEmail } = await import("@/lib/portal-api");
+    const token = createJwt(Math.floor(Date.now() / 1000) + 60 * 60);
+    const params = new URLSearchParams("email=QueryUser@example.com");
+
+    expect(resolvePortalResetEmail(token, params)).toBe("queryuser@example.com");
+  });
+
+  it("resolves reset email from a JWT payload when present", async () => {
+    const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+    const payload = Buffer.from(JSON.stringify({ email: "ResetUser@example.com" })).toString("base64url");
+    const token = `${header}.${payload}.signature`;
+    const { resolvePortalResetEmail } = await import("@/lib/portal-api");
+
+    expect(resolvePortalResetEmail(token, null)).toBe("resetuser@example.com");
+  });
 });

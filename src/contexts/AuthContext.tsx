@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase, getUserProfile, getUserUnits, getUserRoles, signIn, signUp as signUpUser, signOut as signOutUser } from '@/lib/supabase';
-import { clearPortalAuth, ensurePortalAuth, getPortalAuthDebugState } from "@/lib/portal-api";
+import { supabase, getUserProfile, getUserUnits, getUserRoles, signIn, signUp as signUpUser, signOut as signOutUser, updateUserPasswordByEmail } from '@/lib/supabase';
+import { clearPortalAuth, ensurePortalAuth, getPortalAuthDebugState, portalLogin } from "@/lib/portal-api";
 import type { UserRole } from '@/lib/database.types';
 
 interface UserUnit {
@@ -234,10 +234,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Sign in function
   const handleSignIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await signIn(email, password);
+      let { data, error } = await signIn(email, password);
 
       if (error) {
-        return { error };
+        const portalRecovery = await portalLogin(email, password, { reason: "recover-local-password" }).catch(
+          (portalErr) => ({
+            data: null,
+            error: portalErr,
+          })
+        );
+
+        if (portalRecovery?.error) {
+          return { error };
+        }
+
+        const passwordSyncResult = await updateUserPasswordByEmail(email, password);
+        if (passwordSyncResult.error) {
+          return {
+            error: {
+              message: "Portal authentication succeeded, but local password sync failed.",
+              details: passwordSyncResult.error.message,
+              isPortalError: true,
+            },
+          };
+        }
+
+        const retriedSignIn = await signIn(email, password);
+        data = retriedSignIn.data;
+        error = retriedSignIn.error;
+
+        if (error) {
+          return { error };
+        }
       }
 
       if (data?.user) {

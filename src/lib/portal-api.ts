@@ -215,17 +215,29 @@ const decodeBase64Url = (value: string) => {
   throw new Error("No base64 decoder available");
 };
 
-const parseJwtExpiry = (token: string): number | null => {
+const normalizeEmailValue = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) return null;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : null;
+};
+
+const parseJwtPayload = (token: string): Record<string, unknown> | null => {
   const [, payload] = token.split(".");
   if (!payload) return null;
 
   try {
     const decoded = JSON.parse(decodeBase64Url(payload));
-    const exp = Number(decoded?.exp);
-    return Number.isFinite(exp) ? exp * 1000 : null;
+    return decoded && typeof decoded === "object" ? decoded : null;
   } catch {
     return null;
   }
+};
+
+const parseJwtExpiry = (token: string): number | null => {
+  const decoded = parseJwtPayload(token);
+  const exp = Number(decoded?.exp);
+  return Number.isFinite(exp) ? exp * 1000 : null;
 };
 
 const getStoredPortalTokenExpiry = (token?: string | null) => {
@@ -260,6 +272,35 @@ export const getPortalAuthDebugState = (expectedEmail?: string) => {
     isExpired: expiresAt ? expiresAt <= now : null,
     issuedAt: localStorage.getItem(portalTokenIssuedAtKey),
   };
+};
+
+export const resolvePortalResetEmail = (
+  token?: string | null,
+  searchParams?: URLSearchParams | null
+) => {
+  const queryEmail =
+    normalizeEmailValue(searchParams?.get("email")) || normalizeEmailValue(searchParams?.get("correo"));
+  if (queryEmail) return queryEmail;
+  if (!token) return null;
+
+  const payload = parseJwtPayload(token);
+  if (!payload) return null;
+
+  const directKeys = ["email", "correo", "user_email", "userEmail", "username", "sub"] as const;
+  for (const key of directKeys) {
+    const resolved = normalizeEmailValue(payload[key]);
+    if (resolved) return resolved;
+  }
+
+  const nestedUser = payload.user;
+  if (nestedUser && typeof nestedUser === "object") {
+    const resolved =
+      normalizeEmailValue((nestedUser as Record<string, unknown>).email) ||
+      normalizeEmailValue((nestedUser as Record<string, unknown>).correo);
+    if (resolved) return resolved;
+  }
+
+  return null;
 };
 
 const mapPortalRoleToLocalRole = (role?: string | null): UserRole | null => {

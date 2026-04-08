@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import logoOriginal from "@/assets/logo-original.png";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Lock, CheckCircle2, ShieldAlert } from "lucide-react";
-import { portalResetPassword } from "@/lib/portal-api";
+import { portalResetPassword, resolvePortalResetEmail } from "@/lib/portal-api";
 import { updateUserPasswordByEmail } from "@/lib/turso";
 
 const ResetPassword = () => {
@@ -15,6 +15,7 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
+  const resetEmail = resolvePortalResetEmail(token, searchParams);
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -57,15 +58,13 @@ const ResetPassword = () => {
       if (result.error) {
         toast.error(result.error.message || "Error al restablecer la contraseña");
       } else {
-        // Sync with Turso if we have the email
-        const resetEmail = localStorage.getItem('portalResetPasswordEmail');
         if (resetEmail) {
           const tursoResult = await updateUserPasswordByEmail(resetEmail, password);
           if (tursoResult.error) {
             console.warn("Turso password sync failed:", tursoResult.error.message);
-          } else {
-            localStorage.removeItem('portalResetPasswordEmail');
           }
+        } else {
+          console.warn("Turso password sync skipped: unable to resolve reset email from reset context");
         }
 
         setIsSuccess(true);
