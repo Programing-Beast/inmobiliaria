@@ -325,10 +325,14 @@ export const clearPortalAuth = () => {
 
 const normalizePortalError = (payload: any, status?: number): PortalError => {
   if (payload?.error?.message) {
+    const description =
+      typeof payload.error.description === "string" && payload.error.description.trim()
+        ? payload.error.description.trim()
+        : undefined;
     return {
-      message: payload.error.message,
+      message: status === 400 && description ? description : payload.error.message,
       status: payload.error.code || status,
-      details: payload.error.description,
+      details: description,
     };
   }
   if (payload?.message) {
