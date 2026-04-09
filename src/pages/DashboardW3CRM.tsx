@@ -13,20 +13,22 @@ import {
 } from "lucide-react";
 import {
   portalGetDashboardComunicados,
-  portalGetDashboardExpensas,
   portalGetAllDashboardIncidents,
   portalGetDashboardReservations,
   portalGetAllMyProperties,
-  portalGetFinanzasResumen,
+  portalGetUnits,
 } from "@/lib/portal-api";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { getBuilding } from "@/lib/supabase";
 
 type DashboardReservation = {
+  reservationId?: string;
   amenity: string;
   unit: string;
   date: string;
+  startTime?: string;
+  endTime?: string;
   status: string;
 };
 
@@ -41,11 +43,6 @@ const DashboardW3CRM = () => {
   const [loading, setLoading] = useState(true);
   const [upcomingReservations, setUpcomingReservations] = useState<DashboardReservation[]>([]);
   const [recentActivity, setRecentActivity] = useState<DashboardActivity[]>([]);
-  const [financeSummary, setFinanceSummary] = useState<{
-    totalFacturas?: number;
-    totalPagado?: number;
-    totalPendiente?: number;
-  } | null>(null);
   const [stats, setStats] = useState({
     totalUnits: "-",
     activeReservations: "-",
@@ -163,19 +160,18 @@ const DashboardW3CRM = () => {
           }
         }
 
-        const correo = profile?.email?.trim() || undefined;
+        const idProp = allowedPropertyIds.length > 0 ? allowedPropertyIds[0] : null;
+
         const [
-          expensasResult,
           reservasResult,
           incidenciasResult,
           comunicadosResult,
-          finanzasResumenResult,
+          unidadesResult,
         ] = await Promise.all([
-          portalGetDashboardExpensas(),
           portalGetDashboardReservations(),
           portalGetAllDashboardIncidents(),
           portalGetDashboardComunicados(),
-          isOwner ? portalGetFinanzasResumen({ correo }) : Promise.resolve({ data: null, error: null }),
+          idProp !== null ? portalGetUnits(idProp) : Promise.resolve({ data: null, error: null }),
         ]);
 
         if (!active) return;
@@ -209,17 +205,17 @@ const DashboardW3CRM = () => {
           : incidenciasRaw;
 
         const comunicados = toPortalList(comunicadosResult.data);
-        const expensasSummary = toPortalList(expensasResult.data)[0] || expensasResult.data || {};
-        const resumen = toPortalList(finanzasResumenResult.data)[0] || finanzasResumenResult.data || null;
 
         const openIncidentsCount = incidencias.filter((incident: any) => {
           const estado = String(incident?.estado || incident?.status || "").toUpperCase();
           return ["ABIERTA", "EN_PROCESO", "OPEN", "IN_PROGRESS"].includes(estado);
         }).length;
 
+        const unidadesData = unidadesResult.data as any;
         const totalUnitsValue =
-          readNumber(expensasSummary, ["total_unidades", "totalUnits", "cant_unidades", "cantidadUnidades"]) ??
-          null;
+          readNumber(unidadesData, ["total", "total_unidades", "totalUnits"]) ??
+          readNumber(unidadesData?.[0] || {}, ["total", "total_unidades"]) ??
+          (Array.isArray(unidadesData) ? unidadesData.length : (Array.isArray(unidadesData?.data) ? unidadesData.data.length : null));
 
         setStats({
           totalUnits: totalUnitsValue !== null ? String(totalUnitsValue) : "-",
@@ -228,30 +224,41 @@ const DashboardW3CRM = () => {
         });
 
         const mappedReservations = reservas.map((reservation: any) => ({
+          reservationId: readString(reservation, ["id_reserva", "reservationId", "id"]),
           amenity: readString(reservation, ["amenity", "quincho", "amenidad", "titulo", "nombre"]) || "-",
           unit: readString(reservation, ["unidad", "unit", "unidad_desc", "unidad_nombre"]) || "-",
-          date: readString(reservation, ["fecha", "fechaReserva", "reservation_date", "created_at"]) || "-",
+          date: readString(reservation, ["fecha", "fechaReserva", "reservationDate", "reservation_date", "created_at"]) || "-",
+          startTime: readString(reservation, ["horaInicio", "hora_inicio", "startTime"]) || "",
+          endTime: readString(reservation, ["horaFin", "hora_fin", "endTime"]) || "",
           status: normalizeReservationStatus(readString(reservation, ["estado", "status"])),
         }));
 
         setUpcomingReservations(mappedReservations.slice(0, 6));
 
-        if (isOwner) {
-          setFinanceSummary({
-            totalFacturas: readNumber(resumen || {}, ["totalFacturas", "total_facturas", "total_facturas_count"]),
-            totalPagado: readNumber(resumen || {}, ["totalPagado", "total_pagado", "pagado", "total_paid"]),
-            totalPendiente: readNumber(resumen || {}, ["totalPendiente", "total_pendiente", "pendiente", "total_pending"]),
-          });
-        } else {
-          setFinanceSummary(null);
-        }
+        const mappedComunicados = comunicados.map((comunicado: any) => {
+          const dateStr = readString(comunicado, ["publishedAt", "fecha", "created_at", "updated_at"]);
+          return {
+            title: readString(comunicado, ["titulo", "title", "asunto"]) || t("dashboard.recentActivity"),
+            description: dateStr,
+            date: dateStr ? new Date(dateStr).getTime() : 0,
+          };
+        });
 
-        const mappedActivity = comunicados.map((comunicado: any) => ({
-          title: readString(comunicado, ["titulo", "title", "asunto"]) || t("dashboard.recentActivity"),
-          description: readString(comunicado, ["descripcion", "description", "fecha", "created_at"]),
-        }));
+        const mappedIncidentsActivity = incidencias.map((incident: any) => {
+          const statusStr = readString(incident, ["estado", "status"]);
+          const dateStr = readString(incident, ["updated_at", "last_modification_date", "fecha", "created_at"]);
+          return {
+            title: readString(incident, ["titulo", "title", "asunto"]) || "-",
+            description: statusStr,
+            date: dateStr ? new Date(dateStr).getTime() : 0,
+          };
+        });
 
-        setRecentActivity(mappedActivity.slice(0, 4));
+        const combinedActivity = [...mappedComunicados, ...mappedIncidentsActivity]
+          .sort((a, b) => b.date - a.date)
+          .map(({ title, description }) => ({ title, description }));
+
+        setRecentActivity(combinedActivity.slice(0, 4));
       } finally {
         if (active) {
           setLoading(false);
@@ -266,14 +273,6 @@ const DashboardW3CRM = () => {
     };
   }, [t, isSuperAdmin, isOwner, profile?.building_id, profile?.email, profile?.portalProperties]);
 
-  const formatCurrency = (amount?: number | null) => {
-    if (amount === null || amount === undefined || !Number.isFinite(amount)) return "-";
-    const formatted = new Intl.NumberFormat("es-PY", {
-      maximumFractionDigits: 0,
-      minimumFractionDigits: 0,
-    }).format(amount);
-    return `Gs. ${formatted}`;
-  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "success" | "warning" | "info"> = {
@@ -348,16 +347,25 @@ const DashboardW3CRM = () => {
               <p className="text-sm text-muted-foreground">Sin reservas</p>
             ) : (
               upcomingReservations.map((reservation, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-secondary">{reservation.amenity}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {reservation.unit}
-                    </p>
+                <div key={index} className="flex flex-col gap-2 border-b border-border last:border-0 pb-3 last:pb-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-secondary">
+                        {reservation.reservationId ? `#${reservation.reservationId} - ` : ""}
+                        {reservation.amenity}
+                      </p>
+                    </div>
+                    <div className="text-right flex items-center gap-2">
+                       {getStatusBadge(reservation.status)}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-secondary">{reservation.date}</p>
-                    {getStatusBadge(reservation.status)}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground w-full">
+                    <span>{reservation.unit}</span>
+                    <span className="font-medium text-secondary whitespace-nowrap">
+                      {reservation.date}
+                      {reservation.startTime ? ` | ${reservation.startTime}` : ""}
+                      {reservation.endTime ? ` - ${reservation.endTime}` : ""}
+                    </span>
                   </div>
                 </div>
               ))
@@ -374,30 +382,12 @@ const DashboardW3CRM = () => {
                 description={t("dashboard.financialSummaryDesc")}
               >
                 <div className="space-y-3">
-                  {loading ? (
-                    <p className="text-sm text-muted-foreground">Cargando...</p>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Total facturas</span>
-                        <span className="font-semibold text-secondary">
-                          {financeSummary?.totalFacturas ?? "-"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Total pagado</span>
-                        <span className="font-semibold text-secondary">
-                          {formatCurrency(financeSummary?.totalPagado)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Total pendiente</span>
-                        <span className="font-semibold text-secondary">
-                          {formatCurrency(financeSummary?.totalPendiente)}
-                        </span>
-                      </div>
-                    </>
-                  )}
+                  <p className="text-sm text-secondary whitespace-pre-line">
+                    Encontrá en el módulo de finanzas:
+                    {"\n"}• Facturas
+                    {"\n"}• Recibos
+                    {"\n"}• Informes generales
+                  </p>
                 </div>
               </DataCard>
             )}
