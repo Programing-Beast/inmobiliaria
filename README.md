@@ -1,136 +1,226 @@
 # Inmobiliaria Portal
 
-Resident/admin portal for buildings, units, amenities, reservations, incidents, approvals, finances, and communications. The app syncs write operations to the external Portal API first and then stores them locally in Turso; failed API writes are queued for retry.
+Resident and admin portal for building operations, including reservations, incidents, finances, documents, announcements, approvals, and catalog sync with an external Portal API.
+
+The frontend is built with React, Vite, TypeScript, Tailwind CSS, Radix UI, TanStack Query, and i18next. Local application data is stored in Turso/LibSQL, while the project also includes legacy Supabase SQL references under `supabase/`.
 
 ## Features
-- Authentication and role-based access (owner/tenant/admin)
-- Buildings, units, amenities (read-only, synced from Portal API)
-- Reservations (user + admin) with approval flow
-- Incidents creation + status updates
-- Communications, documents, and finances views
-- External Portal API integration with queued retries
-- Portal catalog sync (properties -> units -> amenities)
-- Pagination for portal catalog (page/limit headers)
-- i18n (Spanish/English)
 
-## Portal API Mapping
-- `auth/login` -> `portalLogin` (auto token + role sync in `src/lib/portal-api.ts`)
-- `dashboard/expensas` -> Dashboard stats (`src/pages/DashboardW3CRM.tsx`)
-- `dashboard/reservas` -> Dashboard upcoming reservations
-- `dashboard/incidencias` -> Incidents list (`src/pages/Incidencias.tsx`)
-- `dashboard/comunicados` -> Announcements list (`src/pages/Comunicados.tsx`)
-- `finanzas` -> Finance/invoices list (`src/pages/Finanzas.tsx`)
-- `finanzas/resumen` -> Financial summary (Owner only, Dashboard)
-- `approvals/reservations` -> Reservation approvals (`src/pages/Aprobaciones.tsx`)
-- `comunicados/:id` -> Announcement detail (`src/pages/Comunicados.tsx`)
-- `propiedades` -> Buildings sync (`src/pages/BuildingsManagement.tsx`)
-- `unidades/:propertyId` -> Units sync (`src/pages/UnitsManagement.tsx`)
-- `amenity/:propertyId` -> Amenities sync (`src/pages/AmenitiesManagement.tsx`)
-- `reservas/amenities/:id/info` -> Amenity info (Resident reservations)
-- `reservas/amenities/:id/availability` -> Availability slots (Resident reservations)
-
-## Owner Data Context
-Owner data (expenses, reservations, finances, announcements) is scoped to the owner/company tied to the signed-in credentials.
-
-- If you need to validate a different owner/company, create credentials for that owner and sign in with those credentials.
-- The UI provides an Owner Context selector when the owner user has access to multiple buildings; it switches the local building/unit context.
-
-## User Guide (Quick)
-1) Sign in with your email + password.
-2) Residents (Owner/Tenant/Regular):
-   - View announcements and incidents.
-   - Create reservations from `Reservations`.
-3) Owners:
-   - Access finances and financial summary.
-4) Admins (Super Admin):
-   - Manage users, roles, permissions.
-   - Sync buildings/units/amenities and approve reservations.
+- Authentication with local Turso-backed credentials
+- Role-based access for `owner`, `tenant`, `regular_user`, and `super_admin`
+- Building, unit, and amenity management
+- Reservation flows for residents and admins
+- Reservation approvals
+- Incident creation and tracking
+- Financial summary and payments view
+- Announcements and announcement detail pages
+- Documents view
+- Profile and unit switching
+- English and Spanish localization
+- External Portal API integration with retry queue for failed sync jobs
 
 ## Tech Stack
-- Vite + React + TypeScript
-- TanStack Query
-- Tailwind + Radix UI
-- Turso/LibSQL
-- Vitest + React Testing Library
+
+- React 18
+- TypeScript 5
+- Vite 5
+- React Router DOM 6
+- TanStack Query 5
+- Tailwind CSS 3
+- Radix UI
+- shadcn/ui-style component structure
+- Lucide React
+- i18next + react-i18next
+- Turso / LibSQL
+- Vitest + Testing Library
+- ESLint
+- Vercel configuration (`vercel.json`)
+
+## Project Structure
+
+```text
+.
+├── public/                  # Static assets
+├── src/
+│   ├── components/          # Reusable UI and app components
+│   ├── contexts/            # React context providers
+│   ├── hooks/               # Custom hooks
+│   ├── i18n/                # Translation config and locale files
+│   ├── lib/                 # Database, Portal API, sync, helpers
+│   ├── pages/               # Route-level screens
+│   └── test/                # Test utilities and setup
+├── supabase/                # Legacy SQL/RLS reference files
+├── turso/                   # Schema, migrations, seeding scripts
+├── index.html
+├── package.json
+├── tailwind.config.ts
+├── vite.config.ts
+└── vercel.json
+```
 
 ## Requirements
-- Node.js 18+
-- npm/yarn/pnpm
+
+- Node.js 18 or newer
+- npm 9 or newer
+
+`npm` is the documented package manager because this repository contains a `package-lock.json`, although `yarn.lock` and `bun.lockb` are also present.
 
 ## Installation
-1) Install dependencies
+
+1. Install dependencies:
+
 ```bash
 npm install
 ```
 
-2) Create `.env` in the project root
+2. Create a `.env` file in the project root:
+
 ```env
-VITE_TURSO_DATABASE_URL=libsql://your-db.turso.io
+VITE_TURSO_DATABASE_URL=libsql://your-database.turso.io
 VITE_TURSO_AUTH_TOKEN=your-turso-auth-token
+
 VITE_PORTAL_API_BASE_URL=https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal
+VITE_APEX_API_USER=your-apex-api-user
+VITE_APEX_API_PASSWORD=your-apex-api-password
+
+# Optional Portal endpoint overrides
+VITE_PORTAL_DASHBOARD_INCIDENTS_PATH=dashboard/incidencias
+VITE_PORTAL_DASHBOARD_EXPENSAS_PATH=dashboard/expensas
+VITE_PORTAL_DASHBOARD_RESERVAS_PATH=dashboard/reservas
+VITE_PORTAL_DASHBOARD_COMUNICADOS_PATH=dashboard/comunicados
+VITE_PORTAL_APPROVALS_RESERVATIONS_PATH=approvals/reservations
+VITE_PORTAL_FINANZAS_RESUMEN_PATH=finanzas/resumen
+VITE_PORTAL_FINANZAS_PAGOS_PATH=finanzas
+VITE_PORTAL_FINANZAS_PDF_PATH=download/pdf
+
+# Optional upload configuration
+VITE_UPLOAD_PROVIDER=cloudinary
+VITE_CLOUDINARY_CLOUD_NAME=your-cloud-name
+VITE_CLOUDINARY_UPLOAD_PRESET=your-upload-preset
+VITE_CLOUDINARY_FOLDER=amenity-rules
+VITE_UPLOAD_MAX_MB=10
 ```
 
-3) Run the app
+3. Start the development server:
+
 ```bash
 npm run dev
 ```
 
-## Portal Catalog Sync
-Buildings, units, and amenities are fetched from the Portal API and stored locally. These screens are read-only.
+The app will usually be available at `http://localhost:5173`.
 
-Pagination uses `page` and `limit` headers as defined by the Portal API. Units and amenities are fetched per building only.
+## Database Setup
 
-If a portal ID is missing on a local record, reservation/incident creation will fail with a mapping error and will not enqueue.
+This project currently uses Turso/LibSQL for app data.
 
-## Scripts
-- `npm run dev` - start dev server
-- `npm run build` - production build
-- `npm run preview` - preview build
-- `npm run lint` - lint
-- `npm run db:migrate` - apply base schema and pending SQL migrations in `turso/migrations`
-- `npm run db:seed` - seed demo users
-- `npm run db:setup` - run migrations + seed users
-- `npm run test` - run Vitest
-- `npm run test:watch` - run Vitest in watch mode
-- `npm run test:coverage` - run Vitest coverage
+1. Create a Turso database and token.
+2. Add `VITE_TURSO_DATABASE_URL` and `VITE_TURSO_AUTH_TOKEN` to `.env`.
+3. Run migrations:
 
-## Testing
-Vitest + React Testing Library are configured. Tests cover `src/pages` and custom components in `src/components` and `src/components/w3crm`.
-
-```bash
-npm run test
-```
-
-## Sync Queue
-Failed Portal API writes are stored in a local queue. Use the Sync Queue panel in the Admin screen to view and retry pending jobs.
-
-## Local Smoke Test Checklist
-- Login with each role (owner, tenant, super_admin, regular_user).
-- Dashboard loads and role-specific cards hide/show correctly.
-- Reservations (resident) create flow:
-  - Amenity availability shows slots.
-  - Unavailable slot blocks submission.
-- Reservations (admin) list loads and updates status.
-- Incidents create + update status.
-- Communications list + detail view.
-- Finance list and export (Owner only).
-- Approvals page (Super Admin) approves a pending reservation.
-- Build completes: `npm run build`.
-
-## Turso Migration & Seeding
-1) Ensure `.env` has the Turso credentials:
-```env
-VITE_TURSO_DATABASE_URL=libsql://your-db.turso.io
-VITE_TURSO_AUTH_TOKEN=your-turso-auth-token
-```
-
-2) Run database migrations:
 ```bash
 npm run db:migrate
 ```
-This applies `turso/schema.sql`, then automatically runs pending files in `turso/migrations` and records them in `_schema_migrations`.
 
-3) Seed demo users:
+4. Seed demo users if needed:
+
 ```bash
 npm run db:seed
 ```
+
+5. Run both in sequence:
+
+```bash
+npm run db:setup
+```
+
+`supabase/` still exists for historical schema and RLS reference, but runtime app code is wired to Turso through [src/lib/turso.ts](/home/leadermalang/Desktop/inmobiliaria/src/lib/turso.ts:1) and [src/lib/supabase.ts](/home/leadermalang/Desktop/inmobiliaria/src/lib/supabase.ts:1).
+
+## Available Scripts
+
+- `npm run dev` starts the Vite dev server
+- `npm run build` creates a production build
+- `npm run build:dev` creates a development-mode build
+- `npm run preview` previews the production build locally
+- `npm run lint` runs ESLint
+- `npm run test` runs Vitest
+- `npm run test:watch` runs Vitest in watch mode
+- `npm run test:coverage` runs test coverage
+- `npm run db:migrate` applies Turso schema and pending SQL migrations
+- `npm run db:seed` seeds demo users
+- `npm run db:setup` runs migration plus seed
+
+## Main Application Areas
+
+- `Dashboard`: high-level resident/admin overview
+- `Finanzas`: owner financial records and summaries
+- `Reservas`: amenity reservations
+- `ReservationsManagement`: admin/owner reservation management
+- `Incidencias`: incident submission and tracking
+- `Comunicados`: announcements list and detail view
+- `AdminPanel`: administrative actions
+- `BuildingsManagement`, `UnitsManagement`, `AmenitiesManagement`: property catalog administration
+- `PermissionsManagement` and `RolesManagement`: access control screens
+
+## Portal API Integration
+
+Portal API requests are handled in [src/lib/portal-api.ts](/home/leadermalang/Desktop/inmobiliaria/src/lib/portal-api.ts:1).
+
+Notable integrations include:
+
+- `auth/login`
+- `dashboard/expensas`
+- `dashboard/reservas`
+- `dashboard/incidencias`
+- `dashboard/comunicados`
+- `finanzas`
+- `finanzas/resumen`
+- `approvals/reservations`
+- `propiedades`
+- `unidades/:propertyId`
+- `amenity/:propertyId`
+
+Failed write operations can be queued and retried through [src/lib/portal-sync.ts](/home/leadermalang/Desktop/inmobiliaria/src/lib/portal-sync.ts:1).
+
+## Testing
+
+Run the test suite with:
+
+```bash
+npm run test -- --run
+```
+
+Focused test files also exist for:
+
+- `src/components/__tests__`
+- `src/pages/__tests__`
+- `src/lib/__tests__`
+
+## Verification Status
+
+These checks were verified in the current workspace:
+
+- `npm install`
+- `npm run build`
+- `npx vitest run src/components/__tests__/components.test.tsx`
+- `npx vitest run src/lib/__tests__/portal-api.test.ts src/lib/__tests__/portal-sync.test.ts`
+
+Note: `npm run lint` currently reports a large pre-existing TypeScript/ESLint backlog in the codebase, mostly around `any` usage and legacy compatibility wrappers. That is broader than a README update and should be handled as a dedicated cleanup pass.
+
+## Deployment
+
+The repo includes [vercel.json](/home/leadermalang/Desktop/inmobiliaria/vercel.json:1) and `public/_redirects`, which suggests deployment is intended to work on Vercel or other static hosting setups compatible with SPA routing.
+
+Typical deployment flow:
+
+```bash
+npm install
+npm run build
+```
+
+Deploy the generated `dist/` output.
+
+## Notes
+
+- The app uses localStorage-backed session compatibility helpers in the Turso layer.
+- File uploads are designed around an external provider such as Cloudinary.
+- The repository contains local modifications in some UI files outside this README update; those were preserved.
