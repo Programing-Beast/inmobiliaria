@@ -200,6 +200,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Sign up function
   const handleSignUp = async (email: string, password: string, fullName: string) => {
     try {
+      console.log("[AuthContext] Registration started for:", email);
+      
       // 1. First register in the portal API
       const portalResult = await portalRegister({ 
         nombreCompleto: fullName, 
@@ -208,20 +210,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (portalResult.error) {
+        console.error("[AuthContext] Portal registration failed:", portalResult.error);
         return { error: portalResult.error };
       }
+
+      console.log("[AuthContext] Portal registration successful:", portalResult.data);
 
       // 2. Then register in local Turso database
       const { data, error } = await signUpUser(email, password, fullName);
 
       if (error) {
+        console.error("[AuthContext] Local registration failed:", error);
         return { error };
       }
+
+      console.log("[AuthContext] Local registration successful");
 
       // No auto-login for new registrations as they are PENDING
       return { error: null };
     } catch (error: any) {
-      console.error("Sign-up error:", error);
+      console.error("[AuthContext] Unexpected sign-up error:", error);
       return { error };
     }
   };
