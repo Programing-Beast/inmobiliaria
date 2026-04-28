@@ -227,6 +227,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.log("[AuthContext] Local registration successful");
 
       // No auto-login for new registrations as they are PENDING
+      console.log("[AuthContext] Registration complete - user is PENDING");
       return { error: null };
     } catch (error: any) {
       console.error("[AuthContext] Unexpected sign-up error:", error);

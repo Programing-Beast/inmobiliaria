@@ -119,7 +119,7 @@
     "errorUserExists": "Ya existe un usuario con este correo",
     "errorPasswordMin": "La contraseña debe tener al menos 6 caracteres",
     "errorGeneric": "Error durante el registro",
-    "successMessage": "¡Registro exitoso! Tu solicitud fue recibida. El administrador revisará tu cuenta y te notificará cuando esté activa.",
+    "successMessage": "Solicitud recibida. Un administrador debe aprobar tu cuenta antes de que puedas ingresar.",
     "unexpectedError": "Error inesperado durante el registro",
     "heroTitle": "Gestión de Administración de Consorcios, en un solo lugar.",
     "heroSubtitle": "Consultá expensas, facturas, reservas y comunicados de forma simple y segura.",
