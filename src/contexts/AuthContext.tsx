@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, getUserProfile, getUserUnits, getUserRoles, signIn, signUp as signUpUser, signOut as signOutUser, updateUserPasswordByEmail } from '@/lib/supabase';
-import { clearPortalAuth, ensurePortalAuth, getPortalAuthDebugState, portalLogin } from "@/lib/portal-api";
+import { clearPortalAuth, ensurePortalAuth, getPortalAuthDebugState, portalLogin, portalRegister } from "@/lib/portal-api";
 import type { UserRole } from '@/lib/database.types';
 
 interface UserUnit {
@@ -200,33 +200,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Sign up function
   const handleSignUp = async (email: string, password: string, fullName: string) => {
     try {
+      console.log("[AuthContext] Registration started for:", email);
+      
+      // 1. First register in the portal API
+      const portalResult = await portalRegister({ 
+        nombreCompleto: fullName, 
+        correo: email, 
+        password 
+      });
+
+      if (portalResult.error) {
+        console.error("[AuthContext] Portal registration failed:", portalResult.error);
+        return { error: portalResult.error };
+      }
+
+      console.log("[AuthContext] Portal registration successful:", portalResult.data);
+
+      // 2. Then register in local Turso database
       const { data, error } = await signUpUser(email, password, fullName);
 
       if (error) {
+        console.error("[AuthContext] Local registration failed:", error);
         return { error };
       }
 
-      if (data?.user) {
-        const newUser = { id: data.user.id, email: data.user.email || email };
-        setUser(newUser);
-        setSession({ user: newUser });
-        await fetchProfile(data.user.id);
-        // Portal auth is best-effort — do not block sign-up if it fails
-        const portalResult = await ensurePortalAuth(newUser.email || email, { reason: "sign-up", password }).catch(
-          (portalErr) => ({
-            token: null,
-            error: portalErr,
-          })
-        );
-        if (portalResult?.error) {
-          console.warn("Portal auth failed during sign-up (non-blocking):", portalResult.error);
-        } else {
-          console.debug("[portal auth] post-sign-up snapshot", getPortalAuthDebugState(newUser.email || email));
-        }
-      }
+      console.log("[AuthContext] Local registration successful");
 
+      // No auto-login for new registrations as they are PENDING
+      console.log("[AuthContext] Registration complete - user is PENDING");
       return { error: null };
     } catch (error: any) {
+      console.error("[AuthContext] Unexpected sign-up error:", error);
       return { error };
     }
   };

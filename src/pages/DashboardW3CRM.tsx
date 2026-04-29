@@ -315,12 +315,6 @@ const DashboardW3CRM = () => {
           iconColor="primary"
         />
         <StatCard
-          title={t('dashboard.activeReservations')}
-          value={stats.activeReservations}
-          icon={Calendar}
-          iconColor="success"
-        />
-        <StatCard
           title={t('dashboard.openIncidents')}
           value={stats.openIncidents}
           icon={AlertCircle}
