@@ -52,6 +52,8 @@ const Login = () => {
           toast.error(t("login.errorInvalidCredentials"));
         } else if (error.message?.includes('Email not confirmed')) {
           toast.error(t("login.errorEmailNotConfirmed"));
+        } else if (error.message?.includes('Pending approval')) {
+          toast.error(t("login.errorPendingApproval"));
         } else {
           toast.error(error.message || t("login.errorGeneric"));
         }

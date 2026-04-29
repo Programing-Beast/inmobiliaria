@@ -94,7 +94,7 @@ const Register = () => {
       // Redirect to login after a short delay
       setTimeout(() => {
         navigate("/login");
-      }, 2000);
+      }, 4000);
     } catch (error: any) {
       console.error('Registration error:', error);
       toast.error(t("register.unexpectedError"));

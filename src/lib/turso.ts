@@ -126,15 +126,11 @@ export const signUp = async (email: string, password: string, fullName: string) 
 
     await db.execute({
       sql: `INSERT INTO users (id, email, password_hash, full_name, role, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, ?, 'regular_user', 1, ?, ?)`,
+            VALUES (?, ?, ?, ?, 'regular_user', 0, ?, ?)`,
       args: [id, email, passwordHash, fullName, timestamp, timestamp],
     });
 
     const user = { id, email, full_name: fullName };
-
-    // Store session
-    localStorage.setItem('currentUserId', id);
-    localStorage.setItem('currentUserEmail', email);
 
     return { data: { user }, error: null };
   } catch (error: any) {
@@ -166,7 +162,7 @@ export const signIn = async (email: string, password: string) => {
     }
 
     if (!user.is_active) {
-      return { data: null, error: { message: 'Account is disabled' } };
+      return { data: null, error: { message: 'Pending approval' } };
     }
 
     const isValid = await verifyPassword(password, user.password_hash);

@@ -386,7 +386,14 @@ const normalizePortalError = (payload: any, status?: number): PortalError => {
 };
 
 const isPortalAuthFailure = (status?: number, payload?: any) => {
-  if (status === 401 || status === 403) {
+  // 401 Unauthorized is the clearest indicator of auth failure
+  if (status === 401) {
+    return true;
+  }
+
+  // 403 Forbidden can also indicate auth issues, but sometimes it's intentional (permissions)
+  // For ORDS, 401 is more common for token expiration
+  if (status === 403) {
     return true;
   }
 
@@ -396,8 +403,10 @@ const isPortalAuthFailure = (status?: number, payload?: any) => {
 
   if (!text) return false;
 
-  const authTerms = ["token", "jwt", "bearer", "authorization", "autoriz"];
-  const failureTerms = ["expired", "expir", "invalid", "invalido", "missing", "falt", "unauthorized", "forbidden"];
+  // Be more conservative to avoid triggering retries on validation errors
+  // that happen to contain these keywords
+  const authTerms = ["token", "jwt", "bearer", "authorization"];
+  const failureTerms = ["expired", "expir", "missing", "unauthorized"];
 
   return authTerms.some((term) => text.includes(term)) && failureTerms.some((term) => text.includes(term));
 };
@@ -471,7 +480,13 @@ const portalRequest = async <T>(
   };
 
   let auth: PortalAuth | null = null;
-  const isPublicAuthEndpoint = path.startsWith("auth/") && path !== "auth/change-password";
+  const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+  const isPublicAuthEndpoint =
+    (normalizedPath.startsWith("auth/") && normalizedPath !== "auth/change-password") ||
+    normalizedPath === "auth/login" ||
+    normalizedPath === "auth/register" ||
+    normalizedPath === "auth/forgot-password" ||
+    normalizedPath === "auth/reset-password";
 
   if (!isPublicAuthEndpoint) {
     const authResult = await ensurePortalAuth(email, { reason: `request:${path}` });
@@ -487,7 +502,12 @@ const portalRequest = async <T>(
   try {
     let { response, payload } = await executeRequest(auth);
 
-    if (path !== "auth/login" && email && isPortalAuthFailure(response.status, payload)) {
+    const isRegistrationOrRecovery = 
+      normalizedPath === "auth/register" || 
+      normalizedPath === "auth/forgot-password" || 
+      normalizedPath === "auth/reset-password";
+
+    if (!isPublicAuthEndpoint && email && isPortalAuthFailure(response.status, payload)) {
       debugPortalAuth("Portal request rejected auth, refreshing token", {
         path,
         status: response.status,
@@ -495,6 +515,11 @@ const portalRequest = async <T>(
         auth: getPortalAuthDebugState(email),
       });
       clearPortalAuth();
+      if (isRegistrationOrRecovery) {
+        debugPortalAuth("Skipping retry for registration/recovery endpoint", { path: normalizedPath });
+        return { data: null, error: normalizePortalError(payload, response.status) };
+      }
+
       const loginResult = await portalLogin(email, undefined, { reason: `retry:${path}` });
       const refreshedAuth = getPortalAuth(email);
       if (loginResult.error || !refreshedAuth) {
@@ -566,7 +591,7 @@ export const portalForgotPassword = async (email: string) => {
   return portalRequest<{
     status: number;
     message: string;
-  }>("auth/forgot-password", { method: "POST", body: { email } });
+  }>("auth/forgot-password", { method: "POST", body: { correo: email } });
 };
 
 export const portalResetPassword = async (payload: { token: string; newPassword: string }) => {
