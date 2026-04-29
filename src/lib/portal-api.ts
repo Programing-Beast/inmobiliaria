@@ -452,7 +452,18 @@ const portalRequest = async <T>(
     }
 
     if (body) {
-      requestHeaders["Content-Type"] = "application/json";
+      // For registration and recovery, we use text/plain to avoid CORS preflight
+      // which is failing on the server (missing Access-Control-Allow-Origin on OPTIONS).
+      const isRegistrationOrRecovery = 
+        normalizedPath === "auth/register" || 
+        normalizedPath === "auth/forgot-password" || 
+        normalizedPath === "auth/reset-password";
+        
+      if (isRegistrationOrRecovery) {
+        requestHeaders["Content-Type"] = "text/plain;charset=UTF-8";
+      } else {
+        requestHeaders["Content-Type"] = "application/json";
+      }
     }
 
     if (method === "GET") {
@@ -605,21 +616,21 @@ export const portalRegister = async (payload: { nombreCompleto: string; correo: 
     status: number;
     message: string;
     data: { idUsuario: number };
-  }>("auth/register", { method: "POST", body: payload });
+  }>("auth/register/", { method: "POST", body: payload });
 };
 
 export const portalForgotPassword = async (email: string) => {
   return portalRequest<{
     status: number;
     message: string;
-  }>("auth/forgot-password", { method: "POST", body: { correo: email } });
+  }>("auth/forgot-password/", { method: "POST", body: { correo: email } });
 };
 
 export const portalResetPassword = async (payload: { token: string; newPassword: string }) => {
   return portalRequest<{
     status: number;
     message: string;
-  }>("auth/reset-password", { method: "POST", body: payload });
+  }>("auth/reset-password/", { method: "POST", body: payload });
 };
 
 export const portalChangePassword = async (payload: { oldPassword: string; newPassword: string }) => {
