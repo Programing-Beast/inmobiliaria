@@ -53,9 +53,10 @@ type PortalAuth = {
 
 const buildUrl = (path: string, params?: Record<string, string | number | undefined>) => {
   const isAbsoluteUrl = /^https?:\/\//i.test(path);
+  const cleanPath = path.startsWith("/") ? path.slice(1) : path;
   const url = isAbsoluteUrl
     ? new URL(path)
-    : new URL(path, portalBaseUrl.endsWith("/") ? portalBaseUrl : `${portalBaseUrl}/`);
+    : new URL(cleanPath, portalBaseUrl.endsWith("/") ? portalBaseUrl : `${portalBaseUrl}/`);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -429,9 +430,20 @@ const portalRequest = async <T>(
       ...headers,
     };
 
-    const isAuthEndpoint = path.startsWith("auth/");
+    const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+    const isAuthEndpoint = normalizedPath.startsWith("auth/");
+    const isPublicAuthEndpoint =
+      (normalizedPath.startsWith("auth/") && normalizedPath !== "auth/change-password") ||
+      normalizedPath === "auth/login" ||
+      normalizedPath === "auth/register" ||
+      normalizedPath === "auth/forgot-password" ||
+      normalizedPath === "auth/reset-password";
+    
+    // Only send Basic auth for login or if it's explicitly required
+    // Registration and recovery shouldn't need it and it can cause CORS issues
+    const shouldSendBasicAuth = normalizedPath === "auth/login" && Boolean(apexAuthToken);
 
-    if (isAuthEndpoint && apexAuthToken) {
+    if (shouldSendBasicAuth) {
       requestHeaders.Authorization = `Basic ${apexAuthToken}`;
     }
 
@@ -473,6 +485,7 @@ const portalRequest = async <T>(
       headers: requestHeaders,
       body: body ? JSON.stringify(body) : undefined,
       cache: method === "GET" ? "no-store" : "default",
+      mode: "cors",
     });
 
     const payload = await response.json().catch(() => ({}));
@@ -480,15 +493,16 @@ const portalRequest = async <T>(
   };
 
   let auth: PortalAuth | null = null;
-  const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
-  const isPublicAuthEndpoint =
-    (normalizedPath.startsWith("auth/") && normalizedPath !== "auth/change-password") ||
-    normalizedPath === "auth/login" ||
-    normalizedPath === "auth/register" ||
-    normalizedPath === "auth/forgot-password" ||
-    normalizedPath === "auth/reset-password";
+  // Note: normalizedPath and isPublicAuthEndpoint are already defined in the outer scope of buildRequestHeaders but we need them here too
+  const currentNormalizedPath = path.startsWith("/") ? path.slice(1) : path;
+  const currentIsPublicAuthEndpoint =
+    (currentNormalizedPath.startsWith("auth/") && currentNormalizedPath !== "auth/change-password") ||
+    currentNormalizedPath === "auth/login" ||
+    currentNormalizedPath === "auth/register" ||
+    currentNormalizedPath === "auth/forgot-password" ||
+    currentNormalizedPath === "auth/reset-password";
 
-  if (!isPublicAuthEndpoint) {
+  if (!currentIsPublicAuthEndpoint) {
     const authResult = await ensurePortalAuth(email, { reason: `request:${path}` });
     if (authResult.error) {
       return { data: null, error: authResult.error };
@@ -503,20 +517,20 @@ const portalRequest = async <T>(
     let { response, payload } = await executeRequest(auth);
 
     const isRegistrationOrRecovery = 
-      normalizedPath === "auth/register" || 
-      normalizedPath === "auth/forgot-password" || 
-      normalizedPath === "auth/reset-password";
+      currentNormalizedPath === "auth/register" || 
+      currentNormalizedPath === "auth/forgot-password" || 
+      currentNormalizedPath === "auth/reset-password";
 
-    if (!isPublicAuthEndpoint && email && isPortalAuthFailure(response.status, payload)) {
+    if (!currentIsPublicAuthEndpoint && email && isPortalAuthFailure(response.status, payload)) {
       debugPortalAuth("Portal request rejected auth, refreshing token", {
-        path,
+        path: currentNormalizedPath,
         status: response.status,
         message: payload?.message || payload?.error?.message || null,
         auth: getPortalAuthDebugState(email),
       });
       clearPortalAuth();
       if (isRegistrationOrRecovery) {
-        debugPortalAuth("Skipping retry for registration/recovery endpoint", { path: normalizedPath });
+        debugPortalAuth("Skipping retry for registration/recovery endpoint", { path: currentNormalizedPath });
         return { data: null, error: normalizePortalError(payload, response.status) };
       }
 
@@ -538,7 +552,14 @@ const portalRequest = async <T>(
 
     return { data: payload as T, error: null };
   } catch (error: any) {
-    return { data: null, error: { message: error?.message || "Network error" } };
+    console.error(`[PortalAPI] Network error fetching ${url}:`, error);
+    return { 
+      data: null, 
+      error: { 
+        message: `${error?.message || "Network error"} (${method} ${path})`,
+        details: `URL: ${url}`
+      } 
+    };
   }
 };
 
