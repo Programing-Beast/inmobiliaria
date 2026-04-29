@@ -569,20 +569,6 @@ const Finanzas = () => {
               </div>
             </div>
 
-            {/* Type Filter */}
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('finance.filterByType')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('finance.allTypes')}</SelectItem>
-                {documentTypeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
 
             {/* Date Sort */}
             <Select value={dateSort} onValueChange={(value) => setDateSort(value as "newest" | "oldest")}>
@@ -623,12 +609,8 @@ const Finanzas = () => {
                     <TableHead>ID</TableHead>
                     <TableHead>Factura</TableHead>
                     <TableHead>RUC</TableHead>
-                    <TableHead>{t("finance.type")}</TableHead>
-                    {/* <TableHead>Timbrado</TableHead> */}
                     <TableHead>Monto Total</TableHead>
-                    {/* <TableHead>Saldo</TableHead> */}
                     <TableHead>Fecha de emisión</TableHead>
-                    <TableHead>Fecha vencimiento</TableHead>
                     <TableHead>PDF</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -641,14 +623,8 @@ const Finanzas = () => {
                         <TableCell className="font-mono text-xs">{payment.id}</TableCell>
                         <TableCell className="font-semibold">{payment.invoice_number || "-"}</TableCell>
                         <TableCell>{payment.ruc || "-"}</TableCell>
-                        <TableCell>
-                          {renderDocumentType(payment.document_type, payment.document_type_raw)}
-                        </TableCell>
-                        {/* <TableCell>{payment.timbrado || "-"}</TableCell> */}
                         <TableCell className="font-semibold">{formatCurrency(payment.total_amount)}</TableCell>
-                        {/* <TableCell className="font-semibold">{formatCurrency(payment.balance)}</TableCell> */}
                         <TableCell>{formatDate(payment.recorded_at)}</TableCell>
-                        <TableCell>{formatDate(payment.due_date)}</TableCell>
                         <TableCell>
                           <Button
                             size="sm"

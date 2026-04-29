@@ -120,11 +120,11 @@
     "errorGeneric": "Error durante el registro",
     "successMessage": "¡Registro exitoso! Revisa tu correo para confirmar tu cuenta antes de iniciar sesión.",
     "unexpectedError": "Error inesperado durante el registro",
-    "heroTitle": "Portal de Gestión VIEW",
-    "heroSubtitle": "Accedé a la información de tu propiedad y a los servicios administrados por VIEW Inmobiliaria.",
-    "heroBullet1": "Proceso de registro sencillo",
-    "heroBullet2": "Unite a miles de usuarios",
-    "heroBullet3": "Soporte disponible 24/7"
+    "heroTitle": "Gestión de Administración de Consorcios, en un solo lugar.",
+    "heroSubtitle": "Consultá expensas, facturas, reservas y comunicados de forma simple y segura.",
+    "heroBullet1": "Gestión simple y rápida",
+    "heroBullet2": "Datos seguros",
+    "heroBullet3": "Soporte cuando lo necesitás"
   },
   "forgotPassword": {
     "title": "Recuperar contraseña",
@@ -132,7 +132,16 @@
     "email": "Correo electrónico",
     "sendButton": "Enviar instrucciones",
     "backToLogin": "Volver al inicio de sesión",
-    "successMessage": "Si el correo existe, recibirás instrucciones para restablecer tu contraseña"
+    "successMessage": "Si el correo existe, recibirás instrucciones para restablecer tu contraseña",
+    "checkEmail": "Revisá tu correo electrónico",
+    "sentResetLink": "Enviamos un enlace para restablecer tu contraseña a",
+    "didntReceiveEmail": "¿No recibiste el correo?",
+    "checkSpam": "Revisá tu carpeta de spam o correo no deseado",
+    "ensureCorrectEmail": "Asegurate de que el correo electrónico sea correcto",
+    "waitMinutes": "Esperá unos minutos e intentá nuevamente",
+    "tryAnotherEmail": "Intentar con otro correo",
+    "needHelp": "¿Necesitás ayuda?",
+    "contactSupport": "Contactá con soporte"
   },
   "resetPassword": {
     "title": "Restablecer contraseña",
