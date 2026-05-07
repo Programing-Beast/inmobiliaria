@@ -439,9 +439,10 @@ const portalRequest = async <T>(
       normalizedPath === "auth/forgot-password" ||
       normalizedPath === "auth/reset-password";
     
-    // Only send Basic auth for login or if it's explicitly required
-    // Registration and recovery shouldn't need it and it can cause CORS issues
-    const shouldSendBasicAuth = normalizedPath === "auth/login" && Boolean(apexAuthToken);
+    // Send Basic auth for login and registration — both require gateway-level auth
+    const shouldSendBasicAuth =
+      (normalizedPath === "auth/login" || normalizedPath === "auth/register") &&
+      Boolean(apexAuthToken);
 
     if (shouldSendBasicAuth) {
       requestHeaders.Authorization = `Basic ${apexAuthToken}`;
@@ -456,7 +457,6 @@ const portalRequest = async <T>(
       // which is failing on the server (missing Access-Control-Allow-Origin on OPTIONS).
       const normalizedPathNoSlash = normalizedPath.replace(/\/$/, "");
       const isRegistrationOrRecovery =
-        normalizedPathNoSlash === "auth/register" ||
         normalizedPathNoSlash === "auth/forgot-password" ||
         normalizedPathNoSlash === "auth/reset-password";
         
