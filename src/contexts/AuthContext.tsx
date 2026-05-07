@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, getUserProfile, getUserUnits, getUserRoles, signIn, signUp as signUpUser, signOut as signOutUser, updateUserPasswordByEmail, activateUserByEmail } from '@/lib/supabase';
-import { clearPortalAuth, ensurePortalAuth, portalLogin, portalRegister } from "@/lib/portal-api";
+import { clearPortalAuth, portalLogin, portalRegister } from "@/lib/portal-api";
 import type { UserRole } from '@/lib/database.types';
 
 interface UserUnit {
@@ -166,10 +166,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(currentUser);
       setSession({ user: currentUser });
       fetchProfile(userId);
-      ensurePortalAuth(userEmail).catch((error) => {
-        // Portal auth failure is non-blocking — local auth still works
-        console.warn("Portal auth sync failed (non-blocking):", error);
-      });
     }
 
     setLoading(false);

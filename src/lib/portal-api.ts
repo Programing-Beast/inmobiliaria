@@ -528,35 +528,9 @@ const portalRequest = async <T>(
   try {
     let { response, payload } = await executeRequest(auth);
 
-    const currentNormalizedPathNoSlash = currentNormalizedPath.replace(/\/$/, "");
-    const isRegistrationOrRecovery =
-      currentNormalizedPathNoSlash === "auth/register" ||
-      currentNormalizedPathNoSlash === "auth/forgot-password" ||
-      currentNormalizedPathNoSlash === "auth/reset-password";
-
     if (!currentIsPublicAuthEndpoint && email && isPortalAuthFailure(response.status, payload)) {
-      debugPortalAuth("Portal request rejected auth, refreshing token", {
-        path: currentNormalizedPath,
-        status: response.status,
-        message: payload?.message || payload?.error?.message || null,
-        auth: getPortalAuthDebugState(email),
-      });
       clearPortalAuth();
-      if (isRegistrationOrRecovery) {
-        debugPortalAuth("Skipping retry for registration/recovery endpoint", { path: currentNormalizedPath });
-        return { data: null, error: normalizePortalError(payload, response.status) };
-      }
-
-      const loginResult = await portalLogin(email, undefined, { reason: `retry:${path}` });
-      const refreshedAuth = getPortalAuth(email);
-      if (loginResult.error || !refreshedAuth) {
-        return {
-          data: null,
-          error: loginResult.error || normalizePortalError(payload, response.status),
-        };
-      }
-
-      ({ response, payload } = await executeRequest(refreshedAuth));
+      return { data: null, error: normalizePortalError(payload, response.status) };
     }
 
     if (!response.ok || payload?.status === "error") {
