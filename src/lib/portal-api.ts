@@ -618,7 +618,7 @@ export const portalRegister = async (payload: { nombreCompleto: string; correo: 
     status: number;
     message: string;
     data: { idUsuario: number };
-  }>("auth/register/", { method: "POST", body: payload });
+  }>("auth/register", { method: "POST", body: payload });
 };
 
 export const portalForgotPassword = async (email: string) => {
