@@ -623,7 +623,7 @@ export const portalForgotPassword = async (email: string) => {
   return portalRequest<{
     status: number;
     message: string;
-  }>("auth/forgot-password/", { method: "POST", body: { correo: email } });
+  }>("auth/forgot-password/", { method: "POST", body: { email: email } });
 };
 
 export const portalResetPassword = async (payload: { token: string; newPassword: string }) => {

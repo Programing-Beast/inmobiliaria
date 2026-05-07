@@ -105,6 +105,18 @@ export const updateUserPasswordByEmail = async (email: string, newPassword: stri
   }
 };
 
+export const activateUserByEmail = async (email: string) => {
+  try {
+    await db.execute({
+      sql: 'UPDATE users SET is_active = 1, updated_at = ? WHERE email = ?',
+      args: [now(), email],
+    });
+    return { error: null };
+  } catch (error: any) {
+    return { error: { message: error.message } };
+  }
+};
+
 /**
  * Sign up a new user with email and password
  */

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase, getUserProfile, getUserUnits, getUserRoles, signIn, signUp as signUpUser, signOut as signOutUser, updateUserPasswordByEmail } from '@/lib/supabase';
-import { clearPortalAuth, ensurePortalAuth, getPortalAuthDebugState, portalLogin, portalRegister } from "@/lib/portal-api";
+import { supabase, getUserProfile, getUserUnits, getUserRoles, signIn, signUp as signUpUser, signOut as signOutUser, updateUserPasswordByEmail, activateUserByEmail } from '@/lib/supabase';
+import { clearPortalAuth, ensurePortalAuth, portalLogin, portalRegister } from "@/lib/portal-api";
 import type { UserRole } from '@/lib/database.types';
 
 interface UserUnit {
@@ -235,82 +235,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // Sign in function
+  // Sign in function — KOVE is the auth source of truth
   const handleSignIn = async (email: string, password: string) => {
     try {
-      let { data, error } = await signIn(email, password);
+      const portalResult = await portalLogin(email, password, { reason: "primary-auth" });
 
-      if (error) {
-        const portalRecovery = await portalLogin(email, password, { reason: "recover-local-password" }).catch(
-          (portalErr) => ({
-            data: null,
-            error: portalErr,
-          })
-        );
-
-        if (portalRecovery?.error) {
-          return { error };
-        }
-
-        const passwordSyncResult = await updateUserPasswordByEmail(email, password);
-        if (passwordSyncResult.error) {
-          return {
-            error: {
-              message: "Portal authentication succeeded, but local password sync failed.",
-              details: passwordSyncResult.error.message,
-              isPortalError: true,
-            },
-          };
-        }
-
-        const retriedSignIn = await signIn(email, password);
-        data = retriedSignIn.data;
-        error = retriedSignIn.error;
-
-        if (error) {
-          return { error };
-        }
+      if (portalResult.error) {
+        return { error: { message: 'Invalid email or password' } };
       }
 
-      if (data?.user) {
-        const newUser = { id: data.user.id, email: data.user.email || email };
-        setUser(newUser);
-        setSession({ user: newUser });
-        await fetchProfile(data.user.id);
-        // Portal auth is required — block login if it fails
-        const portalResult = await ensurePortalAuth(newUser.email || email, { reason: "sign-in", password }).catch(
-          (portalErr) => ({
-            token: null,
-            error: portalErr,
-          })
-        );
-        if (portalResult?.error) {
-          // Roll back local auth state so the user is not considered logged in
-          setUser(null);
-          setSession(null);
-          setProfile(null);
-          localStorage.removeItem('currentUserId');
-          localStorage.removeItem('currentUserEmail');
-          localStorage.removeItem('userRole');
-          localStorage.removeItem('userName');
-          localStorage.removeItem('userUnit');
-          localStorage.removeItem('currentUnitNumber');
-          localStorage.removeItem('userUnits');
-          localStorage.removeItem('userRoles');
-          const portalError = portalResult.error as any;
-          return {
-            error: {
-              message: portalError?.message || 'Portal authentication failed. Please try again.',
-              details: portalError?.details,
-              isPortalError: true,
-            },
-          };
-        }
-        console.debug("[portal auth] post-sign-in snapshot", getPortalAuthDebugState(newUser.email || email));
-        
-        // Refresh profile to include any new data stored in localStorage by portalLogin
-        await fetchProfile(data.user.id);
+      // Portal accepted — activate user in Turso and sync password hash
+      await activateUserByEmail(email);
+      await updateUserPasswordByEmail(email, password);
+      // Note: syncPortalRoleToLocalUser() is already called inside portalLogin()
+
+      const { data, error } = await signIn(email, password);
+
+      if (error || !data?.user) {
+        return { error: error || { message: 'Local auth sync failed after portal login' } };
       }
+
+      const newUser = { id: data.user.id, email: data.user.email || email };
+      setUser(newUser);
+      setSession({ user: newUser });
+      await fetchProfile(data.user.id);
+      // Second fetch picks up portal properties written to localStorage by portalLogin()
+      await fetchProfile(data.user.id);
 
       return { error: null };
     } catch (error: any) {
