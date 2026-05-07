@@ -454,10 +454,11 @@ const portalRequest = async <T>(
     if (body) {
       // For registration and recovery, we use text/plain to avoid CORS preflight
       // which is failing on the server (missing Access-Control-Allow-Origin on OPTIONS).
-      const isRegistrationOrRecovery = 
-        normalizedPath === "auth/register" || 
-        normalizedPath === "auth/forgot-password" || 
-        normalizedPath === "auth/reset-password";
+      const normalizedPathNoSlash = normalizedPath.replace(/\/$/, "");
+      const isRegistrationOrRecovery =
+        normalizedPathNoSlash === "auth/register" ||
+        normalizedPathNoSlash === "auth/forgot-password" ||
+        normalizedPathNoSlash === "auth/reset-password";
         
       if (isRegistrationOrRecovery) {
         requestHeaders["Content-Type"] = "text/plain;charset=UTF-8";
@@ -527,10 +528,11 @@ const portalRequest = async <T>(
   try {
     let { response, payload } = await executeRequest(auth);
 
-    const isRegistrationOrRecovery = 
-      currentNormalizedPath === "auth/register" || 
-      currentNormalizedPath === "auth/forgot-password" || 
-      currentNormalizedPath === "auth/reset-password";
+    const currentNormalizedPathNoSlash = currentNormalizedPath.replace(/\/$/, "");
+    const isRegistrationOrRecovery =
+      currentNormalizedPathNoSlash === "auth/register" ||
+      currentNormalizedPathNoSlash === "auth/forgot-password" ||
+      currentNormalizedPathNoSlash === "auth/reset-password";
 
     if (!currentIsPublicAuthEndpoint && email && isPortalAuthFailure(response.status, payload)) {
       debugPortalAuth("Portal request rejected auth, refreshing token", {
