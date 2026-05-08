@@ -599,14 +599,14 @@ export const portalForgotPassword = async (email: string) => {
   return portalRequest<{
     status: number;
     message: string;
-  }>("auth/forgot-password/", { method: "POST", body: { email: email } });
+  }>("auth/forgot-password", { method: "POST", body: { email: email } });
 };
 
 export const portalResetPassword = async (payload: { token: string; newPassword: string }) => {
   return portalRequest<{
     status: number;
     message: string;
-  }>("auth/reset-password/", { method: "POST", body: payload });
+  }>("auth/reset-password", { method: "POST", body: payload });
 };
 
 export const portalChangePassword = async (payload: { oldPassword: string; newPassword: string }) => {
