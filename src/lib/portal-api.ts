@@ -439,9 +439,13 @@ const portalRequest = async <T>(
       normalizedPath === "auth/forgot-password" ||
       normalizedPath === "auth/reset-password";
     
-    // Send Basic auth for login and registration — both require gateway-level auth
+    // Send Basic auth for login, registration, and password recovery — all require gateway-level auth
+    const normalizedPathNoSlash = normalizedPath.replace(/\/$/, "");
     const shouldSendBasicAuth =
-      (normalizedPath === "auth/login" || normalizedPath === "auth/register") &&
+      (normalizedPathNoSlash === "auth/login" ||
+        normalizedPathNoSlash === "auth/register" ||
+        normalizedPathNoSlash === "auth/forgot-password" ||
+        normalizedPathNoSlash === "auth/reset-password") &&
       Boolean(apexAuthToken);
 
     if (shouldSendBasicAuth) {
@@ -453,18 +457,7 @@ const portalRequest = async <T>(
     }
 
     if (body) {
-      // For registration and recovery, we use text/plain to avoid CORS preflight
-      // which is failing on the server (missing Access-Control-Allow-Origin on OPTIONS).
-      const normalizedPathNoSlash = normalizedPath.replace(/\/$/, "");
-      const isRegistrationOrRecovery =
-        normalizedPathNoSlash === "auth/forgot-password" ||
-        normalizedPathNoSlash === "auth/reset-password";
-        
-      if (isRegistrationOrRecovery) {
-        requestHeaders["Content-Type"] = "text/plain;charset=UTF-8";
-      } else {
-        requestHeaders["Content-Type"] = "application/json";
-      }
+      requestHeaders["Content-Type"] = "application/json";
     }
 
     if (method === "GET") {
