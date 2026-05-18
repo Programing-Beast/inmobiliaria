@@ -1,5 +1,5 @@
 import type { UserRole } from "@/lib/database.types";
-import { setUserRoles, updateUserProfile } from "@/lib/supabase";
+import { getBuildingByPortalId, setUserRoles, updateUserProfile } from "@/lib/supabase";
 
 const DEFAULT_BASE_URL = "https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal";
 
@@ -322,17 +322,30 @@ const mapPortalRoleToLocalRole = (role?: string | null): UserRole | null => {
   return null;
 };
 
-const syncPortalRoleToLocalUser = async (portalRole?: string | null) => {
+export const syncPortalRoleToLocalUser = async (portalRole?: string | null, userId?: string) => {
   const mappedRole = mapPortalRoleToLocalRole(portalRole);
   if (!mappedRole) return;
 
-  const userId = localStorage.getItem("currentUserId");
-  if (!userId) return;
+  const resolvedUserId = userId || localStorage.getItem("currentUserId");
+  if (!resolvedUserId) return;
 
-  await updateUserProfile(userId, { role: mappedRole });
-  await setUserRoles(userId, [mappedRole]);
+  await updateUserProfile(resolvedUserId, { role: mappedRole });
+  await setUserRoles(resolvedUserId, [mappedRole]);
   localStorage.setItem("userRole", mappedRole);
   localStorage.setItem("userRoles", JSON.stringify([mappedRole]));
+};
+
+export const syncPortalPropertiesToTurso = async (
+  propiedades: { idPropiedad: number; nombre: string }[],
+  userId: string
+) => {
+  if (!propiedades?.length) return;
+  const primary = propiedades[0];
+
+  const { building } = await getBuildingByPortalId(primary.idPropiedad);
+  if (!building) return;
+
+  await updateUserProfile(userId, { building_id: building.id });
 };
 
 export const setPortalAuth = (token: string, tokenType: string = "Bearer", ownerEmail?: string) => {
