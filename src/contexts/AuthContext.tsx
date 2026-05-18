@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, getUserProfile, getUserUnits, getUserRoles, signIn, signUp as signUpUser, signOut as signOutUser, updateUserPasswordByEmail, activateUserByEmail } from '@/lib/supabase';
-import { clearPortalAuth, portalLogin, portalRegister } from "@/lib/portal-api";
+import { clearPortalAuth, portalLogin, portalRegister, syncPortalRoleToLocalUser, syncPortalPropertiesToTurso } from "@/lib/portal-api";
 import type { UserRole } from '@/lib/database.types';
 
 interface UserUnit {
@@ -243,7 +243,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Portal accepted — activate user in Turso and sync password hash
       await activateUserByEmail(email);
       await updateUserPasswordByEmail(email, password);
-      // Note: syncPortalRoleToLocalUser() is already called inside portalLogin()
 
       const { data, error } = await signIn(email, password);
 
@@ -251,11 +250,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error: error || { message: 'Local auth sync failed after portal login' } };
       }
 
+      // currentUserId is now set in localStorage by signIn() — re-run role sync with explicit userId
+      // (the earlier call inside portalLogin() silently no-oped because currentUserId wasn't set yet)
+      const portalRole = portalResult.data?.data?.rol;
+      await syncPortalRoleToLocalUser(portalRole, data.user.id);
+
+      // Sync KOVE building assignment to Turso users.building_id
+      const portalProperties = portalResult.data?.data?.propiedades;
+      if (portalProperties?.length) {
+        await syncPortalPropertiesToTurso(portalProperties, data.user.id);
+        localStorage.setItem('userProperties', JSON.stringify(portalProperties));
+      }
+
       const newUser = { id: data.user.id, email: data.user.email || email };
       setUser(newUser);
       setSession({ user: newUser });
-      await fetchProfile(data.user.id);
-      // Second fetch picks up portal properties written to localStorage by portalLogin()
       await fetchProfile(data.user.id);
 
       return { error: null };
