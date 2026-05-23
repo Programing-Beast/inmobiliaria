@@ -1043,6 +1043,7 @@ export const createReservationSynced = async (params: {
     userId: string;
     amenityId: string;
     unitId: string;
+    portalUnitId?: number;
     reservationDate: string;
     startTime: string;
     endTime: string;
@@ -1063,23 +1064,28 @@ export const createReservationSynced = async (params: {
     return { reservation: null, error: { message: "User role not permitted to create reservations" }, queued: false };
   }
 
-  const { unitId: assignedUnitId, error: unitError } = await resolveAssignedUnitId(localPayload.userId);
-  if (unitError) {
-    return { reservation: null, error: unitError, queued: false };
-  }
-  const canReserveWithoutAssignedUnit = userHasAnyRole(["owner", "super_admin"]);
-  if (!assignedUnitId && !canReserveWithoutAssignedUnit) {
-    return { reservation: null, error: { message: "User has no assigned unit" }, queued: false };
-  }
-  if (assignedUnitId && assignedUnitId !== localPayload.unitId) {
-    return {
-      reservation: null,
-      error: { message: "Reservations must use the user's assigned unit" },
-      queued: false,
-    };
+  // If portalUnitId is supplied directly from /mis-unidades, skip the Turso unit lookup.
+  // The KOVE bearer token already guarantees this unit belongs to the authenticated user.
+  let unitPortalId: number | null = localPayload.portalUnitId ?? null;
+  if (!unitPortalId) {
+    const { unitId: assignedUnitId, error: unitError } = await resolveAssignedUnitId(localPayload.userId);
+    if (unitError) {
+      return { reservation: null, error: unitError, queued: false };
+    }
+    const canReserveWithoutAssignedUnit = userHasAnyRole(["owner", "super_admin"]);
+    if (!assignedUnitId && !canReserveWithoutAssignedUnit) {
+      return { reservation: null, error: { message: "User has no assigned unit" }, queued: false };
+    }
+    if (assignedUnitId && assignedUnitId !== localPayload.unitId) {
+      return {
+        reservation: null,
+        error: { message: "Reservations must use the user's assigned unit" },
+        queued: false,
+      };
+    }
+    unitPortalId = await getUnitPortalId(localPayload.unitId);
   }
 
-  const unitPortalId = await getUnitPortalId(localPayload.unitId);
   const amenityPortalId = await getAmenityPortalId(localPayload.amenityId);
 
   if (!unitPortalId || !amenityPortalId) {

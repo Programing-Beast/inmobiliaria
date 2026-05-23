@@ -591,8 +591,9 @@ const Reservas = () => {
 
     setSubmitting(true);
     try {
-      const unitId = reservationUnitId;
-      if (!unitId) {
+      const unitId = reservationUnitId || "";
+      const portalUnitId = profile?.portalUnits?.[0]?.idUnidad;
+      if (!unitId && !portalUnitId) {
         toast.error("No hay unidad asignada");
         return;
       }
@@ -610,6 +611,7 @@ const Reservas = () => {
           userId: profile.id,
           amenityId: selectedAmenity.id,
           unitId,
+          portalUnitId,
           reservationDate: newReservation.date,
           startTime: newReservation.startTime,
           endTime: newReservation.endTime,
