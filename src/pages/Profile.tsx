@@ -258,7 +258,7 @@ const Profile = () => {
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground">Unit</p>
                   <p className="font-medium">
-                    {profile.unit?.unit_number || profile.currentUnit?.unit_number || 'Not assigned'}
+                    {profile.unit?.unit_number || profile.currentUnit?.unit_number || profile.portalUnits?.[0]?.nombre || 'Not assigned'}
                   </p>
                 </div>
               </div>

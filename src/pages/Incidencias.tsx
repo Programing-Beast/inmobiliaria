@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { portalGetAllDashboardIncidents, portalGetAllMyProperties } from "@/lib/portal-api";
 import { createIncidentSynced, updateIncidentSynced, syncPortalCatalog } from "@/lib/portal-sync";
-import { getAllBuildings, getBuilding, getBuildingUnits, updateBuilding } from "@/lib/supabase";
+import { getAllBuildings, getBuilding, updateBuilding } from "@/lib/supabase";
 import {
   Pagination,
   PaginationContent,
@@ -37,7 +37,6 @@ const Incidencias = () => {
   const { profile } = useAuth();
   const [incidents, setIncidents] = useState<any[]>([]);
   const [buildings, setBuildings] = useState<any[]>([]);
-  const [units, setUnits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
@@ -56,7 +55,6 @@ const Incidencias = () => {
     titulo: "",
     descripcion: "",
     buildingId: "",
-    unitId: "",
   });
 
   const [updateIncident, setUpdateIncident] = useState({
@@ -380,22 +378,6 @@ const Incidencias = () => {
     return { portalId, error: null };
   };
 
-  useEffect(() => {
-    const fetchUnits = async () => {
-      if (!newIncident.buildingId) {
-        setUnits([]);
-        return;
-      }
-      const { units: fetchedUnits, error } = await getBuildingUnits(newIncident.buildingId);
-      if (error) {
-        console.error("Error fetching units:", error);
-        return;
-      }
-      setUnits(fetchedUnits || []);
-    };
-
-    fetchUnits();
-  }, [newIncident.buildingId]);
 
   const handleCreateIncident = async () => {
     if (!newIncident.titulo || !newIncident.descripcion || !newIncident.buildingId) {
@@ -406,7 +388,6 @@ const Incidencias = () => {
     setSubmitting(true);
     try {
       const buildingId = newIncident.buildingId || profile?.building_id;
-      const unitId = newIncident.unitId || undefined;
       if (!buildingId) {
         toast.error("No hay edificio asignado");
         setSubmitting(false);
@@ -428,7 +409,6 @@ const Incidencias = () => {
         localPayload: {
           userId: profile?.id || "",
           buildingId,
-          unitId,
           type: defaultType as "maintenance" | "complaint" | "suggestion",
           title: newIncident.titulo,
           description: newIncident.descripcion,
@@ -447,8 +427,8 @@ const Incidencias = () => {
         titulo: "",
         descripcion: "",
         buildingId: profile?.building_id || "",
-        unitId: "",
       });
+      setPage(1);
       await fetchIncidents({ silent: true });
     } catch (error) {
       console.error("Error:", error);
@@ -653,7 +633,7 @@ const Incidencias = () => {
               <Select
                 value={newIncident.buildingId ? String(newIncident.buildingId) : "none"}
                 onValueChange={(value) =>
-                  setNewIncident({ ...newIncident, buildingId: value === "none" ? "" : value, unitId: "" })
+                  setNewIncident({ ...newIncident, buildingId: value === "none" ? "" : value })
                 }
                 disabled={!!profile?.building_id}
               >
@@ -665,28 +645,6 @@ const Incidencias = () => {
                   {buildings.map((building) => (
                     <SelectItem key={building.id} value={String(building.id)}>
                       {building.name || building.nombre || building.razonSocial || building.razon_social || building.id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Unidad (opcional)</label>
-              <Select
-                value={newIncident.unitId ? String(newIncident.unitId) : "none"}
-                onValueChange={(value) =>
-                  setNewIncident({ ...newIncident, unitId: value === "none" ? "" : value })
-                }
-                disabled={!newIncident.buildingId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una unidad" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin unidad</SelectItem>
-                  {units.map((unit) => (
-                    <SelectItem key={unit.id} value={String(unit.id)}>
-                      {unit.unit_number || unit.numero || unit.unidad || unit.id}
                     </SelectItem>
                   ))}
                 </SelectContent>

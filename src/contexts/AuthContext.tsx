@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, getUserProfile, getUserUnits, getUserRoles, signIn, signUp as signUpUser, signOut as signOutUser, updateUserPasswordByEmail, activateUserByEmail } from '@/lib/supabase';
-import { clearPortalAuth, portalLogin, portalRegister, syncPortalRoleToLocalUser, syncPortalPropertiesToTurso } from "@/lib/portal-api";
+import { clearPortalAuth, portalGetMisUnidades, portalLogin, portalRegister, syncPortalRoleToLocalUser, syncPortalPropertiesToTurso } from "@/lib/portal-api";
 import type { UserRole } from '@/lib/database.types';
 
 interface UserUnit {
@@ -28,11 +28,15 @@ interface UserProfile {
   unit_id: string | null;
   building_id: string | null;
   is_active: boolean;
+  // Joined objects populated by getUserProfile()
+  building?: { id: string; portal_id: number | null; name: string; address: string | null } | null;
+  unit?: { id: string; portal_id: number | null; unit_number: string; floor: number | null; area_sqm: number | null } | null;
   // New fields for multiple units and roles
   units?: UserUnit[];
   roles?: UserRole[];
   currentUnit?: UserUnit | null;
   portalProperties?: { idPropiedad: number; nombre: string }[];
+  portalUnits?: { idUnidad: number; nombre: string; idPropiedad: number; propiedad: string }[];
 }
 
 interface Session {
@@ -113,6 +117,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         } catch (e) {
           console.error('Error parsing stored portal properties:', e);
         }
+      }
+
+      // Fetch units from KOVE (in-memory only, not localStorage)
+      const { data: misUnidadesResult } = await portalGetMisUnidades();
+      if (misUnidadesResult?.data?.length) {
+        enhancedProfile.portalUnits = misUnidadesResult.data;
       }
 
       setProfile(enhancedProfile);

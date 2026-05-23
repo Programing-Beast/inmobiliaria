@@ -701,6 +701,14 @@ export const portalGetAllAmenities = (
   params?: { limit?: number; maxPages?: number }
 ) => portalGetAllPages(`amenity/${propertyId}`, { limit: params?.limit, maxPages: params?.maxPages });
 
+export const portalGetMisUnidades = () =>
+  portalRequest<{
+    status: number;
+    message: string;
+    total: number;
+    data: { idUnidad: number; nombre: string; idPropiedad: number; propiedad: string }[];
+  }>("mis-unidades");
+
 export const portalGetAmenityInfo = (amenityId: number | string) =>
   portalRequest(`reservas/amenities/${amenityId}/info`);
 
