@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Bell, Calendar, ChevronRight } from "lucide-react";
+import { Bell, Calendar, ChevronRight, FileDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { portalGetAllMyProperties, portalGetDashboardComunicados } from "@/lib/portal-api";
@@ -33,6 +33,7 @@ interface Announcement {
   content_en: string | null;
   published_at: string | null;
   status?: string | null;
+  adjunto?: string | null;
 }
 
 const Comunicados = () => {
@@ -129,6 +130,7 @@ const Comunicados = () => {
         fallback?.published_at ||
         null,
       status: readString(record, ["estado", "status"]) || fallback?.status || null,
+      adjunto: record?.adjunto ?? fallback?.adjunto ?? null,
     };
   };
 
@@ -195,6 +197,8 @@ const Comunicados = () => {
                 if (propertyId !== null && allowedIds.has(propertyId)) return true;
                 const propertyName = getAnnouncementPropertyName(announcement);
                 if (propertyName && allowedNames.has(propertyName.toLowerCase())) return true;
+                // KOVE already scopes to the user — allow items with no property identifier
+                if (propertyId === null && !propertyName) return true;
                 return false;
               })
             : portalAnnouncements;
@@ -340,6 +344,20 @@ const Comunicados = () => {
                 >
                   {t('announcements.readMore')} →
                 </Button>
+                {announcement.adjunto && (
+                  <a
+                    href={announcement.adjunto}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="block mt-2"
+                  >
+                    <Button variant="outline" size="sm">
+                      <FileDown className="w-4 h-4 mr-2" />
+                      Ver documento
+                    </Button>
+                  </a>
+                )}
               </CardContent>
             </Card>
           ))}

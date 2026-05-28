@@ -281,14 +281,7 @@ const Reservas = () => {
       setFallbackUnitId(null);
 
       try {
-        const amenitiesResult = await portalGetAllAmenities(selectedPropertyId);
-        if (amenitiesResult.error) {
-          console.error("Error fetching portal amenities:", amenitiesResult.error);
-          toast.error(t("reservations.error.load"));
-          setAmenities([]);
-          return;
-        }
-
+        // Resolve buildingId first so we can check local cache before hitting KOVE
         let buildingId: string | null = null;
         const existingBuilding = await getBuildingByPortalId(Number(selectedPropertyId));
         if (existingBuilding.building?.id) {
@@ -338,13 +331,23 @@ const Reservas = () => {
           }
         }
 
-        const syncAmenitiesResult = await syncPortalAmenitiesForBuilding({
-          buildingId,
-          amenitiesPayload: amenitiesResult.data,
-        });
-        if (syncAmenitiesResult.error) {
-          console.error("Error syncing amenities:", syncAmenitiesResult.error);
-          toast.error(t("reservations.error.load"));
+        // Only fetch from KOVE and sync if local DB has no amenities for this building
+        const { amenities: cachedAmenities } = await getBuildingAmenities(buildingId);
+        if (!cachedAmenities || cachedAmenities.length === 0) {
+          const amenitiesResult = await portalGetAllAmenities(selectedPropertyId);
+          if (amenitiesResult.error) {
+            console.error("Error fetching portal amenities:", amenitiesResult.error);
+            toast.error(t("reservations.error.load"));
+            setAmenities([]);
+            return;
+          }
+          const syncAmenitiesResult = await syncPortalAmenitiesForBuilding({
+            buildingId,
+            amenitiesPayload: amenitiesResult.data,
+          });
+          if (syncAmenitiesResult.error) {
+            console.error("Error syncing amenities:", syncAmenitiesResult.error);
+          }
         }
 
         const { amenities: fetchedAmenities, error } = await getBuildingAmenities(buildingId);
@@ -369,7 +372,7 @@ const Reservas = () => {
     };
 
     fetchAmenitiesForProperty();
-  }, [effectiveUnitId, isPrivilegedUser, profile?.email, properties, selectedPropertyId, t]);
+  }, [effectiveUnitId, isPrivilegedUser, profile?.email, selectedPropertyId, t]);
 
   useEffect(() => {
     if (!profile) return;
@@ -646,7 +649,7 @@ const Reservas = () => {
   // Get status badge
   const getStatusBadge = (status: ReservationStatus) => {
     const statusConfig = {
-      confirmed: {
+      approved: {
         icon: CheckCircle2,
         className: "bg-green-100 text-green-700 border-green-200",
         label: t('reservations.confirmed')
