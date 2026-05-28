@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, ArrowLeft } from "lucide-react";
+import { Calendar, ArrowLeft, FileDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { portalGetComunicado } from "@/lib/portal-api";
@@ -17,6 +17,7 @@ interface Announcement {
   content_en: string | null;
   published_at: string | null;
   status?: string | null;
+  adjunto?: string | null;
 }
 
 const ComunicadoDetalle = () => {
@@ -58,6 +59,7 @@ const ComunicadoDetalle = () => {
       content_en: contentEn,
       published_at: readString(record, ["fecha", "fecha_publicacion", "published_at", "created_at"]) || null,
       status: readString(record, ["estado", "status"]) || null,
+      adjunto: record?.adjunto ?? null,
     };
   };
 
@@ -170,6 +172,16 @@ const ComunicadoDetalle = () => {
               }}
             />
           </div>
+          {announcement.adjunto && (
+            <div className="mt-4 pt-4 border-t">
+              <a href={announcement.adjunto} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline">
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Descargar PDF
+                </Button>
+              </a>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
