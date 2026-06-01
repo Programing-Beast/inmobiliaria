@@ -16,7 +16,7 @@ import {
   portalGetAllDashboardIncidents,
   portalGetDashboardReservations,
   portalGetAllMyProperties,
-  portalGetUnits,
+  portalGetMisUnidades,
 } from "@/lib/portal-api";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -171,7 +171,7 @@ const DashboardW3CRM = () => {
           portalGetDashboardReservations(),
           portalGetAllDashboardIncidents(),
           portalGetDashboardComunicados(),
-          idProp !== null ? portalGetUnits(idProp) : Promise.resolve({ data: null, error: null }),
+          portalGetMisUnidades(),
         ]);
 
         if (!active) return;
@@ -212,10 +212,11 @@ const DashboardW3CRM = () => {
         }).length;
 
         const unidadesData = unidadesResult.data as any;
+        // mis-unidades returns { total: N, data: [...] } — count the user's own assigned units
         const totalUnitsValue =
-          readNumber(unidadesData, ["total", "total_unidades", "totalUnits"]) ??
-          readNumber(unidadesData?.[0] || {}, ["total", "total_unidades"]) ??
-          (Array.isArray(unidadesData) ? unidadesData.length : (Array.isArray(unidadesData?.data) ? unidadesData.data.length : null));
+          Array.isArray(unidadesData?.data) ? unidadesData.data.length :
+          readNumber(unidadesData, ["total"]) ??
+          null;
 
         setStats({
           totalUnits: totalUnitsValue !== null ? String(totalUnitsValue) : "-",
@@ -373,7 +374,6 @@ const DashboardW3CRM = () => {
             {isOwner && (
               <DataCard
                 title={t("dashboard.financialSummary")}
-                description={t("dashboard.financialSummaryDesc")}
               >
                 <div className="space-y-3">
                   <p className="text-sm text-secondary whitespace-pre-line">
