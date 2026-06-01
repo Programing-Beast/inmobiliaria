@@ -25,6 +25,7 @@ import {
   portalGetAllUnits,
   portalGetAmenityAvailability,
   portalGetAmenityInfo,
+  portalGetDashboardReservations,
 } from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
 import { isReservationWithinAvailabilitySlots, normalizePortalAvailability, normalizePortalTime } from "@/lib/portal-availability";
@@ -548,14 +549,45 @@ const Reservas = () => {
       if (!profile?.id) return;
 
       try {
-        const { reservations: fetchedReservations, error } = await getUserReservations(profile.id);
+        const [
+          { reservations: fetchedReservations, error },
+          koveResult,
+        ] = await Promise.all([
+          getUserReservations(profile.id),
+          portalGetDashboardReservations(),
+        ]);
 
         if (error) {
           console.error('Error fetching reservations:', error);
           return;
         }
 
-        setReservations(fetchedReservations || []);
+        // Build KOVE status map: idReserva (portal_id) → mapped local status
+        const koveList: any[] = Array.isArray((koveResult?.data as any)?.data)
+          ? (koveResult.data as any).data
+          : Array.isArray(koveResult?.data)
+          ? koveResult.data as any[]
+          : [];
+        const koveStatusMap = new Map<number, ReservationStatus>();
+        for (const kr of koveList) {
+          const id = kr.idReserva ?? kr.id;
+          const raw = (kr.estado ?? "").toUpperCase().trim();
+          let mapped: ReservationStatus = "pending";
+          if (raw === "APROBADO" || raw === "APROBADA") mapped = "approved";
+          else if (raw === "RECHAZADO" || raw === "RECHAZADA") mapped = "rejected";
+          else if (raw === "CANCELADO" || raw === "CANCELADA") mapped = "cancelled";
+          if (id) koveStatusMap.set(Number(id), mapped);
+        }
+
+        // Merge: override Turso status with KOVE status where portal_id matches
+        const merged = (fetchedReservations || []).map((r: any) => {
+          if (r.portal_id && koveStatusMap.has(r.portal_id)) {
+            return { ...r, status: koveStatusMap.get(r.portal_id) };
+          }
+          return r;
+        });
+
+        setReservations(merged);
       } catch (error) {
         console.error('Error:', error);
       }
