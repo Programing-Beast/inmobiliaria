@@ -311,16 +311,20 @@ const Reservas = () => {
         }
 
         if (!effectiveUnitId && isPrivilegedUser) {
-          const unitsResult = await portalGetAllUnits(selectedPropertyId);
-          if (unitsResult.error) {
-            console.error("Error fetching portal units:", unitsResult.error);
-          } else {
-            const syncUnitsResult = await syncPortalUnitsForBuilding({
-              buildingId,
-              unitsPayload: unitsResult.data,
-            });
-            if (syncUnitsResult.error) {
-              console.error("Error syncing units:", syncUnitsResult.error);
+          // Only sync from KOVE if local DB has no units for this building
+          const { units: cachedUnits } = await getBuildingUnits(buildingId);
+          if (!cachedUnits || cachedUnits.length === 0) {
+            const unitsResult = await portalGetAllUnits(selectedPropertyId);
+            if (unitsResult.error) {
+              console.error("Error fetching portal units:", unitsResult.error);
+            } else {
+              const syncUnitsResult = await syncPortalUnitsForBuilding({
+                buildingId,
+                unitsPayload: unitsResult.data,
+              });
+              if (syncUnitsResult.error) {
+                console.error("Error syncing units:", syncUnitsResult.error);
+              }
             }
           }
 

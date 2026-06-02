@@ -189,6 +189,8 @@ const DashboardW3CRM = () => {
               if (propertyId !== null && allowedIds.has(propertyId)) return true;
               const propertyName = getRecordPropertyName(record);
               if (propertyName && allowedNames.has(propertyName.toLowerCase())) return true;
+              // KOVE scopes /dashboard/reservas to the user — allow records with no property field
+              if (propertyId === null && !propertyName) return true;
               return false;
             })
           : reservasRaw;
