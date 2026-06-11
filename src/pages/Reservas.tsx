@@ -165,6 +165,8 @@ const Reservas = () => {
     profile?.roles?.includes("owner") ||
     profile?.roles?.includes("super_admin");
   const reservationUnitId = effectiveUnitId || (isPrivilegedUser ? fallbackUnitId : null);
+  // Tenant may have no Turso unit yet but KOVE /mis-unidades already returned one
+  const hasPortalUnit = (profile?.portalUnits?.length ?? 0) > 0;
 
   // New reservation form
   const getDefaultReservation = () => ({
@@ -825,7 +827,7 @@ const Reservas = () => {
     );
   }
 
-  if (!reservationUnitId) {
+  if (!reservationUnitId && !hasPortalUnit) {
     return (
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
