@@ -86,7 +86,10 @@ const ComunicadoDetalle = () => {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString(i18n.language === "en" ? "en-US" : "es-CL", {
+    const datePart = dateString.split("T")[0];
+    const [year, month, day] = datePart.split("-").map(Number);
+    if (!year || !month || !day) return "-";
+    return new Date(year, month - 1, day).toLocaleDateString(i18n.language === "en" ? "en-US" : "es-CL", {
       year: "numeric",
       month: "long",
       day: "numeric",
