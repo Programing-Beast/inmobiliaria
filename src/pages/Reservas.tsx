@@ -732,16 +732,23 @@ const Reservas = () => {
     });
   };
 
-  // Get amenity icon
-  const getAmenityIcon = (type: string) => {
-    const icons: Record<string, string> = {
-      quincho: "🍖",
-      piscina: "🏊",
-      gym: "💪",
-      sum: "🎉",
-      sports_court: "⚽",
-    };
-    return icons[type] || "📍";
+  // Get amenity icon — matches on type field or falls back to name inference
+  const getAmenityIcon = (typeOrName: string) => {
+    const normalized = (typeOrName || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const icons: [RegExp, string][] = [
+      [/quincho|parrilla|asado/, "🍖"],
+      [/piscina|pool|pileta/, "🏊"],
+      [/gym|gimnasio|fitness/, "💪"],
+      [/sum|salon|sala|event/, "🎉"],
+      [/cancha|court|tenis|futbol|padel|sport/, "⚽"],
+      [/terraza|rooftop|azotea/, "🌇"],
+      [/cowork|trabajo|oficina/, "💻"],
+      [/lavanderia|laundry/, "👕"],
+    ];
+    for (const [pattern, icon] of icons) {
+      if (pattern.test(normalized)) return icon;
+    }
+    return "📍";
   };
 
   const isSlotAvailable = () => {
@@ -792,6 +799,15 @@ const Reservas = () => {
   const amenityStart = amenityInfo ? readString(amenityInfo, ["horaInicio", "hora_inicio", "start"]) : "";
   const amenityEnd = amenityInfo ? readString(amenityInfo, ["horaFin", "hora_fin", "end"]) : "";
   const amenityNotes = amenityInfo ? readString(amenityInfo, ["descripcion", "description", "detalle"]) : "";
+  // Prefer live amenityInfo fields over stale Turso values for the selected amenity detail
+  const selectedAmenityType =
+    (amenityInfo ? readString(amenityInfo, ["tipo", "type", "amenity_type"]) : null) ||
+    selectedAmenity?.type ||
+    null;
+  const selectedAmenityCapacity =
+    (amenityInfo ? readNumber(amenityInfo, ["capacidadMaxima", "capacidad", "max_capacity", "maxCapacity"]) : null) ??
+    selectedAmenity?.max_capacity ??
+    null;
   useEffect(() => {
     if (page > totalPages) {
       setPage(totalPages);
@@ -931,7 +947,7 @@ const Reservas = () => {
                 onClick={() => setSelectedAmenity(amenity)}
               >
                 <CardContent className="p-4 text-center">
-                  <div className="text-3xl mb-2">{getAmenityIcon(amenity.type || "")}</div>
+                  <div className="text-3xl mb-2">{getAmenityIcon(amenity.type || getAmenityLabel(amenity))}</div>
                   <p className={cn(
                     "text-sm font-semibold mb-1",
                     selectedAmenity?.id === amenity.id ? "text-primary" : "text-foreground"
@@ -955,15 +971,15 @@ const Reservas = () => {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className="text-4xl">{getAmenityIcon(selectedAmenity.type || "")}</div>
+                    <div className="text-4xl">{getAmenityIcon(selectedAmenityType || "")}</div>
                     <div>
                       <h3 className="text-xl font-bold mb-2">
                         {getAmenityLabel(selectedAmenity)}
                       </h3>
-                      {selectedAmenity.max_capacity && (
+                      {selectedAmenityCapacity && (
                         <p className="text-sm text-muted-foreground flex items-center gap-2">
                           <Info className="w-4 h-4" />
-                          {t('reservations.capacity')}: {selectedAmenity.max_capacity} personas
+                          {t('reservations.capacity')}: {selectedAmenityCapacity} personas
                         </p>
                       )}
                       {(amenityStart || amenityEnd) && (
@@ -1014,7 +1030,7 @@ const Reservas = () => {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <div className="text-2xl">{getAmenityIcon(reservation.amenity.type || "")}</div>
+                            <div className="text-2xl">{getAmenityIcon(reservation.amenity.type || getAmenityLabel(reservation.amenity))}</div>
                             <div>
                               <p className="font-semibold">
                                 {getAmenityLabel(reservation.amenity)}

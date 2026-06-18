@@ -809,7 +809,8 @@ export const syncPortalCatalog = async (params?: {
         const nameEn = readString(amenity, ["name_en", "nombre_en", "nombreEn"]) || null;
         const descriptionEs = readString(amenity, ["descripcion", "description", "descripcion_es", "descripcionEs"]) || null;
         const descriptionEn = readString(amenity, ["description_en", "descripcion_en", "descripcionEn"]) || null;
-        const maxCapacity = readNumber(amenity, ["capacidad", "max_capacity", "maxCapacity"]);
+        const maxCapacity = readNumber(amenity, ["capacidadMaxima", "capacidad", "max_capacity", "maxCapacity"]);
+        const amenityType = readString(amenity, ["tipo", "type", "amenity_type"]) || null;
         const requiresApproval = readBoolean(amenity, ["requiere_aprobacion", "requires_approval", "requiresApproval"]);
         const isActive = readBoolean(amenity, ["activo", "is_active", "active", "habilitado"]);
 
@@ -822,6 +823,7 @@ export const syncPortalCatalog = async (params?: {
             name_en: nameEn,
             description_es: descriptionEs,
             description_en: descriptionEn,
+            type: amenityType,
             max_capacity: maxCapacity ?? undefined,
             requires_approval: requiresApproval,
             is_active: isActive,
@@ -841,6 +843,7 @@ export const syncPortalCatalog = async (params?: {
               name_en: nameEn,
               description_es: descriptionEs,
               description_en: descriptionEn,
+              type: amenityType,
               max_capacity: maxCapacity ?? undefined,
               requires_approval: requiresApproval,
               is_active: isActive,
@@ -858,6 +861,7 @@ export const syncPortalCatalog = async (params?: {
               name_en: nameEn,
               description_es: descriptionEs,
               description_en: descriptionEn,
+              type: amenityType,
               max_capacity: maxCapacity ?? undefined,
               requires_approval: requiresApproval ?? false,
               is_active: isActive ?? true,
@@ -965,7 +969,8 @@ export const syncPortalAmenitiesForBuilding = async (params: {
     const nameEn = readString(amenity, ["name_en", "nombre_en", "nombreEn"]) || null;
     const descriptionEs = readString(amenity, ["descripcion", "description", "descripcion_es", "descripcionEs"]) || null;
     const descriptionEn = readString(amenity, ["description_en", "descripcion_en", "descripcionEn"]) || null;
-    const maxCapacity = readNumber(amenity, ["capacidad", "max_capacity", "maxCapacity"]);
+    const maxCapacity = readNumber(amenity, ["capacidadMaxima", "capacidad", "max_capacity", "maxCapacity"]);
+    const amenityType = readString(amenity, ["tipo", "type", "amenity_type"]) || null;
     const requiresApproval = readBoolean(amenity, ["requiere_aprobacion", "requires_approval", "requiresApproval"]);
     const isActive = readBoolean(amenity, ["activo", "is_active", "active", "habilitado"]);
 
@@ -978,6 +983,7 @@ export const syncPortalAmenitiesForBuilding = async (params: {
         name_en: nameEn,
         description_es: descriptionEs,
         description_en: descriptionEn,
+        type: amenityType,
         max_capacity: maxCapacity ?? undefined,
         requires_approval: requiresApproval,
         is_active: isActive,
@@ -997,6 +1003,7 @@ export const syncPortalAmenitiesForBuilding = async (params: {
           name_en: nameEn,
           description_es: descriptionEs,
           description_en: descriptionEn,
+          type: amenityType,
           max_capacity: maxCapacity ?? undefined,
           requires_approval: requiresApproval,
           is_active: isActive,
@@ -1014,6 +1021,7 @@ export const syncPortalAmenitiesForBuilding = async (params: {
           name_en: nameEn,
           description_es: descriptionEs,
           description_en: descriptionEn,
+          type: amenityType,
           max_capacity: maxCapacity ?? undefined,
           requires_approval: requiresApproval ?? false,
           is_active: isActive ?? true,

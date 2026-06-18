@@ -47,6 +47,7 @@ const rowToObject = <T>(result: ResultSet): T | null => {
 };
 
 let amenitiesRulesPdfUrlColumnExists: boolean | null = null;
+let amenitiesTypeColumnExists: boolean | null = null;
 
 const hasAmenitiesRulesPdfUrlColumn = async (): Promise<boolean> => {
   if (amenitiesRulesPdfUrlColumnExists !== null) {
@@ -66,6 +67,19 @@ const hasAmenitiesRulesPdfUrlColumn = async (): Promise<boolean> => {
   }
 
   return amenitiesRulesPdfUrlColumnExists;
+};
+
+const hasAmenitiesTypeColumn = async (): Promise<boolean> => {
+  if (amenitiesTypeColumnExists !== null) return amenitiesTypeColumnExists;
+  try {
+    const schemaResult = await db.execute({ sql: "PRAGMA table_info(amenities)", args: [] });
+    const columns = rowsToObjects<{ name?: string }>(schemaResult);
+    amenitiesTypeColumnExists = columns.some((column) => column.name === "type");
+  } catch (error) {
+    console.warn("Unable to inspect amenities schema:", error);
+    amenitiesTypeColumnExists = false;
+  }
+  return amenitiesTypeColumnExists;
 };
 
 // =====================================================
@@ -607,6 +621,7 @@ export const createAmenity = async (amenity: {
   description_es?: string | null;
   description_en?: string | null;
   rules_pdf_url?: string | null;
+  type?: string | null;
   max_capacity?: number | null;
   requires_approval?: boolean;
   is_active?: boolean;
@@ -615,7 +630,10 @@ export const createAmenity = async (amenity: {
   try {
     const id = generateUUID();
     const timestamp = now();
-    const includeRulesPdfUrl = await hasAmenitiesRulesPdfUrlColumn();
+    const [includeRulesPdfUrl, includeType] = await Promise.all([
+      hasAmenitiesRulesPdfUrlColumn(),
+      hasAmenitiesTypeColumn(),
+    ]);
     const columns = [
       "id",
       "building_id",
@@ -625,6 +643,7 @@ export const createAmenity = async (amenity: {
       "description_es",
       "description_en",
       ...(includeRulesPdfUrl ? ["rules_pdf_url"] : []),
+      ...(includeType ? ["type"] : []),
       "max_capacity",
       "requires_approval",
       "is_active",
@@ -640,6 +659,7 @@ export const createAmenity = async (amenity: {
       amenity.description_es || null,
       amenity.description_en || null,
       ...(includeRulesPdfUrl ? [amenity.rules_pdf_url || null] : []),
+      ...(includeType ? [amenity.type || null] : []),
       amenity.max_capacity || null,
       amenity.requires_approval ? 1 : 0,
       amenity.is_active !== false ? 1 : 0,
@@ -672,6 +692,7 @@ export const updateAmenity = async (
     description_es?: string | null;
     description_en?: string | null;
     rules_pdf_url?: string | null;
+    type?: string | null;
     max_capacity?: number | null;
     requires_approval?: boolean;
     is_active?: boolean;
@@ -680,13 +701,15 @@ export const updateAmenity = async (
   try {
     const fields: string[] = [];
     const args: any[] = [];
-    const includeRulesPdfUrl = await hasAmenitiesRulesPdfUrlColumn();
+    const [includeRulesPdfUrl, includeType] = await Promise.all([
+      hasAmenitiesRulesPdfUrlColumn(),
+      hasAmenitiesTypeColumn(),
+    ]);
 
     Object.entries(updates).forEach(([key, value]) => {
       if (value !== undefined) {
-        if (key === "rules_pdf_url" && !includeRulesPdfUrl) {
-          return;
-        }
+        if (key === "rules_pdf_url" && !includeRulesPdfUrl) return;
+        if (key === "type" && !includeType) return;
         fields.push(`${key} = ?`);
         if (key === 'requires_approval' || key === 'is_active') {
           args.push(value ? 1 : 0);
