@@ -218,10 +218,13 @@ const Comunicados = () => {
     fetchAnnouncements();
   }, [profile, t, allowedPropertyIds, allowedPropertyNames, isSuperAdmin]);
 
-  // Format date
+  // Format date — parse date part only to avoid UTC-offset shifting midnight timestamps
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'es-CL', {
+    const datePart = dateString.split("T")[0];
+    const [year, month, day] = datePart.split("-").map(Number);
+    if (!year || !month || !day) return '-';
+    return new Date(year, month - 1, day).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'es-CL', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'

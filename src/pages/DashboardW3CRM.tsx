@@ -79,6 +79,18 @@ const DashboardW3CRM = () => {
     return null;
   };
 
+  const formatReservationDate = (dateString?: string) => {
+    if (!dateString || dateString === "-") return dateString || "-";
+    const datePart = dateString.split("T")[0];
+    const [year, month, day] = datePart.split("-").map(Number);
+    if (!year || !month || !day) return dateString;
+    return new Date(year, month - 1, day).toLocaleDateString("es-CL", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
   const normalizeReservationStatus = (status?: string) => {
     const value = (status || "").toLowerCase();
     if (["confirmado", "confirmed", "aprobado", "approved"].includes(value)) return "confirmed";
@@ -359,7 +371,7 @@ const DashboardW3CRM = () => {
                   <div className="flex items-center justify-between text-xs text-muted-foreground w-full">
                     <span>{reservation.unit}</span>
                     <span className="font-medium text-secondary whitespace-nowrap">
-                      {reservation.date}
+                      {formatReservationDate(reservation.date)}
                       {reservation.startTime ? ` | ${reservation.startTime}` : ""}
                       {reservation.endTime ? ` - ${reservation.endTime}` : ""}
                     </span>
