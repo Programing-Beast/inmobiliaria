@@ -593,7 +593,13 @@ export const portalLogin = async (email: string, password?: string, options?: { 
 
   return result;
 };
-export const portalRegister = async (payload: { nombreCompleto: string; correo: string; password: string }) => {
+export const portalRegister = async (payload: {
+  nombreCompleto: string;
+  correo: string;
+  password: string;
+  edificio?: string;
+  unidad?: string;
+}) => {
   return portalRequest<{
     status: number;
     message: string;

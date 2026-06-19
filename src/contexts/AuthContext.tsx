@@ -48,7 +48,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, buildingName?: string, unitNumber?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
   refreshProfile: () => Promise<void>;
@@ -204,15 +204,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   // Sign up function
-  const handleSignUp = async (email: string, password: string, fullName: string) => {
+  const handleSignUp = async (email: string, password: string, fullName: string, buildingName?: string, unitNumber?: string) => {
     try {
       console.log("[AuthContext] Registration started for:", email);
-      
+
       // 1. First register in the portal API
-      const portalResult = await portalRegister({ 
-        nombreCompleto: fullName, 
-        correo: email, 
-        password 
+      const portalResult = await portalRegister({
+        nombreCompleto: fullName,
+        correo: email,
+        password,
+        ...(buildingName ? { edificio: buildingName } : {}),
+        ...(unitNumber ? { unidad: unitNumber } : {}),
       });
 
       if (portalResult.error) {
