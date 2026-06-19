@@ -74,9 +74,13 @@ const hasAmenitiesTypeColumn = async (): Promise<boolean> => {
   try {
     const schemaResult = await db.execute({ sql: "PRAGMA table_info(amenities)", args: [] });
     const columns = rowsToObjects<{ name?: string }>(schemaResult);
-    amenitiesTypeColumnExists = columns.some((column) => column.name === "type");
+    const exists = columns.some((column) => column.name === "type");
+    if (!exists) {
+      await db.execute({ sql: "ALTER TABLE amenities ADD COLUMN type TEXT", args: [] });
+    }
+    amenitiesTypeColumnExists = true;
   } catch (error) {
-    console.warn("Unable to inspect amenities schema:", error);
+    console.warn("Unable to ensure amenities.type column:", error);
     amenitiesTypeColumnExists = false;
   }
   return amenitiesTypeColumnExists;
