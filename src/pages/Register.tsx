@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import logoOriginal from "@/assets/logo-original.png";
 import { useTranslation } from "react-i18next";
-import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Building2, Hash } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Register = () => {
@@ -17,6 +17,8 @@ const Register = () => {
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
+    buildingName: "",
+    unitNumber: "",
     password: "",
     confirmPassword: "",
   });
@@ -33,7 +35,7 @@ const Register = () => {
     e.preventDefault();
 
     // Validation
-    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.fullName || !formData.email || !formData.buildingName || !formData.unitNumber || !formData.password || !formData.confirmPassword) {
       toast.error(t("register.validationRequired"));
       return;
     }
@@ -72,8 +74,7 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      // Sign up with Supabase
-      const { error } = await signUp(formData.email, formData.password, formData.fullName);
+      const { error } = await signUp(formData.email, formData.password, formData.fullName, formData.buildingName, formData.unitNumber);
 
       if (error) {
         // Handle specific error messages
@@ -158,6 +159,42 @@ const Register = () => {
                   value={formData.email}
                   onChange={(e) => handleChange("email", e.target.value)}
                   className="h-12 border-[#d6e1f4] bg-[#eef4ff] pl-10 text-zinc-800 transition-all placeholder:text-zinc-400 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="buildingName" className="font-medium text-zinc-700">
+                {t('register.buildingName')}
+              </Label>
+              <div className="relative group">
+                <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 transition-colors group-focus-within:text-primary" />
+                <Input
+                  id="buildingName"
+                  type="text"
+                  placeholder={t("register.buildingNamePlaceholder")}
+                  value={formData.buildingName}
+                  onChange={(e) => handleChange("buildingName", e.target.value)}
+                  className="h-12 border-[#f5ddb9] bg-[#fff8f0] pl-10 text-zinc-800 transition-all placeholder:text-zinc-400 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="unitNumber" className="font-medium text-zinc-700">
+                {t('register.unitNumber')}
+              </Label>
+              <div className="relative group">
+                <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 transition-colors group-focus-within:text-primary" />
+                <Input
+                  id="unitNumber"
+                  type="text"
+                  placeholder={t("register.unitNumberPlaceholder")}
+                  value={formData.unitNumber}
+                  onChange={(e) => handleChange("unitNumber", e.target.value)}
+                  className="h-12 border-[#f5ddb9] bg-[#fff8f0] pl-10 text-zinc-800 transition-all placeholder:text-zinc-400 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
                   disabled={isLoading}
                 />
               </div>
