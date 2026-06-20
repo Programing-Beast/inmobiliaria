@@ -21,7 +21,6 @@ import { getBuildingAmenities, getBuildingByPortalId, getBuilding, getBuildingUn
 import { createReservationSynced, syncPortalAmenitiesForBuilding, syncPortalCatalog, syncPortalUnitsForBuilding } from "@/lib/portal-sync";
 import {
   portalGetAllAmenities,
-  portalGetAllMyProperties,
   portalGetAllUnits,
   portalGetAmenityAvailability,
   portalGetAmenityInfo,
@@ -73,19 +72,13 @@ interface Reservation {
   amenity: Amenity;
 }
 
-type PortalProperty = {
-  portalId: number;
-  name: string;
-  raw: Record<string, any>;
-};
 
 const Reservas = () => {
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, selectedProperty } = useAuth();
   const getLocalizedField = useLocalizedField();
-  const [properties, setProperties] = useState<PortalProperty[]>([]);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
-  const [propertiesLoading, setPropertiesLoading] = useState(false);
+  // selectedPropertyId is derived from the shared context — no local state needed
+  const selectedPropertyId = selectedProperty ? String(selectedProperty.idPropiedad) : "";
   const [amenitiesLoading, setAmenitiesLoading] = useState(false);
   const [amenities, setAmenities] = useState<Amenity[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -182,85 +175,8 @@ const Reservas = () => {
 
   const [newReservation, setNewReservation] = useState(getDefaultReservation);
 
-  // Fetch properties
-  useEffect(() => {
-    const fetchProperties = async () => {
-      if (!profile) return;
-
-      setLoading(true);
-      setPropertiesLoading(true);
-      try {
-        const propertiesResult = await portalGetAllMyProperties();
-        if (propertiesResult.error) {
-          console.error("Error fetching portal properties:", propertiesResult.error);
-          toast.error(t("reservations.error.load"));
-          setProperties([]);
-          setSelectedPropertyId("");
-          return;
-        }
-
-        const portalProperties = toPortalList(propertiesResult.data);
-        const mappedProperties = portalProperties
-          .map((property) => {
-            const portalId = readNumber(property, ["idPropiedad", "id_propiedad", "propiedadId", "propiedad_id"]);
-            if (!portalId) return null;
-            const name =
-              readString(property, ["nombre", "name", "razonSocial", "razon_social", "propiedad"]) ||
-              `Propiedad ${portalId}`;
-            return { portalId, name, raw: property };
-          })
-          .filter((item): item is PortalProperty => item !== null);
-
-        let filteredProperties = mappedProperties;
-        let assignedPortalId: number | null = null;
-        let assignedName = "";
-        if (effectiveBuildingId) {
-          const { building } = await getBuilding(effectiveBuildingId);
-          assignedPortalId = building?.portal_id ?? null;
-          assignedName = normalizeText(building?.name || "");
-          if (assignedPortalId || assignedName) {
-            filteredProperties = mappedProperties.filter((property) => {
-              if (assignedPortalId && property.portalId === assignedPortalId) return true;
-              if (assignedName && normalizeText(property.name) === assignedName) return true;
-              return false;
-            });
-          } else {
-            filteredProperties = [];
-          }
-        }
-
-        setProperties(filteredProperties);
-
-        if (!selectedPropertyId) {
-          let defaultPortalId: string | null = null;
-          if (effectiveBuildingId) {
-            const { building } = await getBuilding(effectiveBuildingId);
-            if (building?.portal_id) {
-              defaultPortalId = String(building.portal_id);
-            } else if (building?.name) {
-              const match = filteredProperties.find(
-                (property) => normalizeText(property.name) === normalizeText(building.name)
-              );
-              if (match) {
-                defaultPortalId = String(match.portalId);
-              }
-            }
-          }
-          setSelectedPropertyId(defaultPortalId || (filteredProperties[0] ? String(filteredProperties[0].portalId) : ""));
-        }
-        if (effectiveBuildingId && filteredProperties.length === 0) {
-          toast.error("No hay propiedades asignadas para este usuario");
-        }
-      } catch (error) {
-        console.error("Error:", error);
-        toast.error(t("reservations.error.load"));
-      } finally {
-        setPropertiesLoading(false);
-      }
-    };
-
-    fetchProperties();
-  }, [profile, t]);
+  // Property selection is now handled globally by the PropertySelector in the Header.
+  // selectedPropertyId is derived from AuthContext.selectedProperty above.
 
   // Fetch amenities for selected property
   useEffect(() => {
@@ -290,10 +206,13 @@ const Reservas = () => {
         if (existingBuilding.building?.id) {
           buildingId = existingBuilding.building.id;
         } else {
-          const propertyRecord = properties.find((property) => String(property.portalId) === selectedPropertyId);
+          // Use selectedProperty from context as the raw payload for catalog sync
+          const propertyRaw = selectedProperty
+            ? { idPropiedad: selectedProperty.idPropiedad, nombre: selectedProperty.nombre }
+            : undefined;
           const syncResult = await syncPortalCatalog({
             email: profile?.email || undefined,
-            properties: propertyRecord ? [propertyRecord.raw] : undefined,
+            properties: propertyRaw ? [propertyRaw] : undefined,
             includeUnits: false,
             includeAmenities: false,
           });
@@ -633,7 +552,10 @@ const Reservas = () => {
     setSubmitting(true);
     try {
       const unitId = reservationUnitId || "";
-      const portalUnitId = profile?.portalUnits?.[0]?.idUnidad;
+      // Match the unit to the selected property so multi-building users get the right unit
+      const portalUnitId =
+        profile?.portalUnits?.find((u) => String(u.idPropiedad) === selectedPropertyId)?.idUnidad ??
+        profile?.portalUnits?.[0]?.idUnidad;
       if (!unitId && !portalUnitId) {
         toast.error("No hay unidad asignada");
         return;
@@ -822,7 +744,7 @@ const Reservas = () => {
     );
   }
 
-  if (!propertiesLoading && !selectedPropertyId && properties.length === 0) {
+  if (!selectedPropertyId) {
     return (
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -889,41 +811,6 @@ const Reservas = () => {
           {t('reservations.newReservation')}
         </Button>
       </div>
-
-      {/* Property Selector */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="property_id">{t("reservations.property")} *</Label>
-              <Select
-                value={selectedPropertyId}
-                onValueChange={(value) => {
-                  setSelectedPropertyId(value);
-                  setSelectedAmenity(null);
-                  setAmenityInfo(null);
-                  setAvailabilitySlots([]);
-                  setAvailabilityStartTimes([]);
-                  setAvailabilityEndTimes([]);
-                  setAvailabilityError(null);
-                }}
-                disabled={propertiesLoading || properties.length === 0}
-              >
-                <SelectTrigger id="property_id">
-                  <SelectValue placeholder={t("reservations.selectProperty")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {properties.map((property) => (
-                    <SelectItem key={property.portalId} value={String(property.portalId)}>
-                      {property.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Amenity Selector Cards */}
       {amenitiesLoading ? (

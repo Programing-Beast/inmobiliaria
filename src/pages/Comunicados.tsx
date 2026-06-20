@@ -38,7 +38,7 @@ interface Announcement {
 
 const Comunicados = () => {
   const { t, i18n } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, selectedProperty } = useAuth();
   const getLocalizedField = useLocalizedField();
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -203,7 +203,19 @@ const Comunicados = () => {
               })
             : portalAnnouncements;
 
-        const mappedAnnouncements = filteredAnnouncements.map((announcement, index) =>
+        // Narrow to the globally selected property when one is active
+        const scopedAnnouncements = selectedProperty
+          ? filteredAnnouncements.filter((announcement: any) => {
+              const propertyId = getAnnouncementPropertyId(announcement);
+              const propertyName = getAnnouncementPropertyName(announcement);
+              if (propertyId === null && !propertyName) return true;
+              if (propertyId === selectedProperty.idPropiedad) return true;
+              if (propertyName && propertyName.toLowerCase() === selectedProperty.nombre.toLowerCase()) return true;
+              return false;
+            })
+          : filteredAnnouncements;
+
+        const mappedAnnouncements = scopedAnnouncements.map((announcement: any, index: number) =>
           mapAnnouncement(announcement, index)
         );
         setAnnouncements(mappedAnnouncements);
@@ -216,7 +228,7 @@ const Comunicados = () => {
     };
 
     fetchAnnouncements();
-  }, [profile, t, allowedPropertyIds, allowedPropertyNames, isSuperAdmin]);
+  }, [profile, t, allowedPropertyIds, allowedPropertyNames, isSuperAdmin, selectedProperty]);
 
   // Format date — parse date part only to avoid UTC-offset shifting midnight timestamps
   const formatDate = (dateString: string | null) => {

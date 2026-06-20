@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/pagination";
 
 const Incidencias = () => {
-  const { profile } = useAuth();
+  const { profile, selectedProperty } = useAuth();
   const [incidents, setIncidents] = useState<any[]>([]);
   const [buildings, setBuildings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,7 +174,7 @@ const Incidencias = () => {
       if (!isSuperAdmin) {
         const allowedIds = new Set(allowedPropertyIds);
         const allowedNames = new Set(allowedPropertyNames.map((name) => normalizeText(name)));
-        const filtered = rawIncidents.filter((incident: any) => {
+        const propertyFiltered = rawIncidents.filter((incident: any) => {
           const propertyId = getIncidentPropertyId(incident);
           const propertyName = getIncidentPropertyName(incident);
           if (propertyId === null && !propertyName) return true;
@@ -182,6 +182,17 @@ const Incidencias = () => {
           if (propertyName && allowedNames.has(normalizeText(propertyName))) return true;
           return false;
         });
+        // Narrow to the globally selected property when one is active
+        const filtered = selectedProperty
+          ? propertyFiltered.filter((incident: any) => {
+              const propertyId = getIncidentPropertyId(incident);
+              const propertyName = getIncidentPropertyName(incident);
+              if (propertyId === null && !propertyName) return true;
+              if (propertyId === selectedProperty.idPropiedad) return true;
+              if (propertyName && normalizeText(propertyName) === normalizeText(selectedProperty.nombre)) return true;
+              return false;
+            })
+          : propertyFiltered;
         setIncidents(filtered.map((incident: any) => normalizeIncidentRecord(incident)));
       } else {
         setIncidents(rawIncidents.map((incident: any) => normalizeIncidentRecord(incident)));
@@ -200,7 +211,7 @@ const Incidencias = () => {
     if (!profile) return;
     if (!isSuperAdmin && !allowedPropertiesLoaded) return;
     fetchIncidents();
-  }, [allowedPropertyIds, allowedPropertyNames, allowedPropertiesLoaded, isSuperAdmin, profile]);
+  }, [allowedPropertyIds, allowedPropertyNames, allowedPropertiesLoaded, isSuperAdmin, profile, selectedProperty]);
 
   useEffect(() => {
     const fetchAllowedProperties = async () => {
@@ -291,14 +302,6 @@ const Incidencias = () => {
         return;
       }
 
-      if (profile?.building_id && !isSuperAdmin) {
-        const { building } = await getBuilding(profile.building_id);
-        const fallbackName = (profile as any)?.building?.name || "Propiedad";
-        setBuildings([{ id: profile.building_id, name: building?.name || fallbackName }]);
-        setNewIncident((prev) => ({ ...prev, buildingId: profile.building_id }));
-        return;
-      }
-
       if (!isSuperAdmin && !allowedPropertiesLoaded) {
         return;
       }
@@ -329,16 +332,25 @@ const Incidencias = () => {
       setNewIncident((prev) => {
         const hasSelectedBuilding = buildingsToShow.some((building) => String(building.id) === String(prev.buildingId));
         if (hasSelectedBuilding) return prev;
+        // Prefer building matching the globally selected property
+        const preferred = selectedProperty
+          ? buildingsToShow.find(
+              (b) =>
+                b.portal_id === selectedProperty.idPropiedad ||
+                normalizeText(b.name) === normalizeText(selectedProperty.nombre)
+            )
+          : null;
+        const defaultBuilding = preferred ?? buildingsToShow[0];
         return {
           ...prev,
-          buildingId: buildingsToShow[0]?.id ? String(buildingsToShow[0].id) : "",
+          buildingId: defaultBuilding?.id ? String(defaultBuilding.id) : "",
           unitId: "",
         };
       });
     };
 
     fetchBuildings();
-  }, [profile, profile?.building_id, profile?.building?.name, allowedPropertyIds, allowedPropertyNames, allowedPropertiesLoaded, isSuperAdmin]);
+  }, [profile, profile?.building_id, profile?.building?.name, allowedPropertyIds, allowedPropertyNames, allowedPropertiesLoaded, isSuperAdmin, selectedProperty]);
 
   const ensureBuildingPortalMapping = async (buildingId: string) => {
     const { building } = await getBuilding(buildingId);
@@ -635,7 +647,7 @@ const Incidencias = () => {
                 onValueChange={(value) =>
                   setNewIncident({ ...newIncident, buildingId: value === "none" ? "" : value })
                 }
-                disabled={!!profile?.building_id}
+                disabled={false}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona una propiedad" />
