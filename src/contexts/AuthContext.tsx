@@ -43,6 +43,8 @@ interface Session {
   user: User;
 }
 
+export type PortalProperty = { idPropiedad: number; nombre: string };
+
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
@@ -53,6 +55,8 @@ interface AuthContextType {
   signOut: () => Promise<{ error: any }>;
   refreshProfile: () => Promise<void>;
   setCurrentUnit: (unit: UserUnit) => void;
+  selectedProperty: PortalProperty | null;
+  setSelectedProperty: (property: PortalProperty | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -74,6 +78,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedProperty, setSelectedPropertyState] = useState<PortalProperty | null>(null);
+
+  const setSelectedProperty = (property: PortalProperty | null) => {
+    setSelectedPropertyState(property);
+    if (property) {
+      localStorage.setItem('selectedPropertyId', String(property.idPropiedad));
+    } else {
+      localStorage.removeItem('selectedPropertyId');
+    }
+  };
 
   // Fetch user profile with units and roles
   const fetchProfile = async (userId: string) => {
@@ -117,6 +131,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         } catch (e) {
           console.error('Error parsing stored portal properties:', e);
         }
+      }
+
+      // Restore or auto-select the active property
+      if (enhancedProfile.portalProperties?.length) {
+        const savedId = localStorage.getItem('selectedPropertyId');
+        const match = enhancedProfile.portalProperties.find(
+          (p) => String(p.idPropiedad) === savedId
+        );
+        setSelectedPropertyState(match ?? enhancedProfile.portalProperties[0]);
       }
 
       // Fetch units from KOVE (in-memory only, not localStorage)
@@ -294,6 +317,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(null);
       setSession(null);
       setProfile(null);
+      setSelectedPropertyState(null);
       clearPortalAuth();
 
       // Clear localStorage
@@ -305,6 +329,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       localStorage.removeItem('currentUnitNumber');
       localStorage.removeItem('userUnits');
       localStorage.removeItem('userRoles');
+      localStorage.removeItem('selectedPropertyId');
 
       return { error };
     } catch (error: any) {
@@ -329,6 +354,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signOut: handleSignOut,
     refreshProfile,
     setCurrentUnit,
+    selectedProperty,
+    setSelectedProperty,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

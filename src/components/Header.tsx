@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { UnitSwitcher } from "@/components/UnitSwitcher";
 import { OwnerContextSwitcher } from "@/components/OwnerContextSwitcher";
+import { PropertySelector } from "@/components/PropertySelector";
 import { useTranslation } from "react-i18next";
 
 interface HeaderProps {
@@ -87,6 +88,9 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
         {/* Right side - Actions */}
         <div className="flex items-center gap-2">
+          {/* Shared property selector — visible when user has 2+ properties */}
+          <PropertySelector />
+
           {/* Owner context selector (owner role only) */}
           <OwnerContextSwitcher />
 

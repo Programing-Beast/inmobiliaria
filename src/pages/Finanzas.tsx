@@ -43,7 +43,7 @@ interface Payment {
 
 const Finanzas = () => {
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, selectedProperty } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -344,9 +344,21 @@ const Finanzas = () => {
     fetchPayments();
   }, [profile, t]);
 
-  // Filter payments based on search and type
+  // Filter payments based on search, type, and selected property
   useEffect(() => {
     let filtered = [...payments];
+
+    // Property filter — client-side since KOVE finance API only accepts email
+    if (selectedProperty) {
+      filtered = filtered.filter((payment: any) => {
+        const propId = readNumber(payment as any, ["idPropiedad", "propiedadId", "id_propiedad"]);
+        const propName = readString(payment as any, ["propiedad", "propiedadNombre", "propiedad_nombre"]);
+        if (propId === null && !propName) return true; // no property tag — always show
+        if (propId === selectedProperty.idPropiedad) return true;
+        if (propName && propName.toLowerCase() === selectedProperty.nombre.toLowerCase()) return true;
+        return false;
+      });
+    }
 
     // Search filter
     if (searchTerm) {
@@ -373,7 +385,7 @@ const Finanzas = () => {
 
     setFilteredPayments(filtered);
     setPage(1);
-  }, [searchTerm, typeFilter, payments]);
+  }, [searchTerm, typeFilter, payments, selectedProperty]);
 
   // Format currency
   const formatCurrency = (amount: number) => {
