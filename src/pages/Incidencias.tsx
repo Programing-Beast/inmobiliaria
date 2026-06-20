@@ -291,14 +291,6 @@ const Incidencias = () => {
         return;
       }
 
-      if (profile?.building_id && !isSuperAdmin) {
-        const { building } = await getBuilding(profile.building_id);
-        const fallbackName = (profile as any)?.building?.name || "Propiedad";
-        setBuildings([{ id: profile.building_id, name: building?.name || fallbackName }]);
-        setNewIncident((prev) => ({ ...prev, buildingId: profile.building_id }));
-        return;
-      }
-
       if (!isSuperAdmin && !allowedPropertiesLoaded) {
         return;
       }
@@ -635,7 +627,7 @@ const Incidencias = () => {
                 onValueChange={(value) =>
                   setNewIncident({ ...newIncident, buildingId: value === "none" ? "" : value })
                 }
-                disabled={!!profile?.building_id}
+                disabled={false}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona una propiedad" />

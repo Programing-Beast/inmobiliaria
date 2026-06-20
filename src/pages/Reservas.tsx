@@ -211,25 +211,9 @@ const Reservas = () => {
           })
           .filter((item): item is PortalProperty => item !== null);
 
-        let filteredProperties = mappedProperties;
-        let assignedPortalId: number | null = null;
-        let assignedName = "";
-        if (effectiveBuildingId) {
-          const { building } = await getBuilding(effectiveBuildingId);
-          assignedPortalId = building?.portal_id ?? null;
-          assignedName = normalizeText(building?.name || "");
-          if (assignedPortalId || assignedName) {
-            filteredProperties = mappedProperties.filter((property) => {
-              if (assignedPortalId && property.portalId === assignedPortalId) return true;
-              if (assignedName && normalizeText(property.name) === assignedName) return true;
-              return false;
-            });
-          } else {
-            filteredProperties = [];
-          }
-        }
-
-        setProperties(filteredProperties);
+        // Show the full property list — no single-building narrowing.
+        // effectiveBuildingId is used only to pick the default selection.
+        setProperties(mappedProperties);
 
         if (!selectedPropertyId) {
           let defaultPortalId: string | null = null;
@@ -238,7 +222,7 @@ const Reservas = () => {
             if (building?.portal_id) {
               defaultPortalId = String(building.portal_id);
             } else if (building?.name) {
-              const match = filteredProperties.find(
+              const match = mappedProperties.find(
                 (property) => normalizeText(property.name) === normalizeText(building.name)
               );
               if (match) {
@@ -246,9 +230,9 @@ const Reservas = () => {
               }
             }
           }
-          setSelectedPropertyId(defaultPortalId || (filteredProperties[0] ? String(filteredProperties[0].portalId) : ""));
+          setSelectedPropertyId(defaultPortalId || (mappedProperties[0] ? String(mappedProperties[0].portalId) : ""));
         }
-        if (effectiveBuildingId && filteredProperties.length === 0) {
+        if (mappedProperties.length === 0) {
           toast.error("No hay propiedades asignadas para este usuario");
         }
       } catch (error) {
@@ -633,7 +617,10 @@ const Reservas = () => {
     setSubmitting(true);
     try {
       const unitId = reservationUnitId || "";
-      const portalUnitId = profile?.portalUnits?.[0]?.idUnidad;
+      // Match the unit to the selected property so multi-building users get the right unit
+      const portalUnitId =
+        profile?.portalUnits?.find((u) => String(u.idPropiedad) === selectedPropertyId)?.idUnidad ??
+        profile?.portalUnits?.[0]?.idUnidad;
       if (!unitId && !portalUnitId) {
         toast.error("No hay unidad asignada");
         return;

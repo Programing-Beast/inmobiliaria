@@ -431,7 +431,7 @@ const Finanzas = () => {
     }
   };
 
-  const isOwner = profile?.role === "owner";
+  const canViewFinances = profile?.role === "owner" || profile?.role === "tenant";
 
   const getDocumentTypeLabel = (type?: string | null, raw?: string | null) => {
     const labels: Record<string, string> = {
@@ -494,7 +494,7 @@ const Finanzas = () => {
     return null;
   }
 
-  if (!isOwner) {
+  if (!canViewFinances) {
     return <Unauthorized />;
   }
 
