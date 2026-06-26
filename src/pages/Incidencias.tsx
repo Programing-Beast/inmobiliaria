@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { portalGetAllDashboardIncidents, portalGetAllMyProperties } from "@/lib/portal-api";
 import { createIncidentSynced, updateIncidentSynced, syncPortalCatalog } from "@/lib/portal-sync";
-import { getAllBuildings, getBuilding, updateBuilding } from "@/lib/supabase";
+import { getAllBuildings, getBuilding, getBuildingByPortalId, updateBuilding } from "@/lib/supabase";
 import {
   Pagination,
   PaginationContent,
@@ -302,31 +302,54 @@ const Incidencias = () => {
         return;
       }
 
-      if (!isSuperAdmin && !allowedPropertiesLoaded) {
-        return;
+      let buildingsToShow: any[] = [];
+
+      if (isSuperAdmin) {
+        // Super admin sees all buildings from Turso
+        const { buildings: fetchedBuildings, error } = await getAllBuildings();
+        if (error) { console.error("Error fetching buildings:", error); return; }
+        buildingsToShow = fetchedBuildings || [];
+      } else {
+        // For regular users: resolve buildings from portalProperties so all KOVE buildings show,
+        // even if only one was ever synced to Turso.
+        const portalProps: { idPropiedad: number; nombre: string }[] = profile.portalProperties ?? [];
+
+        // Fallback: fetch from KOVE if profile didn't hydrate portalProperties yet
+        let propsToResolve = portalProps;
+        if (propsToResolve.length === 0) {
+          const result = await portalGetAllMyProperties();
+          if (!result.error && result.data) {
+            propsToResolve = toPortalList(result.data)
+              .map((p) => ({
+                idPropiedad: readNumber(p, ["idPropiedad", "id_propiedad", "propiedadId"]) ?? 0,
+                nombre: readString(p, ["nombre", "name", "razonSocial"]) || "",
+              }))
+              .filter((p) => p.idPropiedad > 0);
+          }
+        }
+
+        if (propsToResolve.length === 0) {
+          setBuildings([]);
+          setNewIncident((prev) => ({ ...prev, buildingId: "", unitId: "" }));
+          return;
+        }
+
+        // Resolve each portal property to a Turso building UUID (create if missing)
+        for (const prop of propsToResolve) {
+          let { building } = await getBuildingByPortalId(prop.idPropiedad);
+          if (!building) {
+            await syncPortalCatalog({
+              email: profile.email || undefined,
+              properties: [{ idPropiedad: prop.idPropiedad, nombre: prop.nombre }],
+              includeUnits: false,
+              includeAmenities: false,
+            });
+            ({ building } = await getBuildingByPortalId(prop.idPropiedad));
+          }
+          if (building) buildingsToShow.push(building);
+        }
       }
 
-      if (!isSuperAdmin && allowedPropertyIds.length === 0 && allowedPropertyNames.length === 0) {
-        setBuildings([]);
-        setNewIncident((prev) => ({ ...prev, buildingId: "", unitId: "" }));
-        return;
-      }
-
-      const { buildings: fetchedBuildings, error } = await getAllBuildings();
-      if (error) {
-        console.error("Error fetching buildings:", error);
-        return;
-      }
-
-      let buildingsToShow = fetchedBuildings || [];
-      if (!isSuperAdmin) {
-        const allowedIds = new Set(allowedPropertyIds);
-        const allowedNames = new Set(allowedPropertyNames.map((name) => normalizeText(name)));
-        buildingsToShow = buildingsToShow.filter((building) =>
-          (building?.portal_id !== null && building?.portal_id !== undefined && allowedIds.has(building.portal_id)) ||
-          (building?.name && allowedNames.has(normalizeText(building.name)))
-        );
-      }
       setBuildings(buildingsToShow);
 
       setNewIncident((prev) => {
