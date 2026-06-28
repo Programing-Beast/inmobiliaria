@@ -1198,6 +1198,7 @@ export const createIncidentSynced = async (params: {
     userId: string;
     buildingId: string;
     unitId?: string;
+    portalUnitId?: number;
     type: "maintenance" | "complaint" | "suggestion";
     title: string;
     description: string;
@@ -1212,7 +1213,11 @@ export const createIncidentSynced = async (params: {
   }
 
   const buildingPortalId = await getBuildingPortalId(localPayload.buildingId);
-  const unitPortalId = localPayload.unitId ? await getUnitPortalId(localPayload.unitId) : null;
+  // portalUnitId supplied directly takes priority over the Turso unit lookup
+  let unitPortalId: number | null = localPayload.portalUnitId ?? null;
+  if (!unitPortalId && localPayload.unitId) {
+    unitPortalId = await getUnitPortalId(localPayload.unitId);
+  }
 
   if (!buildingPortalId) {
     return { incident: null, error: { message: "Missing portal mapping for building" }, queued: false };

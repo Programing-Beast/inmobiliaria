@@ -25,6 +25,7 @@ import {
   portalGetAmenityAvailability,
   portalGetAmenityInfo,
   portalGetDashboardReservations,
+  portalGetMisUnidades,
 } from "@/lib/portal-api";
 import { useLocalizedField } from "@/lib/i18n-helpers";
 import { isReservationWithinAvailabilitySlots, normalizePortalAvailability, normalizePortalTime } from "@/lib/portal-availability";
@@ -552,10 +553,30 @@ const Reservas = () => {
     setSubmitting(true);
     try {
       const unitId = reservationUnitId || "";
-      // Match the unit to the selected property so multi-building users get the right unit
-      const portalUnitId =
-        profile?.portalUnits?.find((u) => String(u.idPropiedad) === selectedPropertyId)?.idUnidad ??
-        profile?.portalUnits?.[0]?.idUnidad;
+
+      // Derive the unit that belongs to the SELECTED property — never fall back to [0]
+      // which could be a different building's unit and cause KOVE to file under the wrong building.
+      let portalUnitId: number | undefined =
+        profile?.portalUnits?.find((u) => String(u.idPropiedad) === selectedPropertyId)?.idUnidad;
+
+      // Stale profile? Fetch /mis-unidades fresh
+      if (!portalUnitId) {
+        const freshUnits = await portalGetMisUnidades();
+        portalUnitId = freshUnits.data?.data?.find(
+          (u) => String(u.idPropiedad) === selectedPropertyId
+        )?.idUnidad;
+      }
+
+      // Final fallback: first Turso-synced unit for this building (set by fetchAmenitiesForProperty)
+      if (!portalUnitId && fallbackUnitId) {
+        const { units: buildingUnits } = await getBuildingUnits(
+          // buildingId from Turso for the selected property
+          (await getBuildingByPortalId(Number(selectedPropertyId))).building?.id ?? ""
+        );
+        const firstUnit = buildingUnits?.find((u) => u.portal_id);
+        if (firstUnit?.portal_id) portalUnitId = firstUnit.portal_id;
+      }
+
       if (!unitId && !portalUnitId) {
         toast.error("No hay unidad asignada");
         return;
