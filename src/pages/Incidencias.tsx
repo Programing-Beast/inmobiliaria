@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { portalGetAllDashboardIncidents, portalGetAllMyProperties } from "@/lib/portal-api";
+import { portalGetAllDashboardIncidents, portalGetAllMyProperties, portalGetMisUnidades } from "@/lib/portal-api";
 import { createIncidentSynced, updateIncidentSynced, syncPortalCatalog } from "@/lib/portal-sync";
-import { getAllBuildings, getBuilding, getBuildingByPortalId, updateBuilding } from "@/lib/supabase";
+import { getAllBuildings, getBuilding, getBuildingByPortalId, getBuildingUnits, updateBuilding } from "@/lib/supabase";
 import {
   Pagination,
   PaginationContent,
@@ -435,6 +435,35 @@ const Incidencias = () => {
         return;
       }
 
+      // Derive the unit that belongs to the SELECTED building so KOVE doesn't infer
+      // the user's primary (possibly different-building) unit from the correo header.
+      const selectedBuilding = buildings.find((b) => String(b.id) === String(buildingId));
+      const selectedPortalId: number | null = selectedBuilding?.portal_id ?? null;
+
+      let resolvedPortalUnitId: number | undefined;
+      if (selectedPortalId) {
+        // 1. Check cached portalUnits in profile
+        resolvedPortalUnitId = profile?.portalUnits?.find(
+          (u) => u.idPropiedad === selectedPortalId
+        )?.idUnidad;
+
+        // 2. Stale profile? Fetch /mis-unidades fresh
+        if (!resolvedPortalUnitId) {
+          const freshUnits = await portalGetMisUnidades();
+          resolvedPortalUnitId = freshUnits.data?.data?.find(
+            (u) => u.idPropiedad === selectedPortalId
+          )?.idUnidad;
+        }
+
+        // 3. No unit in /mis-unidades for this building — use first Turso-synced unit as last resort
+        if (!resolvedPortalUnitId) {
+          const { units: buildingUnits } = await getBuildingUnits(buildingId);
+          if (buildingUnits && buildingUnits.length > 0 && buildingUnits[0].portal_id) {
+            resolvedPortalUnitId = buildingUnits[0].portal_id;
+          }
+        }
+      }
+
       const { error } = await createIncidentSynced({
         email: profile?.email || undefined,
         portalFields: {
@@ -444,6 +473,7 @@ const Incidencias = () => {
         localPayload: {
           userId: profile?.id || "",
           buildingId,
+          portalUnitId: resolvedPortalUnitId,
           type: defaultType as "maintenance" | "complaint" | "suggestion",
           title: newIncident.titulo,
           description: newIncident.descripcion,
