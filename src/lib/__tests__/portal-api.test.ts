@@ -35,7 +35,7 @@ describe("portalGetAllDashboardIncidents", () => {
           total_pages: 2,
           has_more: true,
           links: {
-            next: "https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal/dashboard/incidencias?page=2",
+            next: "https://kove.app.kove.com.py/ords/inmobiliaria_view/portal/dashboard/incidencias?page=2",
           },
         }),
       })
@@ -69,10 +69,10 @@ describe("portalGetAllDashboardIncidents", () => {
     ]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      "https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal/dashboard/incidencias?page=1"
+      "https://kove.app.kove.com.py/ords/inmobiliaria_view/portal/dashboard/incidencias?page=1"
     );
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      "https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal/dashboard/incidencias?page=2"
+      "https://kove.app.kove.com.py/ords/inmobiliaria_view/portal/dashboard/incidencias?page=2"
     );
   });
 
@@ -113,7 +113,7 @@ describe("portalGetAllDashboardIncidents", () => {
     expect(result.error).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      "https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal/auth/login"
+      "https://kove.app.kove.com.py/ords/inmobiliaria_view/portal/auth/login"
     );
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
       method: "GET",
@@ -174,7 +174,7 @@ describe("portalGetAllDashboardIncidents", () => {
       }),
     });
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      "https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal/auth/login"
+      "https://kove.app.kove.com.py/ords/inmobiliaria_view/portal/auth/login"
     );
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
       method: "GET",

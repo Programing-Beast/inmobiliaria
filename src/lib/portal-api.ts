@@ -1,7 +1,7 @@
 import type { UserRole } from "@/lib/database.types";
 import { getBuildingByPortalId, setUserRoles, updateUserProfile } from "@/lib/supabase";
 
-const DEFAULT_BASE_URL = "https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal";
+const DEFAULT_BASE_URL = "https://kove.app.kove.com.py/ords/inmobiliaria_view/portal";
 
 const portalBaseUrl = import.meta.env.VITE_PORTAL_API_BASE_URL || DEFAULT_BASE_URL;
 const apexApiUser = import.meta.env.VITE_APEX_API_USER;
@@ -446,19 +446,19 @@ const portalRequest = async <T>(
     const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
     const isAuthEndpoint = normalizedPath.startsWith("auth/");
     const isPublicAuthEndpoint =
-      (normalizedPath.startsWith("auth/") && normalizedPath !== "auth/change-password") ||
+      normalizedPath.startsWith("auth/") ||
       normalizedPath === "auth/login" ||
       normalizedPath === "auth/register" ||
-      normalizedPath === "auth/forgot-password" ||
-      normalizedPath === "auth/reset-password";
+      normalizedPath === "auth/forgotpassword" ||
+      normalizedPath === "auth/resetpassword";
     
     // Send Basic auth for login, registration, and password recovery — all require gateway-level auth
     const normalizedPathNoSlash = normalizedPath.replace(/\/$/, "");
     const shouldSendBasicAuth =
       (normalizedPathNoSlash === "auth/login" ||
         normalizedPathNoSlash === "auth/register" ||
-        normalizedPathNoSlash === "auth/forgot-password" ||
-        normalizedPathNoSlash === "auth/reset-password") &&
+        normalizedPathNoSlash === "auth/forgotpassword" ||
+        normalizedPathNoSlash === "auth/resetpassword") &&
       Boolean(apexAuthToken);
 
     if (shouldSendBasicAuth) {
@@ -514,11 +514,11 @@ const portalRequest = async <T>(
   // Note: normalizedPath and isPublicAuthEndpoint are already defined in the outer scope of buildRequestHeaders but we need them here too
   const currentNormalizedPath = path.startsWith("/") ? path.slice(1) : path;
   const currentIsPublicAuthEndpoint =
-    (currentNormalizedPath.startsWith("auth/") && currentNormalizedPath !== "auth/change-password") ||
+    currentNormalizedPath.startsWith("auth/") ||
     currentNormalizedPath === "auth/login" ||
     currentNormalizedPath === "auth/register" ||
-    currentNormalizedPath === "auth/forgot-password" ||
-    currentNormalizedPath === "auth/reset-password";
+    currentNormalizedPath === "auth/forgotpassword" ||
+    currentNormalizedPath === "auth/resetpassword";
 
   if (!currentIsPublicAuthEndpoint) {
     const authResult = await ensurePortalAuth(email, { reason: `request:${path}` });
@@ -611,21 +611,21 @@ export const portalForgotPassword = async (email: string) => {
   return portalRequest<{
     status: number;
     message: string;
-  }>("auth/forgot-password", { method: "POST", body: { email: email } });
+  }>("auth/forgotpassword", { method: "POST", body: { email: email } });
 };
 
 export const portalResetPassword = async (payload: { token: string; newPassword: string }) => {
   return portalRequest<{
     status: number;
     message: string;
-  }>("auth/reset-password", { method: "POST", body: payload });
+  }>("auth/resetpassword", { method: "POST", body: payload });
 };
 
 export const portalChangePassword = async (payload: { oldPassword: string; newPassword: string }) => {
   return portalRequest<{
     status: number;
     message: string;
-  }>("auth/change-password", { method: "POST", body: payload });
+  }>("profile/changepassword", { method: "POST", body: payload });
 };
 
 export const ensurePortalAuth = async (email?: string, options?: { reason?: string; forceRefresh?: boolean; password?: string }) => {
