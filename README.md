@@ -14,7 +14,7 @@ A resident and building management portal for VIEW, a real estate company in Par
 | Icons | Lucide React |
 | i18n | i18next (Spanish + English) |
 | Local DB | Turso (LibSQL / SQLite at the edge) |
-| Backend API | KOVE / Oracle APEX (`https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal`) |
+| Backend API | KOVE / Oracle APEX (`https://kove.app.kove.com.py/ords/inmobiliaria_view/portal`) |
 | Deployment | Vercel (SPA, `dev` branch → preview, `main` branch → production) |
 
 ---
@@ -39,7 +39,7 @@ VITE_TURSO_AUTH_TOKEN=eyJ...
 
 # ── KOVE / APEX API ──────────────────────────────────────────────────
 # Base URL of the Oracle APEX portal API
-VITE_PORTAL_API_BASE_URL=https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal
+VITE_PORTAL_API_BASE_URL=https://kove.app.kove.com.py/ords/inmobiliaria_view/portal
 
 # HTTP Basic credentials for APEX auth endpoints
 VITE_APEX_API_USER=your_apex_user
@@ -254,7 +254,7 @@ Roles sync from KOVE on every login. KOVE `"OWNER"` → Turso `"owner"`.
 
 ## KOVE API Reference
 
-Base URL: `https://desarrollo.app.kove.com.py/ords/inmobiliaria_view/portal`
+Base URL: `https://kove.app.kove.com.py/ords/inmobiliaria_view/portal`
 
 All requests include `Authorization: Bearer <token>` and a `correo` header (user email), except auth endpoints which use HTTP Basic.
 
@@ -262,8 +262,8 @@ All requests include `Authorization: Bearer <token>` and a `correo` header (user
 |---|---|---|
 | POST | `/auth/login` | Login — returns token, role, properties |
 | POST | `/auth/register` | Register new user (sends `edificio` + `unidad` for admin context) |
-| POST | `/auth/forgot-password` | Send reset link |
-| POST | `/auth/reset-password` | Reset with token |
+| POST | `/auth/forgotpassword` | Send reset link |
+| POST | `/auth/resetpassword` | Reset with token |
 | GET | `/mis-propiedades` | User's assigned buildings (paginated) |
 | GET | `/mis-unidades` | User's assigned units |
 | GET | `/dashboard/reservas` | Upcoming reservations |
