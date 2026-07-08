@@ -67,7 +67,7 @@ const Sidebar = ({ isOpen = false, onClose, role: propRole }: SidebarProps) => {
       label: t('nav.finances'),
       icon: DollarSign,
       path: "/finances",
-      roles: ["owner", "tenant"]
+      roles: ["owner"]
     },
     {
       key: "announcements",

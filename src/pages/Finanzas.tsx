@@ -443,7 +443,7 @@ const Finanzas = () => {
     }
   };
 
-  const canViewFinances = profile?.role === "owner" || profile?.role === "tenant";
+  const canViewFinances = profile?.role === "owner";
 
   const getDocumentTypeLabel = (type?: string | null, raw?: string | null) => {
     const labels: Record<string, string> = {
