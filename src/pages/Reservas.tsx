@@ -201,15 +201,29 @@ const Reservas = () => {
       setFallbackUnitId(null);
 
       try {
+        // Validate property ID against /mis-unidades data — the login propiedades field
+        // can return a different idPropiedad than mis-unidades for some tenant accounts.
+        const portalUnits = profile?.portalUnits ?? [];
+        const matchedUnit = portalUnits.find(u => u.idPropiedad === Number(selectedPropertyId));
+        const resolvedPropertyId: string = matchedUnit
+          ? String(matchedUnit.idPropiedad)
+          : portalUnits.length > 0
+            ? String(portalUnits[0].idPropiedad)
+            : selectedPropertyId;
+        const resolvedPropertyIdNum = Number(resolvedPropertyId);
+
         // Resolve buildingId first so we can check local cache before hitting KOVE
         let buildingId: string | null = null;
-        const existingBuilding = await getBuildingByPortalId(Number(selectedPropertyId));
+        const existingBuilding = await getBuildingByPortalId(resolvedPropertyIdNum);
         if (existingBuilding.building?.id) {
           buildingId = existingBuilding.building.id;
         } else {
-          // Use selectedProperty from context as the raw payload for catalog sync
-          const propertyRaw = selectedProperty
-            ? { idPropiedad: selectedProperty.idPropiedad, nombre: selectedProperty.nombre }
+          // Use the resolved (validated) property for catalog sync
+          const correctedProperty =
+            profile?.portalProperties?.find(p => p.idPropiedad === resolvedPropertyIdNum)
+            ?? (resolvedPropertyId === selectedPropertyId ? selectedProperty : null);
+          const propertyRaw = correctedProperty
+            ? { idPropiedad: correctedProperty.idPropiedad, nombre: correctedProperty.nombre }
             : undefined;
           const syncResult = await syncPortalCatalog({
             email: profile?.email || undefined,
@@ -220,7 +234,7 @@ const Reservas = () => {
           if (syncResult.error) {
             toast.error(syncResult.error.message || "No se pudo sincronizar la propiedad");
           }
-          const syncedBuilding = await getBuildingByPortalId(Number(selectedPropertyId));
+          const syncedBuilding = await getBuildingByPortalId(resolvedPropertyIdNum);
           if (syncedBuilding.building?.id) {
             buildingId = syncedBuilding.building.id;
           }
@@ -236,7 +250,7 @@ const Reservas = () => {
           // Only sync from KOVE if local DB has no units for this building
           const { units: cachedUnits } = await getBuildingUnits(buildingId);
           if (!cachedUnits || cachedUnits.length === 0) {
-            const unitsResult = await portalGetAllUnits(selectedPropertyId);
+            const unitsResult = await portalGetAllUnits(resolvedPropertyId);
             if (unitsResult.error) {
               console.error("Error fetching portal units:", unitsResult.error);
             } else {
@@ -261,7 +275,7 @@ const Reservas = () => {
         // Only fetch from KOVE and sync if local DB has no amenities for this building
         const { amenities: cachedAmenities } = await getBuildingAmenities(buildingId);
         if (!cachedAmenities || cachedAmenities.length === 0) {
-          const amenitiesResult = await portalGetAllAmenities(selectedPropertyId);
+          const amenitiesResult = await portalGetAllAmenities(resolvedPropertyId);
           if (amenitiesResult.error) {
             console.error("Error fetching portal amenities:", amenitiesResult.error);
             toast.error(t("reservations.error.load"));
@@ -299,7 +313,7 @@ const Reservas = () => {
     };
 
     fetchAmenitiesForProperty();
-  }, [effectiveUnitId, isPrivilegedUser, profile?.email, selectedPropertyId, t]);
+  }, [effectiveUnitId, isPrivilegedUser, profile?.email, profile?.portalUnits, selectedPropertyId, t]);
 
   useEffect(() => {
     if (!profile) return;
