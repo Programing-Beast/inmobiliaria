@@ -272,23 +272,21 @@ const Reservas = () => {
           }
         }
 
-        // Only fetch from KOVE and sync if local DB has no amenities for this building
-        const { amenities: cachedAmenities } = await getBuildingAmenities(buildingId);
-        if (!cachedAmenities || cachedAmenities.length === 0) {
-          const amenitiesResult = await portalGetAllAmenities(resolvedPropertyId);
-          if (amenitiesResult.error) {
-            console.error("Error fetching portal amenities:", amenitiesResult.error);
-            toast.error(t("reservations.error.load"));
-            setAmenities([]);
-            return;
-          }
-          const syncAmenitiesResult = await syncPortalAmenitiesForBuilding({
-            buildingId,
-            amenitiesPayload: amenitiesResult.data,
-          });
-          if (syncAmenitiesResult.error) {
-            console.error("Error syncing amenities:", syncAmenitiesResult.error);
-          }
+        // Always fetch from KOVE — ensures the correct property's amenities are loaded.
+        // Turso cache can be stale or contain another building's data from a prior wrong-property sync.
+        const amenitiesResult = await portalGetAllAmenities(resolvedPropertyId);
+        if (amenitiesResult.error) {
+          console.error("Error fetching portal amenities:", amenitiesResult.error);
+          toast.error(t("reservations.error.load"));
+          setAmenities([]);
+          return;
+        }
+        const syncAmenitiesResult = await syncPortalAmenitiesForBuilding({
+          buildingId,
+          amenitiesPayload: amenitiesResult.data,
+        });
+        if (syncAmenitiesResult.error) {
+          console.error("Error syncing amenities:", syncAmenitiesResult.error);
         }
 
         const { amenities: fetchedAmenities, error } = await getBuildingAmenities(buildingId);
