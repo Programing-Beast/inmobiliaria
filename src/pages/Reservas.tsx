@@ -566,24 +566,33 @@ const Reservas = () => {
     try {
       const unitId = reservationUnitId || "";
 
-      // Derive the unit that belongs to the SELECTED property — never fall back to [0]
+      // Resolve the validated property ID — same logic as fetchAmenitiesForProperty.
+      // selectedPropertyId (from login propiedades) can differ from /mis-unidades for some tenants.
+      const portalUnitsAll = profile?.portalUnits ?? [];
+      const matchedUnitForProp = portalUnitsAll.find(u => u.idPropiedad === Number(selectedPropertyId));
+      const resolvedPropId = matchedUnitForProp
+        ? String(matchedUnitForProp.idPropiedad)
+        : portalUnitsAll.length > 0
+          ? String(portalUnitsAll[0].idPropiedad)
+          : selectedPropertyId;
+
+      // Derive the unit that belongs to the RESOLVED property — never fall back to [0]
       // which could be a different building's unit and cause KOVE to file under the wrong building.
       let portalUnitId: number | undefined =
-        profile?.portalUnits?.find((u) => String(u.idPropiedad) === selectedPropertyId)?.idUnidad;
+        profile?.portalUnits?.find((u) => String(u.idPropiedad) === resolvedPropId)?.idUnidad;
 
       // Stale profile? Fetch /mis-unidades fresh
       if (!portalUnitId) {
         const freshUnits = await portalGetMisUnidades();
         portalUnitId = freshUnits.data?.data?.find(
-          (u) => String(u.idPropiedad) === selectedPropertyId
+          (u) => String(u.idPropiedad) === resolvedPropId
         )?.idUnidad;
       }
 
       // Final fallback: first Turso-synced unit for this building (set by fetchAmenitiesForProperty)
       if (!portalUnitId && fallbackUnitId) {
         const { units: buildingUnits } = await getBuildingUnits(
-          // buildingId from Turso for the selected property
-          (await getBuildingByPortalId(Number(selectedPropertyId))).building?.id ?? ""
+          (await getBuildingByPortalId(Number(resolvedPropId))).building?.id ?? ""
         );
         const firstUnit = buildingUnits?.find((u) => u.portal_id);
         if (firstUnit?.portal_id) portalUnitId = firstUnit.portal_id;
