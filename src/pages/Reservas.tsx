@@ -218,9 +218,15 @@ const Reservas = () => {
         if (existingBuilding.building?.id) {
           buildingId = existingBuilding.building.id;
         } else {
-          // Use the resolved (validated) property for catalog sync
+          // Use the resolved (validated) property for catalog sync.
+          // Also try portalUnits as a source so buildings can be created from mis-unidades
+          // data even when login propiedades doesn't include the resolved property.
+          const matchedPortalUnit = portalUnits.find(u => u.idPropiedad === resolvedPropertyIdNum);
           const correctedProperty =
             profile?.portalProperties?.find(p => p.idPropiedad === resolvedPropertyIdNum)
+            ?? (matchedPortalUnit
+                ? { idPropiedad: matchedPortalUnit.idPropiedad, nombre: matchedPortalUnit.propiedad }
+                : null)
             ?? (resolvedPropertyId === selectedPropertyId ? selectedProperty : null);
           const propertyRaw = correctedProperty
             ? { idPropiedad: correctedProperty.idPropiedad, nombre: correctedProperty.nombre }

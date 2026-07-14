@@ -148,6 +148,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         enhancedProfile.portalUnits = misUnidadesResult.data;
       }
 
+      // Validate selectedProperty against mis-unidades — login propiedades can return
+      // a wrong idPropiedad for some tenant accounts. Correct it here so all downstream
+      // pages use the right property ID without needing per-page workarounds.
+      if (enhancedProfile.portalUnits?.length) {
+        const savedId = localStorage.getItem('selectedPropertyId');
+        const savedMatch = enhancedProfile.portalUnits.find(u => String(u.idPropiedad) === savedId);
+        const targetUnit = savedMatch ?? enhancedProfile.portalUnits[0];
+        const correctedProp = enhancedProfile.portalProperties?.find(
+          p => p.idPropiedad === targetUnit.idPropiedad
+        ) ?? { idPropiedad: targetUnit.idPropiedad, nombre: targetUnit.propiedad };
+        setSelectedPropertyState(correctedProp);
+        localStorage.setItem('selectedPropertyId', String(targetUnit.idPropiedad));
+      }
+
       setProfile(enhancedProfile);
 
       // Store in localStorage for backward compatibility
