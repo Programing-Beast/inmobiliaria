@@ -306,10 +306,14 @@ const Reservas = () => {
         // Filter Turso results to only amenities KOVE returned for this property.
         // syncPortalAmenitiesForBuilding is an additive upsert — it never deletes stale rows,
         // so Turso may still have entries from a prior wrong-property sync.
+        // KOVE list endpoint uses idQuincho (not idAmenity) — probe both, matching portal-sync.ts.
         const kovePortalIds = new Set(
           (amenitiesResult.data ?? [])
-            .map((a: any) => Number(a.idAmenity))
-            .filter((id: number) => id > 0)
+            .map((a: any) => {
+              const raw = a.idAmenity ?? a.idQuincho ?? a.amenity_id ?? a.id_amenity;
+              return raw != null ? Number(raw) : NaN;
+            })
+            .filter((id: number) => !isNaN(id) && id > 0)
         );
         const validAmenities = kovePortalIds.size > 0
           ? (fetchedAmenities ?? []).filter(a => kovePortalIds.has(Number(a.portal_id)))
