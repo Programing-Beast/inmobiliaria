@@ -303,9 +303,21 @@ const Reservas = () => {
           return;
         }
 
-        setAmenities(fetchedAmenities || []);
-        if (fetchedAmenities && fetchedAmenities.length > 0) {
-          setSelectedAmenity(fetchedAmenities[0]);
+        // Filter Turso results to only amenities KOVE returned for this property.
+        // syncPortalAmenitiesForBuilding is an additive upsert — it never deletes stale rows,
+        // so Turso may still have entries from a prior wrong-property sync.
+        const kovePortalIds = new Set(
+          (amenitiesResult.data ?? [])
+            .map((a: any) => Number(a.idAmenity))
+            .filter((id: number) => id > 0)
+        );
+        const validAmenities = kovePortalIds.size > 0
+          ? (fetchedAmenities ?? []).filter(a => kovePortalIds.has(Number(a.portal_id)))
+          : (fetchedAmenities ?? []);
+
+        setAmenities(validAmenities);
+        if (validAmenities.length > 0) {
+          setSelectedAmenity(validAmenities[0]);
         }
       } catch (error) {
         console.error("Error:", error);
