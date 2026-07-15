@@ -449,16 +449,16 @@ const portalRequest = async <T>(
       normalizedPath.startsWith("auth/") ||
       normalizedPath === "auth/login" ||
       normalizedPath === "auth/register" ||
-      normalizedPath === "auth/forgotpassword" ||
-      normalizedPath === "auth/resetpassword";
+      normalizedPath === "auth/forgot-password" ||
+      normalizedPath === "auth/reset-password";
     
     // Send Basic auth for login, registration, and password recovery — all require gateway-level auth
     const normalizedPathNoSlash = normalizedPath.replace(/\/$/, "");
     const shouldSendBasicAuth =
       (normalizedPathNoSlash === "auth/login" ||
         normalizedPathNoSlash === "auth/register" ||
-        normalizedPathNoSlash === "auth/forgotpassword" ||
-        normalizedPathNoSlash === "auth/resetpassword") &&
+        normalizedPathNoSlash === "auth/forgot-password" ||
+        normalizedPathNoSlash === "auth/reset-password") &&
       Boolean(apexAuthToken);
 
     if (shouldSendBasicAuth) {
@@ -517,8 +517,8 @@ const portalRequest = async <T>(
     currentNormalizedPath.startsWith("auth/") ||
     currentNormalizedPath === "auth/login" ||
     currentNormalizedPath === "auth/register" ||
-    currentNormalizedPath === "auth/forgotpassword" ||
-    currentNormalizedPath === "auth/resetpassword";
+    currentNormalizedPath === "auth/forgot-password" ||
+    currentNormalizedPath === "auth/reset-password";
 
   if (!currentIsPublicAuthEndpoint) {
     const authResult = await ensurePortalAuth(email, { reason: `request:${path}` });
@@ -611,14 +611,14 @@ export const portalForgotPassword = async (email: string) => {
   return portalRequest<{
     status: number;
     message: string;
-  }>("auth/forgotpassword", { method: "POST", body: { email: email } });
+  }>("auth/forgot-password", { method: "POST", body: { email: email } });
 };
 
 export const portalResetPassword = async (payload: { token: string; newPassword: string }) => {
   return portalRequest<{
     status: number;
     message: string;
-  }>("auth/resetpassword", { method: "POST", body: payload });
+  }>("auth/reset-password", { method: "POST", body: payload });
 };
 
 export const portalChangePassword = async (payload: { oldPassword: string; newPassword: string }) => {
