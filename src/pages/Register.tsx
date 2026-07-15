@@ -3,7 +3,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import logoOriginal from "@/assets/logo-original.png";
 import { useTranslation } from "react-i18next";
@@ -24,7 +23,6 @@ const Register = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (field: string, value: string) => {
@@ -63,11 +61,6 @@ const Register = () => {
     const hasNumber = /[0-9]/.test(formData.password);
     if (!hasUpperCase || !hasLowerCase || !hasNumber) {
       toast.error(t("register.validationPasswordStrength"));
-      return;
-    }
-
-    if (!agreeTerms) {
-      toast.error(t("register.validationAcceptTerms"));
       return;
     }
 
@@ -251,26 +244,6 @@ const Register = () => {
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-            </div>
-
-            <div className="flex items-start space-x-2 pt-2">
-              <Checkbox
-                id="terms"
-                checked={agreeTerms}
-                onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
-                disabled={isLoading}
-                className="mt-1"
-              />
-              <label htmlFor="terms" className="text-sm text-zinc-500 cursor-pointer select-none leading-tight hover:text-zinc-800 transition-colors">
-                {t("register.termsPrefix")}{" "}
-                <Link to="/terms" className="text-primary hover:underline font-medium">
-                  {t("register.termsOfService")}
-                </Link>{" "}
-                {t("register.termsAnd")}{" "}
-                <Link to="/privacy" className="text-primary hover:underline font-medium">
-                  {t("register.privacyPolicy")}
-                </Link>
-              </label>
             </div>
 
             <Button

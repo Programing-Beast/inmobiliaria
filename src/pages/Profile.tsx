@@ -19,11 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, Mail, Building2, Home, Shield, Edit, Lock, Globe } from "lucide-react";
+import { User, Mail, Building2, Home, Shield, Edit, Globe } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateUserProfile } from "@/lib/supabase";
-import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { UnitSwitcher } from "@/components/UnitSwitcher";
 
@@ -31,17 +30,10 @@ const Profile = () => {
   const { t, i18n } = useTranslation();
   const { profile, refreshProfile } = useAuth();
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [editForm, setEditForm] = useState({
     fullName: profile?.full_name || "",
-  });
-
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
   });
 
   // Get role badge
@@ -94,50 +86,6 @@ const Profile = () => {
     } catch (error) {
       console.error('Error:', error);
       toast.error("Error updating profile");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Handle password change
-  const handleChangePassword = async () => {
-    if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
-      toast.error("Please fill in all password fields");
-      return;
-    }
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    if (passwordForm.newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: passwordForm.newPassword
-      });
-
-      if (error) {
-        console.error('Error changing password:', error);
-        toast.error(error.message || "Error changing password");
-        return;
-      }
-
-      toast.success("Password changed successfully");
-      setShowPasswordDialog(false);
-      setPasswordForm({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error("Error changing password");
     } finally {
       setSubmitting(false);
     }
@@ -278,24 +226,6 @@ const Profile = () => {
           </Card>
         )}
 
-        {/* Security Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Security</CardTitle>
-            <CardDescription>Manage your password and security settings</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => setShowPasswordDialog(true)}
-            >
-              <Lock className="w-4 h-4" />
-              Change Password
-            </Button>
-          </CardContent>
-        </Card>
-
         {/* Preferences Card */}
         <Card>
           <CardHeader>
@@ -358,51 +288,6 @@ const Profile = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Change Password Dialog */}
-      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Change Password</DialogTitle>
-            <DialogDescription>Enter your new password below</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="newPassword">New Password</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={passwordForm.newPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                placeholder="Minimum 6 characters"
-              />
-            </div>
-            <div>
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={passwordForm.confirmPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                placeholder="Re-enter your new password"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowPasswordDialog(false);
-                setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleChangePassword} disabled={submitting}>
-              {submitting ? "Changing..." : "Change Password"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
